@@ -207,50 +207,56 @@ export default function QBComparisonsPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      {/* QB Connection Status Banner */}
+      {/* QB Connection Status Banner - Clickable to go to Settings */}
       {!loading && qbEntries.length === 0 && (
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 text-white">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center gap-3">
-              <AlertCircle size={20} />
-              <div>
-                <p className="font-semibold text-sm">No QuickBooks Data Found</p>
-                <p className="text-xs text-white/90">
-                  {qbConnected 
-                    ? syncing 
-                      ? 'Syncing from QuickBooks Online...' 
-                      : 'Connected to QuickBooks but no data synced yet'
-                    : 'Not connected to QuickBooks Online'}
-                </p>
+        <Link href="/settings">
+          <div className="bg-gradient-to-r from-red-600 to-red-700 px-4 py-3 text-white cursor-pointer hover:from-red-700 hover:to-red-800 transition-all">
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={20} />
+                <div>
+                  <p className="font-semibold text-sm">No QuickBooks Data Found - Click to Configure</p>
+                  <p className="text-xs text-white/90">
+                    {qbConnected 
+                      ? syncing 
+                        ? 'Syncing from QuickBooks Online...' 
+                        : 'Connected to QuickBooks but no data synced yet. Click to sync.'
+                      : 'Not connected to QuickBooks Online. Click to connect.'}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {qbConnected ? (
-                <button
-                  onClick={handleAutoSync}
-                  disabled={syncing}
-                  className="px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-orange-50 text-sm font-medium transition disabled:opacity-50 flex items-center gap-2"
-                >
-                  {syncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                  {syncing ? 'Syncing...' : 'Sync from QuickBooks'}
-                </button>
-              ) : (
-                <Link href="/settings">
-                  <button className="px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-orange-50 text-sm font-medium transition">
+              <div className="flex items-center gap-2">
+                {qbConnected ? (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleAutoSync();
+                    }}
+                    disabled={syncing}
+                    className="px-4 py-2 bg-white text-red-600 rounded-lg hover:bg-red-50 text-sm font-medium transition disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {syncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                    {syncing ? 'Syncing...' : 'Sync from QuickBooks'}
+                  </button>
+                ) : (
+                  <button className="px-4 py-2 bg-white text-red-600 rounded-lg hover:bg-red-50 text-sm font-medium transition">
                     Connect QuickBooks
                   </button>
-                </Link>
-              )}
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="px-4 py-2 bg-white/20 text-white border border-white/30 rounded-lg hover:bg-white/30 text-sm font-medium transition flex items-center gap-2"
-              >
-                <Upload size={14} />
-                Upload .QBO File
-              </button>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowUploadModal(true);
+                  }}
+                  className="px-4 py-2 bg-white/20 text-white border border-white/30 rounded-lg hover:bg-white/30 text-sm font-medium transition flex items-center gap-2"
+                >
+                  <Upload size={14} />
+                  Upload .QBO File
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Link>
       )}
       
       <div className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 px-4 py-3 flex items-center justify-between">
