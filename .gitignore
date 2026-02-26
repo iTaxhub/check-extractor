@@ -36,11 +36,13 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.quickbooks.env
 
 # BUT allow env.example files to be committed (they have no real credentials)
 !env.example
 !*.env.example
 !.env.example
+!quickbooks.env.example
 
 # Security alerts (may contain sensitive info)
 SECURITY_ALERT.md

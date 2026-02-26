@@ -240,7 +240,7 @@ PYTHONUNBUFFERED=1
 
 ## 🚦 Railway Deployment Notes
 
-**Current Railway URL**: https://cheque-extractor-production-5165.up.railway.app
+**Current Railway URL**: https://cheque-extractor-production-2026.up.railway.app
 
 **Important**: Railway only runs the **Python backend** (per `.railwayignore` which excludes `frontend/`).
 
