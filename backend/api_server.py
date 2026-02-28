@@ -40,9 +40,9 @@ from check_extractor import CheckExtractorApp
 # ── Supabase REST (lightweight – no heavy SDK needed) ─────────────
 import requests as _requests
 
-_sb_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
-_sb_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "") or os.environ.get("SUPABASE_SERVICE_KEY", "")
-_supabase_ok = bool(_sb_url and _sb_key)
+_sb_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "").strip()
+_sb_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip() or os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+_supabase_ok = bool(_sb_url and _sb_key and _sb_url.startswith("http"))
 if _supabase_ok:
     print(f"✓ Supabase configured: {_sb_url[:40]}…")
 else:
@@ -62,19 +62,23 @@ def _supabase_insert(table: str, row: dict):
     """Insert a row into a Supabase table via REST API. Returns inserted row or None."""
     if not _supabase_ok:
         return None
-    resp = _requests.post(
-        f"{_sb_url}/rest/v1/{table}",
-        headers=_sb_headers(),
-        json=row,
-        timeout=15,
-    )
-    if resp.status_code >= 400:
-        print(f"  Supabase insert error ({resp.status_code}): {resp.text[:300]}")
-        return None
     try:
+        resp = _requests.post(
+            f"{_sb_url}/rest/v1/{table}",
+            headers=_sb_headers(),
+            json=row,
+            timeout=15,
+        )
+        if resp.status_code >= 400:
+            print(f"  Supabase insert error ({resp.status_code}): {resp.text[:300]}")
+            return None
         data = resp.json()
         return data[0] if isinstance(data, list) and data else data
-    except Exception:
+    except _requests.exceptions.Timeout:
+        print(f"  Supabase insert timeout for table {table}")
+        return None
+    except Exception as e:
+        print(f"  Supabase insert exception: {e}")
         return None
 
 
@@ -82,36 +86,48 @@ def _supabase_update(table: str, match: dict, updates: dict):
     """Update rows in a Supabase table matching conditions."""
     if not _supabase_ok:
         return
-    query = "&".join(f"{k}=eq.{v}" for k, v in match.items())
-    resp = _requests.patch(
-        f"{_sb_url}/rest/v1/{table}?{query}",
-        headers=_sb_headers(),
-        json=updates,
-        timeout=15,
-    )
-    if resp.status_code >= 400:
-        print(f"  Supabase update error ({resp.status_code}): {resp.text[:300]}")
+    try:
+        query = "&".join(f"{k}=eq.{v}" for k, v in match.items())
+        resp = _requests.patch(
+            f"{_sb_url}/rest/v1/{table}?{query}",
+            headers=_sb_headers(),
+            json=updates,
+            timeout=15,
+        )
+        if resp.status_code >= 400:
+            print(f"  Supabase update error ({resp.status_code}): {resp.text[:300]}")
+    except _requests.exceptions.Timeout:
+        print(f"  Supabase update timeout for table {table}")
+    except Exception as e:
+        print(f"  Supabase update exception: {e}")
 
 
 def _supabase_upload_file(bucket: str, path: str, file_bytes: bytes, content_type: str = "application/octet-stream"):
     """Upload a file to Supabase Storage."""
     if not _supabase_ok:
         return None
-    resp = _requests.post(
-        f"{_sb_url}/storage/v1/object/{bucket}/{path}",
-        headers={
-            "apikey": _sb_key,
-            "Authorization": f"Bearer {_sb_key}",
-            "Content-Type": content_type,
-            "x-upsert": "true",
-        },
-        data=file_bytes,
-        timeout=30,
-    )
-    if resp.status_code >= 400:
-        print(f"  Storage upload error ({resp.status_code}): {resp.text[:200]}")
+    try:
+        resp = _requests.post(
+            f"{_sb_url}/storage/v1/object/{bucket}/{path}",
+            headers={
+                "apikey": _sb_key,
+                "Authorization": f"Bearer {_sb_key}",
+                "Content-Type": content_type,
+                "x-upsert": "true",
+            },
+            data=file_bytes,
+            timeout=30,
+        )
+        if resp.status_code >= 400:
+            print(f"  Storage upload error ({resp.status_code}): {resp.text[:200]}")
+            return None
+        return f"{_sb_url}/storage/v1/object/public/{bucket}/{path}"
+    except _requests.exceptions.Timeout:
+        print(f"  Storage upload timeout for {path}")
         return None
-    return f"{_sb_url}/storage/v1/object/public/{bucket}/{path}"
+    except Exception as e:
+        print(f"  Storage upload exception: {e}")
+        return None
 
 
 def _supabase_delete_folder(bucket: str, folder_path: str):
@@ -203,8 +219,14 @@ def _supabase_rpc(fn_name: str, params: dict = None):
 
 def _load_jobs_from_supabase():
     """Load existing jobs from Supabase into in-memory store on startup."""
-    rows = _supabase_select("check_jobs")
-    if not rows:
+    if not _supabase_ok:
+        return
+    try:
+        rows = _supabase_select("check_jobs")
+        if not rows:
+            return
+    except Exception as e:
+        print(f"  Failed to load jobs from Supabase: {e}")
         return
     loaded = 0
     for row in rows:
@@ -659,15 +681,26 @@ def health():
 @app.post("/api/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...), _auth=Depends(_verify_token)):
     """Upload a PDF file, start detection + extraction in background."""
-    if not file.filename:
+    if not file or not file.filename:
         raise HTTPException(400, "No file provided")
 
+    if "." not in file.filename:
+        raise HTTPException(400, "Invalid file name")
+    
     ext = file.filename.rsplit(".", 1)[-1].lower()
     if ext not in ("pdf",):
         raise HTTPException(400, "Only PDF files are supported")
 
-    content = await file.read()
+    try:
+        content = await file.read()
+    except Exception as e:
+        raise HTTPException(500, f"Failed to read file: {str(e)}")
+    
     file_size = len(content)
+    if file_size == 0:
+        raise HTTPException(400, "Empty file provided")
+    if file_size > 100 * 1024 * 1024:  # 100MB limit
+        raise HTTPException(413, "File too large (max 100MB)")
 
     # Duplicate detection: check if same filename + size already exists
     file_hash = hashlib.md5(content).hexdigest()
@@ -712,15 +745,26 @@ async def upload_pdf(file: UploadFile = File(...), _auth=Depends(_verify_token))
 @app.post("/api/upload-analyze")
 async def upload_analyze(file: UploadFile = File(...), _auth=Depends(_verify_token)):
     """Upload a PDF, detect cheques, return page info with dimensions — no OCR yet."""
-    if not file.filename:
+    if not file or not file.filename:
         raise HTTPException(400, "No file provided")
 
+    if "." not in file.filename:
+        raise HTTPException(400, "Invalid file name")
+    
     ext = file.filename.rsplit(".", 1)[-1].lower()
     if ext not in ("pdf",):
         raise HTTPException(400, "Only PDF files are supported")
 
-    content = await file.read()
+    try:
+        content = await file.read()
+    except Exception as e:
+        raise HTTPException(500, f"Failed to read file: {str(e)}")
+    
     file_size = len(content)
+    if file_size == 0:
+        raise HTTPException(400, "Empty file provided")
+    if file_size > 100 * 1024 * 1024:  # 100MB limit
+        raise HTTPException(413, "File too large (max 100MB)")
 
     # Duplicate detection
     file_hash = hashlib.md5(content).hexdigest()
@@ -1264,16 +1308,27 @@ def start_extraction(req: StartExtractionRequest, _auth=Depends(_verify_token)):
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str):
     """Get job status and results."""
+    if not job_id or not job_id.strip():
+        raise HTTPException(400, "Invalid job_id")
     if job_id not in jobs:
         raise HTTPException(404, "Job not found")
     # Return a clean copy without internal fields
-    job = {k: v for k, v in jobs[job_id].items() if not k.startswith("_")}
-    return job
+    try:
+        job = {k: v for k, v in jobs[job_id].items() if not k.startswith("_")}
+        return job
+    except Exception as e:
+        raise HTTPException(500, f"Error retrieving job: {str(e)}")
 
 
 @app.get("/api/jobs")
 def list_jobs(limit: int = 50, offset: int = 0, status: str = None):
     """List jobs with optional pagination and status filter."""
+    # Validate parameters
+    if limit < 1 or limit > 1000:
+        raise HTTPException(400, "Limit must be between 1 and 1000")
+    if offset < 0:
+        raise HTTPException(400, "Offset must be non-negative")
+    
     all_jobs = list(jobs.values())
     # Sort by created_at descending
     all_jobs.sort(key=lambda j: j.get("created_at", ""), reverse=True)
