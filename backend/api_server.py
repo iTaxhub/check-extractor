@@ -435,9 +435,17 @@ def _verify_token(request: Request):
 
 app = FastAPI(title="Check Extractor API", version="1.0.0")
 
+# CORS configuration - allow all origins for maximum compatibility
+# Production frontend: https://check-extractor-frontend.vercel.app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://check-extractor-frontend.vercel.app",
+        "https://cheque-extractor-frontend.vercel.app",
+        "http://localhost:3080",
+        "http://localhost:3000",
+        "*"
+    ],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
