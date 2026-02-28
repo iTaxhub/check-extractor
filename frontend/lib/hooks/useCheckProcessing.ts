@@ -200,17 +200,26 @@ export function useCheckProcessing(jobId: string, selectedMethods?: string[]) {
         if (!jobId) return
 
         let stopped = false
-        const interval = setInterval(async () => {
+        let pollCount = 0
+        
+        const doPoll = async () => {
             if (stopped) return
+            pollCount++
             const done = await poll()
             if (done) {
                 stopped = true
                 clearInterval(interval)
+                // Do one final poll to ensure we have complete data
+                if (pollCount > 1) {
+                    setTimeout(() => poll(), 500)
+                }
             }
-        }, 1000) // Poll every 1s for smoother progress updates
+        }
+        
+        const interval = setInterval(doPoll, 2000) // Poll every 2s to reduce server load
 
         // Initial poll
-        poll()
+        doPoll()
 
         return () => {
             stopped = true

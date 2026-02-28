@@ -37,6 +37,8 @@ export default function QBComparisonsPage() {
     setFilterStatus,
     selectedQBSource,
     setSelectedQBSource,
+    selectedPdfName,
+    setSelectedPdfName,
     startDate,
     setStartDate,
     endDate,
@@ -151,6 +153,17 @@ export default function QBComparisonsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showExportDropdown]);
 
+  // Extract unique PDF names from extractions
+  const pdfNames = useMemo(() => {
+    const names = new Set<string>();
+    extractions.forEach(ext => {
+      if (ext.pdf_name) {
+        names.add(ext.pdf_name);
+      }
+    });
+    return Array.from(names).sort();
+  }, [extractions]);
+
   const comparisonData = useMemo(() => {
     let rows = intelligentMatch(extractions, qbEntries);
 
@@ -169,6 +182,23 @@ export default function QBComparisonsPage() {
       rows = rows.filter(row => row.matchStatus === filterStatus);
     }
 
+    // Filter by PDF name
+    if (selectedPdfName !== 'all') {
+      rows = rows.filter(row => {
+        // Only filter extraction rows (not QB-only rows)
+        if (row.source === 'extraction' || row.source === 'matched') {
+          const extraction = extractions.find(ext => {
+            const extCheckNum = typeof ext.extraction?.checkNumber === 'string' 
+              ? ext.extraction.checkNumber 
+              : ext.extraction?.checkNumber?.value;
+            return extCheckNum === row.checkNumber || ext.check_id === row.checkNumber;
+          });
+          return extraction?.pdf_name === selectedPdfName;
+        }
+        return false;
+      });
+    }
+
     rows = filterByDateRange(rows, startDate, endDate);
     rows = filterByQBSource(rows, selectedQBSource);
     rows = sortRows(rows, sortField, sortDirection);
@@ -183,7 +213,7 @@ export default function QBComparisonsPage() {
     });
 
     return rows;
-  }, [extractions, qbEntries, searchQuery, filterStatus, startDate, endDate, selectedQBSource, sortField, sortDirection]);
+  }, [extractions, qbEntries, searchQuery, filterStatus, selectedPdfName, startDate, endDate, selectedQBSource, sortField, sortDirection]);
 
   const statistics = useMemo(() => {
     const matched = comparisonData.filter(r => r.matchStatus === 'matched').length;
@@ -202,7 +232,7 @@ export default function QBComparisonsPage() {
 
   const totalPages = Math.ceil(comparisonData.length / itemsPerPage);
 
-  const hasActiveFilters = searchQuery !== '' || filterStatus !== 'all' || selectedQBSource !== 'all' || startDate !== '' || endDate !== '';
+  const hasActiveFilters = searchQuery !== '' || filterStatus !== 'all' || selectedQBSource !== 'all' || selectedPdfName !== 'all' || startDate !== '' || endDate !== '';
 
   const handleExportCSV = () => {
     exportToCSV(comparisonData, visibleColumns);
@@ -344,6 +374,9 @@ export default function QBComparisonsPage() {
         selectedQBSource={selectedQBSource}
         setSelectedQBSource={setSelectedQBSource}
         qbSources={qbSources}
+        selectedPdfName={selectedPdfName}
+        setSelectedPdfName={setSelectedPdfName}
+        pdfNames={pdfNames}
         filterStatus={filterStatus}
         setFilterStatus={setFilterStatus}
         showExportDropdown={showExportDropdown}

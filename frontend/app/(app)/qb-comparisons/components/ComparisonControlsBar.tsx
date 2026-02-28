@@ -11,6 +11,9 @@ interface ComparisonControlsBarProps {
   selectedQBSource: string;
   setSelectedQBSource: (source: string) => void;
   qbSources: string[];
+  selectedPdfName: string;
+  setSelectedPdfName: (name: string) => void;
+  pdfNames: string[];
   filterStatus: string;
   setFilterStatus: (status: string) => void;
   showExportDropdown: boolean;
@@ -33,6 +36,9 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
   selectedQBSource,
   setSelectedQBSource,
   qbSources,
+  selectedPdfName,
+  setSelectedPdfName,
+  pdfNames,
   filterStatus,
   setFilterStatus,
   showExportDropdown,
@@ -86,7 +92,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
           />
         </div>
 
-        <div className="col-span-2">
+        <div className="col-span-1">
           <select
             value={selectedQBSource}
             onChange={(e) => setSelectedQBSource(e.target.value)}
@@ -102,6 +108,21 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
         </div>
 
         <div className="col-span-2">
+          <select
+            value={selectedPdfName}
+            onChange={(e) => setSelectedPdfName(e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="all">All Documents</option>
+            {pdfNames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="col-span-1">
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
