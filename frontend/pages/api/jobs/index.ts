@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-
-const PYTHON_API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090'
+import { createAuthenticatedClient } from '@/lib/supabase/api'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -8,23 +7,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        // Forward pagination/filter query params
-        const params = new URLSearchParams()
-        if (req.query.limit) params.set('limit', String(req.query.limit))
-        if (req.query.offset) params.set('offset', String(req.query.offset))
-        if (req.query.status) params.set('status', String(req.query.status))
-        const qs = params.toString() ? `?${params.toString()}` : ''
+        // Use authenticated Supabase client - enforces RLS and tenant isolation
+        const supabase = createAuthenticatedClient(req)
 
-        const response = await fetch(`${PYTHON_API}/api/jobs${qs}`)
-        const data = await response.json()
+        // Query check_jobs with RLS filtering by tenant_id
+        const limit = req.query.limit ? parseInt(String(req.query.limit)) : 100
+        const offset = req.query.offset ? parseInt(String(req.query.offset)) : 0
+        
+        let query = supabase
+            .from('check_jobs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1)
 
-        if (!response.ok) {
-            return res.status(response.status).json(data)
+        if (req.query.status) {
+            query = query.eq('status', String(req.query.status))
         }
 
-        return res.status(200).json(data)
-    } catch (error) {
-        console.error('Jobs list proxy error:', error)
-        return res.status(500).json({ error: 'Failed to connect to processing server' })
+        const { data: jobs, error } = await query
+
+        if (error) {
+            console.error('Jobs query error:', error)
+            return res.status(500).json({ error: error.message, jobs: [] })
+        }
+
+        // Transform to match expected format
+        const transformedJobs = (jobs || []).map(job => ({
+            job_id: job.job_id,
+            status: job.status,
+            pdf_name: job.pdf_name,
+            pdf_url: job.pdf_url,
+            file_size: job.file_size,
+            doc_format: job.doc_format,
+            total_pages: job.total_pages,
+            total_checks: job.total_checks,
+            checks: job.checks_data || [],
+            error: job.error_message,
+            created_at: job.created_at,
+            completed_at: job.completed_at,
+        }))
+
+        return res.status(200).json({ jobs: transformedJobs })
+    } catch (error: any) {
+        console.error('Jobs list error:', error)
+        return res.status(500).json({ error: error.message || 'Failed to fetch jobs' })
     }
 }
