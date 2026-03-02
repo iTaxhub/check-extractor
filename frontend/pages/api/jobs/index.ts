@@ -12,9 +12,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
             supabase = createAuthenticatedClient(req)
         } catch (authError: any) {
-            console.error('Auth error:', authError.message)
+            console.error('❌ Auth error:', authError.message)
             return res.status(200).json({ jobs: [], total: 0 })
         }
+
+        // Get user info for debugging
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+            console.error('❌ Failed to get user:', userError)
+            return res.status(200).json({ jobs: [], total: 0 })
+        }
+
+        // Get user's tenant_id
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('tenant_id, email')
+            .eq('id', user.id)
+            .single()
+
+        console.log('🔍 [/api/jobs] User:', {
+            user_id: user.id,
+            email: user.email,
+            tenant_id: profile?.tenant_id,
+        })
 
         // Query check_jobs with RLS filtering by tenant_id
         const limit = req.query.limit ? parseInt(String(req.query.limit)) : 100
@@ -32,10 +52,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const { data: jobs, error } = await query
 
+        console.log('📊 [/api/jobs] Query result:', {
+            user_id: user.id,
+            tenant_id: profile?.tenant_id,
+            jobs_count: jobs?.length || 0,
+            has_error: !!error,
+            job_ids: jobs?.map(j => j.job_id).slice(0, 5) || [],
+        })
+
         if (error) {
-            console.error('Jobs query error:', error)
+            console.error('❌ Jobs query error:', error)
             // Return empty array instead of error for better UX
             return res.status(200).json({ jobs: [], total: 0 })
+        }
+
+        // Log tenant_id for each job to verify RLS
+        if (jobs && jobs.length > 0) {
+            console.log('📋 [/api/jobs] Job tenant_ids:', jobs.map(j => ({
+                job_id: j.job_id,
+                tenant_id: j.tenant_id,
+                pdf_name: j.pdf_name,
+            })))
         }
 
         // Transform to match expected format
@@ -68,6 +105,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 completed_at: job.completed_at,
             };
         })
+
+        console.log('✅ [/api/jobs] Returning', transformedJobs.length, 'jobs to user', user.email)
 
         return res.status(200).json({ jobs: transformedJobs })
     } catch (error: any) {
