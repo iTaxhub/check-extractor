@@ -35,6 +35,9 @@ function LoginForm() {
 
       if (error) throw error;
 
+      // Small delay to ensure cookies are set
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // Use window.location for full page reload to ensure session is set
       window.location.href = redirectTo;
     } catch (err: any) {
