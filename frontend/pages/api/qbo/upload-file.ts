@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { createAuthenticatedClient } from '@/lib/supabase/api';
 import { parseQBOFile, toQBEntries } from '../../../lib/utils/qboParser';
 
 /**
@@ -138,10 +138,7 @@ export default async function handler(
     }
 
     // Store in Supabase
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = createAuthenticatedClient(req);
 
     let storeError: string | null = null;
     if (entries.length > 0) {

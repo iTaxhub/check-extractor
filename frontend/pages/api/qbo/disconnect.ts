@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { createAuthenticatedClient } from '@/lib/supabase/api';
 
 /**
  * QuickBooks Disconnect Endpoint
@@ -14,10 +14,7 @@ export default async function handler(
   }
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = createAuthenticatedClient(req);
 
     // Delete QuickBooks integration
     const { error } = await supabase
