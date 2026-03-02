@@ -8,7 +8,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         // Use authenticated Supabase client - enforces RLS and tenant isolation
-        const supabase = createAuthenticatedClient(req)
+        let supabase;
+        try {
+            supabase = createAuthenticatedClient(req)
+        } catch (authError: any) {
+            console.error('Auth error:', authError.message)
+            return res.status(200).json({ jobs: [], total: 0 })
+        }
 
         // Query check_jobs with RLS filtering by tenant_id
         const limit = req.query.limit ? parseInt(String(req.query.limit)) : 100
