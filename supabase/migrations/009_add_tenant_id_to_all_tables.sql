@@ -40,12 +40,7 @@ UPDATE public.checks
 SET tenant_id = (SELECT id FROM public.tenants ORDER BY created_at ASC LIMIT 1)
 WHERE tenant_id IS NULL;
 
--- Assign check_jobs to their uploader's tenant
-UPDATE public.check_jobs cj
-SET tenant_id = (SELECT tenant_id FROM public.user_profiles WHERE id = cj.user_id)
-WHERE tenant_id IS NULL AND user_id IS NOT NULL;
-
--- Assign orphaned check_jobs to first tenant
+-- Assign all check_jobs to first tenant (no user_id column exists)
 UPDATE public.check_jobs 
 SET tenant_id = (SELECT id FROM public.tenants ORDER BY created_at ASC LIMIT 1)
 WHERE tenant_id IS NULL;
