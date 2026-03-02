@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { CheckSquare, Upload, Settings, List, BarChart3, Download, Receipt, GitCompare, LayoutDashboard, Scale } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import LogoutButton from '@/components/LogoutButton';
+import UserProfile from '@/components/UserProfile';
 
 const NAV_ITEMS = [
   { href: '/firm-dashboard', icon: LayoutDashboard, label: 'Firm Dashboard' },
@@ -62,12 +62,13 @@ export default async function AppLayout({
           </Link>
         </nav>
 
-        <div className="px-3 py-3 border-t border-gray-100/80">
-          <LogoutButton />
-        </div>
-
-        <div className="px-5 py-2 text-[11px] text-gray-400">
-          CheckPro v1.0.0
+        <div className="border-t border-gray-100/80">
+          <div className="px-2 py-3">
+            <UserProfile />
+          </div>
+          <div className="px-5 py-2 text-[11px] text-gray-400 text-center">
+            CheckPro v1.0.0
+          </div>
         </div>
       </aside>
 
