@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2 } from 'lucide-react'
+import QuickBooksFilters, { FilterParams } from '@/components/QuickBooksFilters'
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('general')
@@ -17,6 +18,8 @@ export default function SettingsPage() {
     const [testingConnection, setTestingConnection] = useState(false)
     const [uploadingQBO, setUploadingQBO] = useState(false)
     const [qboUploadResult, setQboUploadResult] = useState<{ success: boolean; message: string } | null>(null)
+    const [pullingData, setPullingData] = useState(false)
+    const [pullResult, setPullResult] = useState<any>(null)
 
     const handleQBOFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -77,6 +80,38 @@ export default function SettingsPage() {
             alert(`❌ Connection test failed: ${error.message}`)
         } finally {
             setTestingConnection(false)
+        }
+    }
+
+    const handlePullData = async (filters: FilterParams) => {
+        setPullingData(true)
+        setPullResult(null)
+        try {
+            const response = await fetch('/api/qbo/pull-checks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...filters, store: true })
+            })
+            const data = await response.json()
+            if (response.ok) {
+                setPullResult({
+                    success: true,
+                    message: `Successfully fetched ${data.count} cheque entries${data.total_before_filters !== data.count ? ` (${data.total_before_filters} total, ${data.count} after filters)` : ''}`,
+                    data
+                })
+            } else {
+                setPullResult({
+                    success: false,
+                    message: data.error || data.message || 'Failed to pull data'
+                })
+            }
+        } catch (error: any) {
+            setPullResult({
+                success: false,
+                message: error.message || 'Failed to pull data from QuickBooks'
+            })
+        } finally {
+            setPullingData(false)
         }
     }
 
@@ -332,6 +367,53 @@ export default function SettingsPage() {
                                 </ul>
                             </div>
                         </div>
+
+                        {/* Pull Data Section with Filters */}
+                        {qboConnected && (
+                            <div className="mt-6 space-y-4">
+                                <div className="border-t border-gray-200 pt-6">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Fetch QuickBooks Data</h3>
+                                    <p className="text-sm text-gray-600 mb-4">
+                                        Pull cheque data from QuickBooks with optional filters to control what data is imported.
+                                    </p>
+                                    
+                                    <QuickBooksFilters 
+                                        onApplyFilters={handlePullData}
+                                        isLoading={pullingData}
+                                    />
+
+                                    {pullResult && (
+                                        <div className={`mt-4 rounded-lg p-4 flex items-start gap-3 ${
+                                            pullResult.success
+                                                ? 'bg-emerald-50 border border-emerald-200'
+                                                : 'bg-red-50 border border-red-200'
+                                        }`}>
+                                            {pullResult.success
+                                                ? <CheckCircle className="text-emerald-600 flex-shrink-0 mt-0.5" size={18} />
+                                                : <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={18} />
+                                            }
+                                            <div className="flex-1">
+                                                <p className={`text-sm font-medium ${
+                                                    pullResult.success ? 'text-emerald-800' : 'text-red-800'
+                                                }`}>
+                                                    {pullResult.message}
+                                                </p>
+                                                {pullResult.success && pullResult.data && (
+                                                    <div className="mt-2 text-xs text-emerald-700">
+                                                        <p className="font-medium mb-1">Breakdown:</p>
+                                                        <ul className="space-y-0.5">
+                                                            <li>• Cheques Written: {pullResult.data.breakdown?.cheques_written || 0}</li>
+                                                            <li>• Bills Paid by Cheque: {pullResult.data.breakdown?.bills_paid_by_cheque || 0}</li>
+                                                            <li>• Cheques Received: {pullResult.data.breakdown?.cheques_received || 0}</li>
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Import from File */}

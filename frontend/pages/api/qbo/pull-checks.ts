@@ -197,14 +197,30 @@ export default async function handler(
     const realmId = tokens.realm_id;
     const useSandbox = req.query.sandbox === 'true';
 
-    // Optional date filters
-    const startDate = (req.query.startDate || req.body?.startDate) as string | undefined;
-    const endDate = (req.query.endDate || req.body?.endDate) as string | undefined;
+    // Extract filter parameters from query or body
+    const params = req.method === 'POST' ? req.body : req.query;
+    
+    // Date range filters
+    const startDate = params?.startDate as string | undefined;
+    const endDate = params?.endDate as string | undefined;
     const dateFilter = startDate && endDate
       ? ` AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`
       : startDate
         ? ` AND TxnDate >= '${startDate}'`
         : '';
+    
+    // Amount range filters
+    const minAmount = params?.minAmount ? parseFloat(params.minAmount as string) : undefined;
+    const maxAmount = params?.maxAmount ? parseFloat(params.maxAmount as string) : undefined;
+    
+    // Vendor/Payee filter (partial match)
+    const vendorFilter = params?.vendor as string | undefined;
+    
+    // Account filter
+    const accountFilter = params?.account as string | undefined;
+    
+    // Transaction type filter (cheque_written, bill_paid_by_cheque, cheque_received)
+    const typeFilter = params?.type as string | undefined;
 
     const allEntries: any[] = [];
     const errors: string[] = [];
@@ -244,17 +260,49 @@ export default async function handler(
       errors.push(`Payment query failed: ${e.message}`);
     }
 
+    // Apply client-side filters (for fields not supported in QBO queries)
+    let filteredEntries = allEntries;
+    
+    // Filter by amount range
+    if (minAmount !== undefined) {
+      filteredEntries = filteredEntries.filter(e => parseFloat(e.amount) >= minAmount);
+    }
+    if (maxAmount !== undefined) {
+      filteredEntries = filteredEntries.filter(e => parseFloat(e.amount) <= maxAmount);
+    }
+    
+    // Filter by vendor/payee (case-insensitive partial match)
+    if (vendorFilter) {
+      const vendorLower = vendorFilter.toLowerCase();
+      filteredEntries = filteredEntries.filter(e => 
+        e.payee?.toLowerCase().includes(vendorLower)
+      );
+    }
+    
+    // Filter by account (case-insensitive partial match)
+    if (accountFilter) {
+      const accountLower = accountFilter.toLowerCase();
+      filteredEntries = filteredEntries.filter(e => 
+        e.account?.toLowerCase().includes(accountLower)
+      );
+    }
+    
+    // Filter by transaction type
+    if (typeFilter && typeFilter !== 'all') {
+      filteredEntries = filteredEntries.filter(e => e.qb_source === typeFilter);
+    }
+    
     // Sort by date descending
-    allEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    filteredEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // Optionally store in Supabase for the comparison page
-    if (req.method === 'POST' && req.body?.store === true) {
+    if (req.method === 'POST' && params?.store === true) {
       try {
         // Upsert entries into a qb_entries table
         const { error: storeError } = await supabase
           .from('qb_entries')
           .upsert(
-            allEntries.map(e => ({
+            filteredEntries.map(e => ({
               id: e.id,
               qb_type: e.qb_type,
               qb_source: e.qb_source,
@@ -280,12 +328,20 @@ export default async function handler(
 
     return res.status(200).json({
       success: true,
-      entries: allEntries,
-      count: allEntries.length,
+      entries: filteredEntries,
+      count: filteredEntries.length,
+      total_before_filters: allEntries.length,
+      filters_applied: {
+        date_range: startDate || endDate ? { startDate, endDate } : null,
+        amount_range: minAmount || maxAmount ? { minAmount, maxAmount } : null,
+        vendor: vendorFilter || null,
+        account: accountFilter || null,
+        type: typeFilter || null,
+      },
       breakdown: {
-        cheques_written: allEntries.filter(e => e.qb_source === 'cheque_written').length,
-        bills_paid_by_cheque: allEntries.filter(e => e.qb_source === 'bill_paid_by_cheque').length,
-        cheques_received: allEntries.filter(e => e.qb_source === 'cheque_received').length,
+        cheques_written: filteredEntries.filter(e => e.qb_source === 'cheque_written').length,
+        bills_paid_by_cheque: filteredEntries.filter(e => e.qb_source === 'bill_paid_by_cheque').length,
+        cheques_received: filteredEntries.filter(e => e.qb_source === 'cheque_received').length,
       },
       errors: errors.length > 0 ? errors : undefined,
       synced_at: new Date().toISOString(),
