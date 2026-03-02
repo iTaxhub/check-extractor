@@ -30,9 +30,14 @@ export async function updateSession(request: NextRequest) {
   );
 
   // IMPORTANT: Do NOT add any logic between createServerClient and auth.getUser()
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // Debug logging
+  const cookies = request.cookies.getAll();
+  const sbCookies = cookies.filter(c => c.name.startsWith('sb-'));
+  console.log(`[PROXY] ${pathname} | cookies: ${sbCookies.map(c => c.name).join(', ') || 'NONE'} | user: ${user?.email || 'NULL'} | error: ${authError?.message || 'none'}`);
 
   // Public routes - no auth required
   const publicRoutes = [
