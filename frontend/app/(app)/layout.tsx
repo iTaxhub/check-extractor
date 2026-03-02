@@ -1,7 +1,5 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { CheckSquare, Upload, Settings, List, BarChart3, Download, Receipt, GitCompare, LayoutDashboard, Scale } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
 import UserProfile from '@/components/UserProfile';
 
 const NAV_ITEMS = [
@@ -15,19 +13,12 @@ const NAV_ITEMS = [
   { href: '/billing', icon: Receipt, label: 'Billing' },
 ];
 
-export default async function AppLayout({
+export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Check authentication
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) {
-    redirect('/login');
-  }
-
+  // Route protection is handled by proxy.ts
   return (
     <div className="min-h-screen bg-[#f5f5f7] flex">
       {/* Sidebar */}
