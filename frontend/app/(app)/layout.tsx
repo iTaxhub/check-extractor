@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { CheckSquare, Upload, Settings, List, BarChart3, Download, Receipt, GitCompare, LayoutDashboard, Scale } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import LogoutButton from '@/components/LogoutButton';
 
 const NAV_ITEMS = [
   { href: '/firm-dashboard', icon: LayoutDashboard, label: 'Firm Dashboard' },
@@ -17,6 +20,14 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Check authentication
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    redirect('/login');
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f5f7] flex">
       {/* Sidebar */}
@@ -51,7 +62,11 @@ export default async function AppLayout({
           </Link>
         </nav>
 
-        <div className="px-5 py-3 border-t border-gray-100/80 text-[11px] text-gray-400">
+        <div className="px-3 py-3 border-t border-gray-100/80">
+          <LogoutButton />
+        </div>
+
+        <div className="px-5 py-2 text-[11px] text-gray-400">
           CheckPro v1.0.0
         </div>
       </aside>
