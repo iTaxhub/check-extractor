@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2 } from 'lucide-react'
 import QuickBooksFilters, { FilterParams } from '@/components/QuickBooksFilters'
+import { createClient } from '@/lib/supabase/client'
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('general')
@@ -14,7 +15,7 @@ export default function SettingsPage() {
     const [showQBCredentialsDialog, setShowQBCredentialsDialog] = useState(false)
     const [qbClientId, setQbClientId] = useState('')
     const [qbClientSecret, setQbClientSecret] = useState('')
-    const [qbRedirectUri, setQbRedirectUri] = useState('http://localhost:3080/api/qbo/callback')
+    const [qbRedirectUri, setQbRedirectUri] = useState('https://check-extractor-frontend.vercel.app/api/qbo/callback')
     const [testingConnection, setTestingConnection] = useState(false)
     const [uploadingQBO, setUploadingQBO] = useState(false)
     const [qboUploadResult, setQboUploadResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -50,7 +51,20 @@ export default function SettingsPage() {
 
     const fetchIntegrationStatus = async () => {
         try {
-            const response = await fetch('/api/settings/integrations')
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (!session) {
+                console.error('No session found')
+                return
+            }
+
+            const response = await fetch('/api/settings/integrations', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+            })
+            
             if (response.ok) {
                 const data = await response.json()
                 setQboConnected(data.qboConnected || false)
@@ -179,9 +193,21 @@ export default function SettingsPage() {
     const handleSaveQBCredentials = async () => {
         setSaving(true)
         try {
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (!session) {
+                alert('Session expired. Please refresh the page.')
+                setSaving(false)
+                return
+            }
+
             const response = await fetch('/api/settings/integrations', {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
                 body: JSON.stringify({ 
                     qbClientId, 
                     qbClientSecret, 
@@ -194,7 +220,8 @@ export default function SettingsPage() {
                 setShowQBCredentialsDialog(false)
                 fetchIntegrationStatus()
             } else {
-                alert('Failed to save QuickBooks credentials')
+                const error = await response.json().catch(() => ({}))
+                alert('Failed to save QuickBooks credentials: ' + (error.error || 'Unknown error'))
             }
         } catch (error) {
             console.error('Failed to save QB credentials:', error)
