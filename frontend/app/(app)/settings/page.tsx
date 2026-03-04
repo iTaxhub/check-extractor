@@ -23,6 +23,7 @@ export default function SettingsPage() {
     const [pullResult, setPullResult] = useState<any>(null)
     const [loadingSettings, setLoadingSettings] = useState(true)
     const [mounted, setMounted] = useState(false)
+    const [credentialsExist, setCredentialsExist] = useState(false)
 
     useEffect(() => {
         setMounted(true)
@@ -78,11 +79,12 @@ export default function SettingsPage() {
                 const data = await response.json()
                 setQboConnected(data.qboConnected || false)
                 setQbConfigured(data.qbConfigured || false)
+                setCredentialsExist(data.credentialsExist || false)
                 setCompanyId(data.companyId || data.realmId || null)
                 setGeminiApiKey(data.geminiApiKey ? '••••••••••••' : '')
                 setQbClientId(data.qbClientId || '')
                 setQbClientSecret(data.qbClientSecret || '')
-                setQbRedirectUri(data.qbRedirectUri || 'http://localhost:3080/api/qbo/callback')
+                setQbRedirectUri(data.qbRedirectUri || '')
             }
         } catch (error) {
             console.error('Failed to fetch integration status:', error)
@@ -597,8 +599,8 @@ export default function SettingsPage() {
 
             {/* QuickBooks Credentials Dialog */}
             {showQBCredentialsDialog && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowQBCredentialsDialog(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl w-[600px] max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowQBCredentialsDialog(false) }}>
+                    <div className="bg-white rounded-xl shadow-2xl w-[600px] max-h-[90vh] overflow-auto">
                         <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex items-center justify-between rounded-t-xl">
                             <div>
                                 <h3 className="text-lg font-bold">QuickBooks Credentials</h3>
@@ -610,6 +612,16 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="p-6 space-y-6">
+                            {credentialsExist && (
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                                    <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
+                                    <div className="text-sm text-green-900">
+                                        <p className="font-medium">Credentials exist</p>
+                                        <p className="text-green-700 mt-1">QuickBooks credentials are already saved. You can update them below if needed.</p>
+                                    </div>
+                                </div>
+                            )}
+                            
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                                 <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
                                 <div className="text-sm text-blue-900">
@@ -617,7 +629,6 @@ export default function SettingsPage() {
                                     <a href="https://developer.intuit.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-semibold">
                                         https://developer.intuit.com
                                     </a>
-                                    <p className="mt-2">See QUICKBOOKS_SETUP.md for detailed instructions</p>
                                 </div>
                             </div>
 

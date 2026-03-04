@@ -19,11 +19,15 @@ export default async function handler(
       // Fallback to env vars if not in database
       const qbClientId = integration?.qb_client_id || process.env.QUICKBOOKS_CLIENT_ID || '';
       const qbClientSecret = integration?.qb_client_secret || process.env.QUICKBOOKS_CLIENT_SECRET || '';
-      const qbRedirectUri = integration?.qb_redirect_uri || process.env.QUICKBOOKS_REDIRECT_URI || 'http://localhost:3080/api/qbo/callback';
+      const qbRedirectUri = integration?.qb_redirect_uri || process.env.QUICKBOOKS_REDIRECT_URI || '';
+      
+      // Check if credentials exist in database
+      const credentialsExist = !!(integration?.qb_client_id && integration?.qb_client_secret);
       
       return res.status(200).json({
         qboConnected: !!integration?.access_token,
         qbConfigured: !!(qbClientId && qbClientSecret),
+        credentialsExist: credentialsExist,
         qbClientId: qbClientId ? '••••••••' + qbClientId.slice(-6) : '',
         qbClientSecret: qbClientSecret ? '••••••••' : '',
         qbRedirectUri: qbRedirectUri,
