@@ -65,8 +65,17 @@ export default async function handler(
     authUrl.searchParams.append('state', state);
 
     return res.status(200).json({ authUrl: authUrl.toString() });
-  } catch (error) {
-    console.error('QuickBooks auth error:', error);
-    return res.status(500).json({ error: 'Failed to initiate QuickBooks connection' });
+  } catch (error: any) {
+    console.error('❌ QuickBooks auth error:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      stack: error.stack
+    });
+    return res.status(500).json({ 
+      error: 'Failed to initiate QuickBooks connection',
+      detail: error.message 
+    });
   }
 }
