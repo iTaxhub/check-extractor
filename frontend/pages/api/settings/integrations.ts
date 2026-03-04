@@ -42,18 +42,27 @@ export default async function handler(
       const { geminiApiKey, qbClientId, qbClientSecret, qbRedirectUri } = req.body;
 
       // Get user's tenant_id
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log('🔍 [PATCH] User:', { user_id: user?.id, email: user?.email, error: userError?.message });
+      
       if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('tenant_id')
         .eq('id', user.id)
         .single();
 
+      console.log('🔍 [PATCH] Profile:', { 
+        user_id: user.id, 
+        tenant_id: profile?.tenant_id, 
+        error: profileError?.message 
+      });
+
       if (!profile?.tenant_id) {
+        console.error('❌ [PATCH] No tenant_id found for user:', user.id);
         return res.status(400).json({ error: 'User has no tenant assigned' });
       }
 

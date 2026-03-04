@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2 } from 'lucide-react'
 import QuickBooksFilters, { FilterParams } from '@/components/QuickBooksFilters'
 import { createClient } from '@/lib/supabase/client'
+import toast, { Toaster } from 'react-hot-toast'
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('general')
@@ -15,7 +16,7 @@ export default function SettingsPage() {
     const [showQBCredentialsDialog, setShowQBCredentialsDialog] = useState(false)
     const [qbClientId, setQbClientId] = useState('')
     const [qbClientSecret, setQbClientSecret] = useState('')
-    const [qbRedirectUri, setQbRedirectUri] = useState('https://check-extractor-frontend.vercel.app/api/qbo/callback')
+    const [qbRedirectUri, setQbRedirectUri] = useState('')
     const [testingConnection, setTestingConnection] = useState(false)
     const [uploadingQBO, setUploadingQBO] = useState(false)
     const [qboUploadResult, setQboUploadResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -99,12 +100,19 @@ export default function SettingsPage() {
             const response = await fetch('/api/qbo/pull-checks?test=true', { method: 'POST' })
             const data = await response.json()
             if (response.ok) {
-                alert(`✅ Connection successful!\n\nCompany: ${data.companyName || 'Unknown'}\nEntries available: ${data.count || 0}`)
+                toast.success(`Connection successful! Company: ${data.companyName || 'Unknown'}, Entries: ${data.count || 0}`, {
+                    duration: 4000,
+                    icon: '✅'
+                })
             } else {
-                alert(`❌ Connection failed: ${data.error || 'Unknown error'}`)
+                toast.error(`Connection failed: ${data.error || 'Unknown error'}`, {
+                    duration: 4000
+                })
             }
         } catch (error: any) {
-            alert(`❌ Connection test failed: ${error.message}`)
+            toast.error(`Connection test failed: ${error.message}`, {
+                duration: 4000
+            })
         } finally {
             setTestingConnection(false)
         }
@@ -144,7 +152,10 @@ export default function SettingsPage() {
 
     const handleQBOConnect = async () => {
         if (!qbConfigured) {
-            alert('⚠️ QuickBooks credentials not configured.\n\nYour credentials are in .env.local but need to be saved to the database.\n\nClick "Configure Credentials" to save them.')
+            toast.error('QuickBooks credentials not configured. Please save your credentials first.', {
+                duration: 5000,
+                icon: '⚠️'
+            })
             setShowQBCredentialsDialog(true)
             return
         }
@@ -160,15 +171,22 @@ export default function SettingsPage() {
                 console.error('❌ QB OAuth error:', error)
                 
                 if (error.error === 'QuickBooks OAuth not configured' || error.error === 'QuickBooks not configured') {
-                    alert('⚠️ QuickBooks OAuth not configured\n\n' + (error.detail || 'Please configure your QuickBooks credentials first.'))
+                    toast.error(error.detail || 'Please configure your QuickBooks credentials first.', {
+                        duration: 5000,
+                        icon: '⚠️'
+                    })
                     setShowQBCredentialsDialog(true)
                 } else {
-                    alert('Failed to connect: ' + (error.detail || error.message || 'Unknown error'))
+                    toast.error('Failed to connect: ' + (error.detail || error.message || 'Unknown error'), {
+                        duration: 4000
+                    })
                 }
             }
         } catch (error) {
             console.error('Failed to initiate QBO connection:', error)
-            alert('Failed to connect to QuickBooks')
+            toast.error('Failed to connect to QuickBooks', {
+                duration: 4000
+            })
         }
     }
 
@@ -193,11 +211,16 @@ export default function SettingsPage() {
             })
 
             if (response.ok) {
-                alert('API keys saved successfully')
+                toast.success('API keys saved successfully', {
+                    duration: 3000,
+                    icon: '✅'
+                })
             }
         } catch (error) {
             console.error('Failed to save API keys:', error)
-            alert('Failed to save API keys')
+            toast.error('Failed to save API keys', {
+                duration: 4000
+            })
         } finally {
             setSaving(false)
         }
@@ -210,7 +233,10 @@ export default function SettingsPage() {
             const { data: { session } } = await supabase.auth.getSession()
             
             if (!session) {
-                alert('Session expired. Please refresh the page.')
+                toast.error('Session expired. Please refresh the page.', {
+                    duration: 5000,
+                    icon: '⚠️'
+                })
                 setSaving(false)
                 return
             }
@@ -229,16 +255,23 @@ export default function SettingsPage() {
             })
 
             if (response.ok) {
-                alert('QuickBooks credentials saved successfully')
+                toast.success('QuickBooks credentials saved successfully', {
+                    duration: 3000,
+                    icon: '✅'
+                })
                 setShowQBCredentialsDialog(false)
                 fetchIntegrationStatus()
             } else {
                 const error = await response.json().catch(() => ({}))
-                alert('Failed to save QuickBooks credentials: ' + (error.error || 'Unknown error'))
+                toast.error('Failed to save credentials: ' + (error.error || 'Unknown error'), {
+                    duration: 5000
+                })
             }
         } catch (error) {
             console.error('Failed to save QB credentials:', error)
-            alert('Failed to save QuickBooks credentials')
+            toast.error('Failed to save QuickBooks credentials', {
+                duration: 4000
+            })
         } finally {
             setSaving(false)
         }
@@ -251,9 +284,27 @@ export default function SettingsPage() {
     ]
 
     return (
-        <div className="p-8 max-w-6xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
-            <p className="text-gray-600 mb-8">Manage your application settings and integrations</p>
+        <>
+            <Toaster 
+                position="top-right"
+                toastOptions={{
+                    success: {
+                        style: {
+                            background: '#10b981',
+                            color: '#fff',
+                        },
+                    },
+                    error: {
+                        style: {
+                            background: '#ef4444',
+                            color: '#fff',
+                        },
+                    },
+                }}
+            />
+            <div className="p-8 max-w-6xl mx-auto">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
+                <p className="text-gray-600 mb-8">Manage your application settings and integrations</p>
 
             {/* Tabs Navigation */}
             <div className="border-b border-gray-200 mb-8">
@@ -693,5 +744,6 @@ export default function SettingsPage() {
                 </div>
             )}
         </div>
+        </>
     )
 }
