@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { createClientFromCookies } from '@/lib/supabase/api';
 
 /**
  * QuickBooks OAuth Callback Endpoint
@@ -36,8 +36,8 @@ export default async function handler(
     // Log for debugging
     console.log('OAuth callback received:', { code: code?.toString().substring(0, 20) + '...', realmId, hasState: !!state });
 
-    // Get QuickBooks credentials from database
-    const supabase = createAuthenticatedClient(req);
+    // Get QuickBooks credentials from database using cookies (OAuth callback doesn't have Authorization header)
+    const supabase = createClientFromCookies(req);
 
     const { data: integration } = await supabase
       .from('integrations')
