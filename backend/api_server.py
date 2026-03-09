@@ -1408,7 +1408,7 @@ def list_jobs(limit: int = 50, offset: int = 0, status: str = None, source: str 
     if (source == "auto" or source == "db") and _supabase_ok:
         try:
             # Fetch all jobs from DB (they're already sorted by created_at desc in DB)
-            db_jobs_raw = _supabase_select_all("check_jobs", order_by="created_at.desc")
+            db_jobs_raw = _supabase_select("check_jobs", columns="*", limit=1000)
             for db_job in db_jobs_raw:
                 # Parse checks_data JSON
                 checks_data = []
