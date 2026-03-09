@@ -37,6 +37,8 @@ export default function QBComparisonsPage() {
     setFilterStatus,
     selectedQBSource,
     setSelectedQBSource,
+    qbDataSource,
+    setQbDataSource,
     selectedPdfName,
     setSelectedPdfName,
     startDate,
@@ -167,6 +169,19 @@ export default function QBComparisonsPage() {
   const comparisonData = useMemo(() => {
     let rows = intelligentMatch(extractions, qbEntries);
 
+    // Filter by QB data source (online/uploaded/both)
+    if (qbDataSource !== 'both') {
+      rows = rows.filter(row => {
+        if (!row.qbData) return true; // Keep extraction-only rows
+        const isOnline = row.qbData.qbSource !== 'qbo_file_upload';
+        const isUploaded = row.qbData.qbSource === 'qbo_file_upload';
+        
+        if (qbDataSource === 'online') return isOnline || row.source === 'extraction';
+        if (qbDataSource === 'uploaded') return isUploaded || row.source === 'extraction';
+        return true;
+      });
+    }
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       rows = rows.filter(row =>
@@ -213,7 +228,7 @@ export default function QBComparisonsPage() {
     });
 
     return rows;
-  }, [extractions, qbEntries, searchQuery, filterStatus, selectedPdfName, startDate, endDate, selectedQBSource, sortField, sortDirection]);
+  }, [extractions, qbEntries, searchQuery, filterStatus, selectedPdfName, startDate, endDate, selectedQBSource, qbDataSource, sortField, sortDirection]);
 
   const statistics = useMemo(() => {
     const matched = comparisonData.filter(r => r.matchStatus === 'matched').length;
@@ -324,6 +339,40 @@ export default function QBComparisonsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* QB Data Source Toggle */}
+          <div className="flex items-center gap-1 bg-slate-700 rounded-lg p-1">
+            <button
+              onClick={() => setQbDataSource('online')}
+              className={`px-3 py-1 rounded text-xs font-medium transition ${
+                qbDataSource === 'online'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              QB Online
+            </button>
+            <button
+              onClick={() => setQbDataSource('uploaded')}
+              className={`px-3 py-1 rounded text-xs font-medium transition ${
+                qbDataSource === 'uploaded'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              Uploaded
+            </button>
+            <button
+              onClick={() => setQbDataSource('both')}
+              className={`px-3 py-1 rounded text-xs font-medium transition ${
+                qbDataSource === 'both'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              Both
+            </button>
+          </div>
+          
           {/* QB Connection Status Badge */}
           <div className="flex items-center gap-2">
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${

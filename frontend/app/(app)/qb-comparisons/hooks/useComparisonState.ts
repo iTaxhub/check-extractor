@@ -21,6 +21,7 @@ export function useComparisonState() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedQBSource, setSelectedQBSource] = useState<string>('all');
+  const [qbDataSource, setQbDataSource] = useState<'online' | 'uploaded' | 'both'>('both');
   const [selectedPdfName, setSelectedPdfName] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -56,6 +57,7 @@ export function useComparisonState() {
     setSearchQuery('');
     setFilterStatus('all');
     setSelectedQBSource('all');
+    setQbDataSource('both');
     setSelectedPdfName('all');
     setStartDate('');
     setEndDate('');
@@ -73,6 +75,8 @@ export function useComparisonState() {
     setFilterStatus,
     selectedQBSource,
     setSelectedQBSource,
+    qbDataSource,
+    setQbDataSource,
     selectedPdfName,
     setSelectedPdfName,
     startDate,
