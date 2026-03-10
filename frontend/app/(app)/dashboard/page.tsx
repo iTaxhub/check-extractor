@@ -8,6 +8,7 @@ import {
   Loader2, Eye, X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut,
   FileCheck, Download, ExternalLink, AlertCircle, RefreshCw, Trash2, RotateCcw,
 } from 'lucide-react';
+import ChequeDialog from './components/ChequeDialog';
 
 // ── Types ──────────────────────────────────────────────────
 interface JobCheck {
@@ -109,6 +110,7 @@ export default function DashboardPage() {
   const [imageZoom, setImageZoom] = useState(1);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [reExtracting, setReExtracting] = useState(false);
+  const [deletingDuplicates, setDeletingDuplicates] = useState(false);
 
   const EXPORT_FORMATS = [
     { id: 'csv', name: 'Generic CSV', desc: 'Excel, Google Sheets' },
@@ -262,6 +264,41 @@ export default function DashboardPage() {
   const completedJobs = jobs.filter((j) => j.status === 'complete').length;
   const totalPages = jobs.reduce((s, j) => s + (j.total_pages || 0), 0);
 
+  // Duplicate detection
+  const groupedJobs = jobs.reduce((acc, job) => {
+    const key = job.pdf_name.toLowerCase().trim();
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(job);
+    return acc;
+  }, {} as Record<string, Job[]>);
+
+  const duplicateGroups = Object.entries(groupedJobs)
+    .filter(([_, jobs]) => jobs.length > 1)
+    .map(([name, jobs]) => ({
+      name,
+      jobs: jobs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+      count: jobs.length
+    }));
+
+  const handleDeleteDuplicates = async () => {
+    if (!confirm(`Delete ${duplicateGroups.reduce((sum, g) => sum + g.count - 1, 0)} duplicate documents? This will keep the most recent version of each.`)) return;
+    
+    setDeletingDuplicates(true);
+    try {
+      for (const group of duplicateGroups) {
+        const toDelete = group.jobs.slice(1);
+        for (const job of toDelete) {
+          await fetch(`/api/jobs/${job.job_id}`, { method: 'DELETE' });
+        }
+      }
+      await fetchJobs();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setDeletingDuplicates(false);
+    }
+  };
+
   // All checks flattened for "Recent Cheques" table
   const allChecks = jobs
     .filter((j) => j.status === 'complete' && j.checks?.length > 0)
@@ -325,6 +362,31 @@ export default function DashboardPage() {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {error}
+        </div>
+      )}
+
+      {/* ── Duplicate Warning ──────────────────────── */}
+      {!loading && duplicateGroups.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle size={20} className="text-amber-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                {duplicateGroups.reduce((sum, g) => sum + g.count - 1, 0)} Duplicate Documents Found
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                {duplicateGroups.map(g => `${g.name} (${g.count}×)`).join(', ')}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleDeleteDuplicates}
+            disabled={deletingDuplicates}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-xs font-medium transition disabled:opacity-50"
+          >
+            {deletingDuplicates ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            Delete Duplicates
+          </button>
         </div>
       )}
 
@@ -606,9 +668,22 @@ export default function DashboardPage() {
       )}
 
       {/* ══════════════════════════════════════════════
-          CHECK DETAIL NAVIGATOR
+          CHECK DETAIL DIALOG WITH TABS
          ══════════════════════════════════════════════ */}
-      {selectedCheck && selectedCheckIdx !== null && selectedJob && (
+      {selectedCheckIdx !== null && selectedJob && (
+        <ChequeDialog
+          job={selectedJob}
+          selectedCheckIdx={selectedCheckIdx}
+          onClose={() => { setSelectedCheckIdx(null); setImageZoom(1); }}
+          onNavigate={(idx) => setSelectedCheckIdx(idx)}
+          onExport={handleExport}
+          onReExtract={handleReExtract}
+          reExtracting={reExtracting}
+        />
+      )}
+
+      {/* OLD DIALOG - REMOVE THIS SECTION */}
+      {false && selectedCheck && selectedCheckIdx !== null && selectedJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { setSelectedCheckIdx(null); setImageZoom(1); }}>
           <div
             className="bg-white rounded-xl shadow-2xl w-[92vw] max-w-5xl max-h-[90vh] flex flex-col"
