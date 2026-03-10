@@ -552,6 +552,11 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         jobs[job_id]["processed_count"] = 0
         jobs[job_id]["progress_logs"] = []
         jobs[job_id]["extraction_progress"] = 0
+        
+        # Update database to show extracting status in UI
+        _supabase_update("check_jobs", {"job_id": job_id}, {
+            "status": "ocr_running"
+        })
 
         def _on_progress_legacy(info):
             evt = info.get("event")
@@ -2479,6 +2484,11 @@ if __name__ == "__main__":
                                 # Run OCR on existing images
                                 jobs[jid]["status"] = "extracting"
                                 jobs[jid]["extraction_progress"] = 0
+                                
+                                # Update database to show extracting status in UI
+                                _supabase_update("check_jobs", {"job_id": jid}, {
+                                    "status": "extracting"
+                                })
                                 
                                 def _on_progress(info):
                                     evt = info.get("event")
