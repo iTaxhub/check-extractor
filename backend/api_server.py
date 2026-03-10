@@ -2430,10 +2430,26 @@ if __name__ == "__main__":
                 incomplete_jobs = [jid for jid, job in jobs.items() if job.get("status") == "analyzed"]
                 
                 if incomplete_jobs:
-                    print(f"⚙️ Found {len(incomplete_jobs)} incomplete jobs, auto-extracting...")
+                    print(f"⚙️ Found {len(incomplete_jobs)} incomplete jobs, checking for extractable files...")
+                    extractable_count = 0
                     for job_id in incomplete_jobs:
                         job = jobs[job_id]
+                        job_dir = OUTPUT_DIR / job_id
+                        
+                        # Check if job directory and PDF exist
+                        if not job_dir.exists():
+                            print(f"  ⏭️  Skipping {job_id} - no local files (storage-only job)")
+                            continue
+                        
+                        # Check if there are page images to extract from
+                        images_dir = job_dir / "images"
+                        if not images_dir.exists() or not any(images_dir.glob("*.png")):
+                            print(f"  ⏭️  Skipping {job_id} - no page images found")
+                            continue
+                        
+                        extractable_count += 1
                         print(f"  → Extracting {job_id} ({job.get('total_checks', 0)} checks)...")
+                        
                         # Trigger extraction in background thread
                         def _extract_job(jid):
                             try:
@@ -2446,6 +2462,9 @@ if __name__ == "__main__":
                         
                         extract_thread = threading.Thread(target=_extract_job, args=(job_id,), daemon=True)
                         extract_thread.start()
+                    
+                    if extractable_count == 0:
+                        print("✓ No extractable jobs found (all are storage-only)")
                 else:
                     print("✓ No incomplete extractions found")
             except Exception as e:
