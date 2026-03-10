@@ -212,6 +212,11 @@ export default function UploadPage() {
       setPageTo(firstSuccess.value.total_pages);
       setChequeTo(firstSuccess.value.total_checks || 1);
       setStep('preview');
+      
+      // Auto-extract all uploaded jobs so they appear in QB Comparisons
+      setTimeout(() => {
+        handleExtractAll();
+      }, 500);
     } else {
       setError('All uploads failed. Please try again.');
     }

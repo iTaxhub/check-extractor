@@ -33,7 +33,8 @@ export function useComparisonData() {
       
       const allExtractions: CheckExtraction[] = [];
       (jobsData.jobs || []).forEach((job: any) => {
-        if (job.status === 'complete' && job.checks?.length > 0) {
+        // Include jobs that are analyzed or complete (not just complete)
+        if ((job.status === 'complete' || job.status === 'analyzed') && job.checks?.length > 0) {
           job.checks.forEach((check: any) => {
             // Include all checks, even without extraction (for missing data detection)
             allExtractions.push({
