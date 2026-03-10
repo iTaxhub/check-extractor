@@ -2405,6 +2405,25 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"⚠️ Storage sync failed: {e}")
     
+    # Start periodic background task for storage sync
+    def _periodic_storage_sync():
+        """Run storage sync every 5 minutes in background"""
+        import time
+        while True:
+            time.sleep(300)  # 5 minutes
+            try:
+                from storage_sync import sync_storage_to_database
+                print("🔄 Running periodic storage sync...")
+                sync_storage_to_database()
+            except Exception as e:
+                print(f"⚠️ Periodic storage sync failed: {e}")
+    
+    # Start background thread
+    import threading
+    sync_thread = threading.Thread(target=_periodic_storage_sync, daemon=True)
+    sync_thread.start()
+    print("✓ Periodic storage sync enabled (every 5 minutes)")
+    
     port = int(os.environ.get("PORT", 3090))
     print(f"\n{'='*60}")
     print(f"  Check Extractor API Server")
