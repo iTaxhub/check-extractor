@@ -220,24 +220,37 @@ export default function QBComparisonsPage() {
       console.log(`   Rows by source:`, rowsBySource);
       console.log(`   Unique PDF names found:`, Array.from(uniquePdfNames));
       
-      rows = rows.filter(row => {
+      // Log sample rows before filtering
+      const sampleBefore = rows.slice(0, 3).map(r => ({
+        checkNumber: r.checkNumber,
+        source: r.source,
+        matchStatus: r.matchStatus,
+        pdf_name: r.extractionData?.pdf_name || 'NO PDF NAME'
+      }));
+      console.log(`   Sample rows before filter:`, sampleBefore);
+      
+      const filteredRows = rows.filter(row => {
         // For extraction or matched rows, check if they belong to the selected PDF
         if (row.source === 'extraction' || row.source === 'matched') {
           const matches = row.extractionData?.pdf_name === selectedPdfName;
-          if (!matches && row.extractionData?.pdf_name) {
-            // Log first few mismatches for debugging
-            if (rows.filter(r => r.extractionData?.pdf_name !== selectedPdfName).length < 5) {
-              console.log(`   ❌ Filtered out: ${row.checkNumber} from "${row.extractionData.pdf_name}"`);
-            }
-          }
           return matches;
         }
         // For QB-only rows, exclude them when filtering by PDF
         return false;
       });
       
-      console.log(`   After filter: ${rows.length} rows`);
-      console.log(`   Filtered out: ${beforeFilter - rows.length} rows`);
+      // Log sample rows after filtering
+      const sampleAfter = filteredRows.slice(0, 3).map(r => ({
+        checkNumber: r.checkNumber,
+        source: r.source,
+        matchStatus: r.matchStatus,
+        pdf_name: r.extractionData?.pdf_name
+      }));
+      console.log(`   Sample rows after filter:`, sampleAfter);
+      console.log(`   After filter: ${filteredRows.length} rows`);
+      console.log(`   Filtered out: ${beforeFilter - filteredRows.length} rows`);
+      
+      rows = filteredRows;
     }
 
     rows = filterByDateRange(rows, startDate, endDate);
