@@ -81,9 +81,9 @@ export function useComparisonData() {
     fetchData();
   }, [fetchData]);
 
-  // Compute extractions from jobs
+  // Compute extractions from jobs - include ALL jobs with checks, regardless of status
   const extractions: CheckExtraction[] = jobs.flatMap((job: any) => {
-    if ((job.status === 'complete' || job.status === 'analyzed') && job.checks?.length > 0) {
+    if (job.checks?.length > 0) {
       return job.checks.map((check: any) => ({
         ...check,
         job_id: job.job_id,
