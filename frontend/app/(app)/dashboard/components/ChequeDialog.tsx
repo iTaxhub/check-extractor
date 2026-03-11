@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, RefreshCw, Loader2, Eye } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, RefreshCw, Loader2, Eye, Edit2, Save, XCircle } from 'lucide-react';
 
 interface Check {
   check_id: string;
@@ -41,8 +41,65 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
   const [viewMode, setViewMode] = useState<'image' | 'table'>('image');
   const [imageZoom, setImageZoom] = useState(1);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const selectedCheck = job.checks[selectedCheckIdx];
+  
+  const [editedData, setEditedData] = useState({
+    checkNumber: extVal(selectedCheck?.extraction, 'checkNumber'),
+    checkDate: extVal(selectedCheck?.extraction, 'checkDate'),
+    amount: extVal(selectedCheck?.extraction, 'amount'),
+    payee: extVal(selectedCheck?.extraction, 'payee'),
+    bankName: extVal(selectedCheck?.extraction, 'bankName'),
+    memo: extVal(selectedCheck?.extraction, 'memo'),
+  });
+
+  const handleSave = async () => {
+    if (!selectedCheck) return;
+    
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/checks/${selectedCheck.check_id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editedData),
+      });
+
+      if (!res.ok) throw new Error('Failed to save');
+      
+      // Update local check data
+      selectedCheck.extraction = {
+        ...selectedCheck.extraction,
+        checkNumber: editedData.checkNumber,
+        checkDate: editedData.checkDate,
+        amount: editedData.amount,
+        payee: editedData.payee,
+        bankName: editedData.bankName,
+        memo: editedData.memo,
+      };
+      
+      setIsEditing(false);
+      alert('Check data saved successfully!');
+    } catch (error) {
+      console.error('Failed to save:', error);
+      alert('Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedData({
+      checkNumber: extVal(selectedCheck?.extraction, 'checkNumber'),
+      checkDate: extVal(selectedCheck?.extraction, 'checkDate'),
+      amount: extVal(selectedCheck?.extraction, 'amount'),
+      payee: extVal(selectedCheck?.extraction, 'payee'),
+      bankName: extVal(selectedCheck?.extraction, 'bankName'),
+      memo: extVal(selectedCheck?.extraction, 'memo'),
+    });
+    setIsEditing(false);
+  };
 
   const EXPORT_FORMATS = [
     { id: 'csv', name: 'Generic CSV', desc: 'Excel, Google Sheets' },
@@ -66,30 +123,65 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
               </h3>
               <span className="text-[11px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{job.pdf_name}</span>
               <span className="text-[11px] text-gray-400">Page {selectedCheck.page}</span>
+              {isEditing && (
+                <span className="text-[11px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">Edit Mode</span>
+              )}
             </div>
             
-            {/* View Mode Tabs */}
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => setViewMode('image')}
-                className={`px-3 py-1 text-xs font-medium rounded transition ${
-                  viewMode === 'image' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Image View
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-1 text-xs font-medium rounded transition ${
-                  viewMode === 'table' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Table View
-              </button>
+            <div className="flex items-center gap-2">
+              {/* Edit/Save/Cancel buttons */}
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition"
+                >
+                  <Edit2 size={14} />
+                  Edit
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition disabled:opacity-50"
+                  >
+                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded transition disabled:opacity-50"
+                  >
+                    <XCircle size={14} />
+                    Cancel
+                  </button>
+                </>
+              )}
+              
+              {/* View Mode Tabs */}
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setViewMode('image')}
+                  className={`px-3 py-1 text-xs font-medium rounded transition ${
+                    viewMode === 'image' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Image View
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1 text-xs font-medium rounded transition ${
+                    viewMode === 'table' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Table View
+                </button>
+              </div>
             </div>
           </div>
 
@@ -180,19 +272,32 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
             </div>
             {/* Extraction Data */}
             <div className="w-1/2 p-4 overflow-y-auto">
-              <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Extraction Data</h4>
+              <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                {isEditing ? 'Edit Extraction Data' : 'Extraction Data'}
+              </h4>
               {selectedCheck.extraction && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {[
-                    { label: 'Payee', field: 'payee' },
-                    { label: 'Amount', field: 'amount' },
-                    { label: 'Date', field: 'checkDate' },
-                    { label: 'Check #', field: 'checkNumber' },
-                    { label: 'Bank', field: 'bankName' },
-                  ].map(({ label, field }) => (
-                    <div key={field} className="flex items-center gap-2 text-sm">
-                      <span className="text-gray-500 w-20">{label}:</span>
-                      <span className="font-medium text-gray-900">{extVal(selectedCheck.extraction, field) || '—'}</span>
+                    { label: 'Payee', field: 'payee', editField: 'payee' },
+                    { label: 'Amount', field: 'amount', editField: 'amount' },
+                    { label: 'Date', field: 'checkDate', editField: 'checkDate' },
+                    { label: 'Check #', field: 'checkNumber', editField: 'checkNumber' },
+                    { label: 'Bank', field: 'bankName', editField: 'bankName' },
+                    { label: 'Memo', field: 'memo', editField: 'memo' },
+                  ].map(({ label, field, editField }) => (
+                    <div key={field} className="flex items-start gap-2 text-sm">
+                      <span className="text-gray-500 w-20 pt-2">{label}:</span>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editedData[editField as keyof typeof editedData]}
+                          onChange={(e) => setEditedData({ ...editedData, [editField]: e.target.value })}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-900"
+                          placeholder={`Enter ${label.toLowerCase()}`}
+                        />
+                      ) : (
+                        <span className="font-medium text-gray-900 pt-2">{extVal(selectedCheck.extraction, field) || '—'}</span>
+                      )}
                     </div>
                   ))}
                 </div>
