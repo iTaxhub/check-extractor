@@ -203,6 +203,7 @@ export default function QBComparisonsPage() {
 
     // Filter by PDF name
     if (selectedPdfName !== 'all') {
+      const beforeFilter = rows.length;
       rows = rows.filter(row => {
         // For extraction or matched rows, check if they belong to the selected PDF
         if (row.source === 'extraction' || row.source === 'matched') {
@@ -212,6 +213,10 @@ export default function QBComparisonsPage() {
         // For QB-only rows, exclude them when filtering by PDF
         return false;
       });
+      console.log(`📄 PDF Filter: "${selectedPdfName}"`);
+      console.log(`   Before: ${beforeFilter} rows`);
+      console.log(`   After: ${rows.length} rows`);
+      console.log(`   Filtered out: ${beforeFilter - rows.length} rows`);
     }
 
     rows = filterByDateRange(rows, startDate, endDate);
