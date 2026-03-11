@@ -117,59 +117,78 @@ export function intelligentMatch(extractions: CheckExtraction[], qbEntries: Quic
   const rows: ComparisonRow[] = [];
   const matchedQbIds = new Set<string>();
   const matchedExtIds = new Set<string>();
+  const seenExtIds = new Set<string>(); // Deduplicate extractions
 
+  // Phase 1: Match extractions with QB entries by check number
   extractions.forEach(ext => {
-    const extCheckNum = extVal(ext.extraction, 'checkNumber');
-    if (!extCheckNum) return;
+    // Skip duplicates
+    const uniqueId = `${ext.job_id}-${ext.check_id}`;
+    if (seenExtIds.has(uniqueId)) {
+      console.log('⚠️ Skipping duplicate extraction:', uniqueId);
+      return;
+    }
+    seenExtIds.add(uniqueId);
     
-    const qbMatch = qbEntries.find(qb => qb.checkNumber === extCheckNum && !matchedQbIds.has(qb.id));
-    if (qbMatch) {
-      const confidence = calculateMatchConfidence(ext, qbMatch);
-      const discrepancies: string[] = [];
-      
-      const extAmount = parseAmount(extVal(ext.extraction, 'amount'));
-      const qbAmount = parseAmount(qbMatch.amount);
-      if (Math.abs(extAmount - qbAmount) > 0.01) {
-        discrepancies.push(`Amount mismatch: $${extAmount.toFixed(2)} vs $${qbAmount.toFixed(2)}`);
+    const extCheckNum = extVal(ext.extraction, 'checkNumber');
+    
+    // Only try to match if we have a check number
+    if (extCheckNum) {
+      const qbMatch = qbEntries.find(qb => qb.checkNumber === extCheckNum && !matchedQbIds.has(qb.id));
+      if (qbMatch) {
+        const confidence = calculateMatchConfidence(ext, qbMatch);
+        const discrepancies: string[] = [];
+        
+        const extAmount = parseAmount(extVal(ext.extraction, 'amount'));
+        const qbAmount = parseAmount(qbMatch.amount);
+        if (Math.abs(extAmount - qbAmount) > 0.01) {
+          discrepancies.push(`Amount mismatch: $${extAmount.toFixed(2)} vs $${qbAmount.toFixed(2)}`);
+        }
+        
+        if (extVal(ext.extraction, 'checkDate') !== qbMatch.date) {
+          discrepancies.push(`Date mismatch: ${extVal(ext.extraction, 'checkDate')} vs ${qbMatch.date}`);
+        }
+        
+        const extPayee = normalizeString(extVal(ext.extraction, 'payee'));
+        const qbPayee = normalizeString(qbMatch.payee);
+        if (extPayee && qbPayee && !extPayee.includes(qbPayee.substring(0, 5)) && !qbPayee.includes(extPayee.substring(0, 5))) {
+          discrepancies.push(`Payee mismatch: ${extVal(ext.extraction, 'payee')} vs ${qbMatch.payee}`);
+        }
+        
+        rows.push({
+          id: `matched-${ext.job_id}-${ext.check_id}`,
+          checkNumber: extCheckNum,
+          date: extVal(ext.extraction, 'checkDate') || qbMatch.date,
+          amount: extVal(ext.extraction, 'amount') || qbMatch.amount,
+          payee: extVal(ext.extraction, 'payee') || qbMatch.payee,
+          bankAccount: extVal(ext.extraction, 'bankName') || qbMatch.account,
+          memo: extVal(ext.extraction, 'memo') || qbMatch.memo,
+          source: 'matched',
+          matchStatus: discrepancies.length > 0 ? 'mismatch' : 'matched',
+          extractionData: ext,
+          qbData: qbMatch,
+          confidence,
+          discrepancies: discrepancies.length > 0 ? discrepancies : undefined,
+        });
+        
+        matchedQbIds.add(qbMatch.id);
+        matchedExtIds.add(ext.check_id);
+        return;
       }
-      
-      if (extVal(ext.extraction, 'checkDate') !== qbMatch.date) {
-        discrepancies.push(`Date mismatch: ${extVal(ext.extraction, 'checkDate')} vs ${qbMatch.date}`);
-      }
-      
-      const extPayee = normalizeString(extVal(ext.extraction, 'payee'));
-      const qbPayee = normalizeString(qbMatch.payee);
-      if (extPayee && qbPayee && !extPayee.includes(qbPayee.substring(0, 5)) && !qbPayee.includes(extPayee.substring(0, 5))) {
-        discrepancies.push(`Payee mismatch: ${extVal(ext.extraction, 'payee')} vs ${qbMatch.payee}`);
-      }
-      
-      rows.push({
-        id: `matched-${ext.job_id}-${ext.check_id}`,
-        checkNumber: extCheckNum,
-        date: extVal(ext.extraction, 'checkDate') || qbMatch.date,
-        amount: extVal(ext.extraction, 'amount') || qbMatch.amount,
-        payee: extVal(ext.extraction, 'payee') || qbMatch.payee,
-        bankAccount: extVal(ext.extraction, 'bankName') || qbMatch.account,
-        memo: extVal(ext.extraction, 'memo') || qbMatch.memo,
-        source: 'matched',
-        matchStatus: discrepancies.length > 0 ? 'mismatch' : 'matched',
-        extractionData: ext,
-        qbData: qbMatch,
-        confidence,
-        discrepancies: discrepancies.length > 0 ? discrepancies : undefined,
-      });
-      
-      matchedQbIds.add(qbMatch.id);
-      matchedExtIds.add(ext.check_id);
     }
   });
 
+  // Phase 2: Add unmatched extractions (INCLUDING those without check numbers)
   extractions.forEach(ext => {
+    const uniqueId = `${ext.job_id}-${ext.check_id}`;
+    if (!seenExtIds.has(uniqueId)) {
+      seenExtIds.add(uniqueId);
+    }
+    
     if (matchedExtIds.has(ext.check_id)) return;
     
     rows.push({
       id: `ext-${ext.job_id}-${ext.check_id}`,
-      checkNumber: extVal(ext.extraction, 'checkNumber'),
+      checkNumber: extVal(ext.extraction, 'checkNumber') || ext.check_id, // Use check_id if no number
       date: extVal(ext.extraction, 'checkDate'),
       amount: extVal(ext.extraction, 'amount'),
       payee: extVal(ext.extraction, 'payee'),
