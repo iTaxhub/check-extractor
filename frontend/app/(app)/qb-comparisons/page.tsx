@@ -206,13 +206,8 @@ export default function QBComparisonsPage() {
       rows = rows.filter(row => {
         // For extraction or matched rows, check if they belong to the selected PDF
         if (row.source === 'extraction' || row.source === 'matched') {
-          const extraction = extractions.find(ext => {
-            const extCheckNum = typeof ext.extraction?.checkNumber === 'string' 
-              ? ext.extraction.checkNumber 
-              : ext.extraction?.checkNumber?.value;
-            return extCheckNum === row.checkNumber || ext.check_id === row.checkNumber;
-          });
-          return extraction?.pdf_name === selectedPdfName;
+          // Use the extractionData that's already attached to the row
+          return row.extractionData?.pdf_name === selectedPdfName;
         }
         // For QB-only rows, exclude them when filtering by PDF
         return false;
