@@ -472,6 +472,12 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
     """Background worker: detect checks, extract images, run OCR, save to Supabase."""
     try:
         jobs[job_id]["status"] = "detecting"
+        
+        # Update DB immediately
+        _supabase_update("check_jobs", {"job_id": job_id}, {
+            "status": "detecting"
+        })
+        
         out_dir = str(OUTPUT_DIR / job_id)
 
         app_ext = CheckExtractorApp(pdf_path, output_dir=out_dir)
@@ -484,6 +490,14 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
 
         # ── Phase 1: Extract images ──────────────────────────────
         jobs[job_id]["status"] = "extracting"
+        
+        # Update DB immediately
+        _supabase_update("check_jobs", {"job_id": job_id}, {
+            "status": "extracting",
+            "doc_format": jobs[job_id]["doc_format"],
+            "total_pages": jobs[job_id]["total_pages"]
+        })
+        
         manifest = app_ext.extract_all_images()
         jobs[job_id]["total_checks"] = len(manifest)
 
