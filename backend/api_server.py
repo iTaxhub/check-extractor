@@ -753,6 +753,16 @@ async def upload_pdf(file: UploadFile = File(...), _auth=Depends(_verify_token))
         "completed_at": None,
     }
 
+    # Write job to database immediately so it appears in Dashboard
+    _supabase_update("check_jobs", {"job_id": job_id}, {
+        "status": "pending",
+        "pdf_name": file.filename,
+        "file_size": file_size,
+        "total_pages": 0,
+        "total_checks": 0,
+        "created_at": jobs[job_id]["created_at"],
+    })
+
     thread = threading.Thread(target=_process_pdf, args=(job_id, pdf_path, file.filename))
     thread.daemon = True
     thread.start()
