@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, FileCheck, DollarSign, Edit2, Save, XCircle } from 'lucide-react';
 import { ComparisonRow, formatCurrency, formatDate, parseAmount } from '../utils/comparisonUtils';
 
@@ -12,13 +12,27 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState({
-    checkNumber: row?.checkNumber || '',
-    date: row?.date || '',
-    amount: row?.amount || '',
-    payee: row?.payee || '',
-    bankAccount: row?.bankAccount || '',
-    memo: row?.memo || '',
+    checkNumber: '',
+    date: '',
+    amount: '',
+    payee: '',
+    bankAccount: '',
+    memo: '',
   });
+
+  // Update editedData when row changes
+  useEffect(() => {
+    if (row) {
+      setEditedData({
+        checkNumber: row.checkNumber || '',
+        date: row.date || '',
+        amount: row.amount || '',
+        payee: row.payee || '',
+        bankAccount: row.bankAccount || '',
+        memo: row.memo || '',
+      });
+    }
+  }, [row]);
 
   if (!row) return null;
 
