@@ -62,48 +62,79 @@ def _sb_headers():
     }
 
 
-def _supabase_insert(table: str, row: dict):
-    """Insert a row into a Supabase table via REST API. Returns inserted row or None."""
+def _supabase_insert(table: str, data: dict, retries=3):
+    """Insert a row into a Supabase table with retry logic."""
     if not _supabase_ok:
         return None
-    try:
-        resp = _requests.post(
-            f"{_sb_url}/rest/v1/{table}",
-            headers=_sb_headers(),
-            json=row,
-            timeout=15,
-        )
-        if resp.status_code >= 400:
-            print(f"  Supabase insert error ({resp.status_code}): {resp.text[:300]}")
-            return None
-        data = resp.json()
-        return data[0] if isinstance(data, list) and data else data
-    except _requests.exceptions.Timeout:
-        print(f"  Supabase insert timeout for table {table}")
-        return None
-    except Exception as e:
-        print(f"  Supabase insert exception: {e}")
-        return None
+    
+    for attempt in range(retries):
+        try:
+            resp = _requests.post(
+                f"{_sb_url}/rest/v1/{table}",
+                headers=_sb_headers(),
+                json=data,
+                timeout=30,  # Increased timeout
+            )
+            if resp.status_code >= 400:
+                print(f"  Supabase insert error ({resp.status_code}): {resp.text[:300]}")
+                return None
+            data = resp.json()
+            if attempt > 0:
+                print(f"  ✓ Supabase insert succeeded on attempt {attempt + 1}")
+            return data[0] if isinstance(data, list) and data else data
+        except _requests.exceptions.Timeout:
+            if attempt < retries - 1:
+                wait_time = 2 ** attempt
+                print(f"  ⚠️ Supabase insert timeout (attempt {attempt + 1}/{retries}), retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"  ❌ Supabase insert timeout for table {table} after {retries} attempts")
+                return None
+        except Exception as e:
+            if attempt < retries - 1:
+                wait_time = 2 ** attempt
+                print(f"  ⚠️ Supabase insert error (attempt {attempt + 1}/{retries}): {e}, retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"  ❌ Supabase insert exception after {retries} attempts: {e}")
+                return None
 
 
-def _supabase_update(table: str, match: dict, updates: dict):
-    """Update rows in a Supabase table matching conditions."""
+def _supabase_update(table: str, match: dict, updates: dict, retries=3):
+    """Update rows in a Supabase table matching conditions with retry logic."""
     if not _supabase_ok:
         return
-    try:
-        query = "&".join(f"{k}=eq.{v}" for k, v in match.items())
-        resp = _requests.patch(
-            f"{_sb_url}/rest/v1/{table}?{query}",
-            headers=_sb_headers(),
-            json=updates,
-            timeout=15,
-        )
-        if resp.status_code >= 400:
-            print(f"  Supabase update error ({resp.status_code}): {resp.text[:300]}")
-    except _requests.exceptions.Timeout:
-        print(f"  Supabase update timeout for table {table}")
-    except Exception as e:
-        print(f"  Supabase update exception: {e}")
+    
+    for attempt in range(retries):
+        try:
+            query = "&".join(f"{k}=eq.{v}" for k, v in match.items())
+            resp = _requests.patch(
+                f"{_sb_url}/rest/v1/{table}?{query}",
+                headers=_sb_headers(),
+                json=updates,
+                timeout=30,  # Increased timeout
+            )
+            if resp.status_code >= 400:
+                print(f"  Supabase update error ({resp.status_code}): {resp.text[:300]}")
+                return
+            # Success
+            if attempt > 0:
+                print(f"  ✓ Supabase update succeeded on attempt {attempt + 1}")
+            return
+        except _requests.exceptions.Timeout:
+            if attempt < retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                print(f"  ⚠️ Supabase update timeout (attempt {attempt + 1}/{retries}), retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"  ❌ Supabase update timeout for table {table} after {retries} attempts")
+        except Exception as e:
+            if attempt < retries - 1:
+                wait_time = 2 ** attempt
+                print(f"  ⚠️ Supabase update error (attempt {attempt + 1}/{retries}): {e}, retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"  ❌ Supabase update exception after {retries} attempts: {e}")
 
 
 def _supabase_upload_file(bucket: str, path: str, file_bytes: bytes, content_type: str = "application/octet-stream"):
