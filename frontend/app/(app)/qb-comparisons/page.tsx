@@ -204,7 +204,7 @@ export default function QBComparisonsPage() {
     // Filter by PDF name
     if (selectedPdfName !== 'all') {
       rows = rows.filter(row => {
-        // Only filter extraction rows (not QB-only rows)
+        // For extraction or matched rows, check if they belong to the selected PDF
         if (row.source === 'extraction' || row.source === 'matched') {
           const extraction = extractions.find(ext => {
             const extCheckNum = typeof ext.extraction?.checkNumber === 'string' 
@@ -214,6 +214,7 @@ export default function QBComparisonsPage() {
           });
           return extraction?.pdf_name === selectedPdfName;
         }
+        // For QB-only rows, exclude them when filtering by PDF
         return false;
       });
     }

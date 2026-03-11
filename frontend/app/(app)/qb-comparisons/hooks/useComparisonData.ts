@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CheckExtraction, QuickBooksEntry } from '../utils/comparisonUtils';
 import { createClient } from '@/lib/supabase/client';
+import { useJobsStore } from '@/lib/store/useJobsStore';
 
 export function useComparisonData() {
+  const { jobs, loading: jobsLoading, fetchJobs } = useJobsStore();
   const [loading, setLoading] = useState(true);
-  const [extractions, setExtractions] = useState<CheckExtraction[]>([]);
   const [qbEntries, setQbEntries] = useState<QuickBooksEntry[]>([]);
   const [qbSources, setQbSources] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +15,10 @@ export function useComparisonData() {
       setLoading(true);
       setError(null);
       
-      // Get auth token for RLS enforcement
+      // Fetch jobs from global store (uses cache)
+      await fetchJobs();
+      
+      // Get auth token for QB entries
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -25,28 +29,6 @@ export function useComparisonData() {
       const headers = {
         'Authorization': `Bearer ${session.access_token}`,
       };
-      
-      // Fetch jobs from Supabase (source=auto fetches from DB + memory)
-      const jobsRes = await fetch('/api/jobs?source=auto', { headers });
-      if (!jobsRes.ok) throw new Error('Failed to fetch jobs');
-      const jobsData = await jobsRes.json();
-      
-      const allExtractions: CheckExtraction[] = [];
-      (jobsData.jobs || []).forEach((job: any) => {
-        // Include jobs that are analyzed or complete (not just complete)
-        if ((job.status === 'complete' || job.status === 'analyzed') && job.checks?.length > 0) {
-          job.checks.forEach((check: any) => {
-            // Include all checks, even without extraction (for missing data detection)
-            allExtractions.push({
-              ...check,
-              job_id: job.job_id,
-              pdf_name: job.pdf_name,
-            });
-          });
-        }
-      });
-      
-      setExtractions(allExtractions);
       
       try {
         console.log('🔍 Fetching QuickBooks entries from qb_entries table...');
@@ -93,14 +75,28 @@ export function useComparisonData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchJobs]);
   
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  // Compute extractions from jobs
+  const extractions: CheckExtraction[] = jobs.flatMap((job: any) => {
+    if ((job.status === 'complete' || job.status === 'analyzed') && job.checks?.length > 0) {
+      return job.checks.map((check: any) => ({
+        ...check,
+        job_id: job.job_id,
+        pdf_name: job.pdf_name,
+      }));
+    }
+    return [];
+  });
+
+  console.log('📊 Total extractions from jobs:', extractions.length);
+
   return {
-    loading,
+    loading: loading || jobsLoading,
     extractions,
     qbEntries,
     qbSources,
