@@ -204,18 +204,39 @@ export default function QBComparisonsPage() {
     // Filter by PDF name
     if (selectedPdfName !== 'all') {
       const beforeFilter = rows.length;
+      
+      // Debug: Log all unique PDF names in rows
+      const uniquePdfNames = new Set<string>();
+      const rowsBySource: Record<string, number> = {};
+      rows.forEach(row => {
+        rowsBySource[row.source] = (rowsBySource[row.source] || 0) + 1;
+        if (row.extractionData?.pdf_name) {
+          uniquePdfNames.add(row.extractionData.pdf_name);
+        }
+      });
+      
+      console.log(`📄 PDF Filter: "${selectedPdfName}"`);
+      console.log(`   Before filter: ${beforeFilter} rows`);
+      console.log(`   Rows by source:`, rowsBySource);
+      console.log(`   Unique PDF names found:`, Array.from(uniquePdfNames));
+      
       rows = rows.filter(row => {
         // For extraction or matched rows, check if they belong to the selected PDF
         if (row.source === 'extraction' || row.source === 'matched') {
-          // Use the extractionData that's already attached to the row
-          return row.extractionData?.pdf_name === selectedPdfName;
+          const matches = row.extractionData?.pdf_name === selectedPdfName;
+          if (!matches && row.extractionData?.pdf_name) {
+            // Log first few mismatches for debugging
+            if (rows.filter(r => r.extractionData?.pdf_name !== selectedPdfName).length < 5) {
+              console.log(`   ❌ Filtered out: ${row.checkNumber} from "${row.extractionData.pdf_name}"`);
+            }
+          }
+          return matches;
         }
         // For QB-only rows, exclude them when filtering by PDF
         return false;
       });
-      console.log(`📄 PDF Filter: "${selectedPdfName}"`);
-      console.log(`   Before: ${beforeFilter} rows`);
-      console.log(`   After: ${rows.length} rows`);
+      
+      console.log(`   After filter: ${rows.length} rows`);
       console.log(`   Filtered out: ${beforeFilter - rows.length} rows`);
     }
 
