@@ -54,6 +54,12 @@ export default async function handler(
       return res.redirect('/settings?tab=integrations&error=not_configured');
     }
 
+    console.log('🔄 Exchanging authorization code for tokens...', {
+      clientIdPrefix: clientId.substring(0, 10) + '...',
+      redirectUri,
+      codePrefix: (code as string).substring(0, 20) + '...',
+    });
+
     const tokenResponse = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
       method: 'POST',
       headers: {
@@ -69,8 +75,15 @@ export default async function handler(
     });
 
     if (!tokenResponse.ok) {
-      console.error('Token exchange failed:', await tokenResponse.text());
-      return res.redirect('/settings?error=token_exchange_failed');
+      const errorText = await tokenResponse.text();
+      console.error('❌ Token exchange failed:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        error: errorText,
+        clientIdPrefix: clientId.substring(0, 10) + '...',
+        redirectUri,
+      });
+      return res.redirect(`/settings?tab=integrations&error=token_exchange_failed&detail=${encodeURIComponent(errorText.substring(0, 100))}`);
     }
 
     const tokens = await tokenResponse.json();

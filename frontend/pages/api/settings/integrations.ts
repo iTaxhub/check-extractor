@@ -6,15 +6,39 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-    const supabase = createAuthenticatedClient(req);
-
     if (req.method === 'GET') {
-      // Fetch integration status from database
-      const { data: integration } = await supabase
-        .from('integrations')
-        .select('*')
-        .eq('provider', 'quickbooks')
-        .single();
+      // Try to create authenticated client, but handle missing auth gracefully
+      let supabase;
+      let integration = null;
+      
+      try {
+        supabase = createAuthenticatedClient(req);
+        
+        // Fetch integration status from database
+        const { data } = await supabase
+          .from('integrations')
+          .select('*')
+          .eq('provider', 'quickbooks')
+          .single();
+        
+        integration = data;
+      } catch (authError: any) {
+        // If no auth header, return basic config from env vars only
+        console.warn('⚠️ No authentication for integrations GET:', authError.message);
+        
+        return res.status(200).json({
+          qboConnected: false,
+          qbConfigured: !!(process.env.QUICKBOOKS_CLIENT_ID && process.env.QUICKBOOKS_CLIENT_SECRET),
+          credentialsExist: false,
+          qbClientId: '',
+          qbClientSecret: '',
+          qbRedirectUri: process.env.QUICKBOOKS_REDIRECT_URI || '',
+          geminiApiKey: '',
+          companyId: null,
+          realmId: null,
+          companyName: null,
+        });
+      }
 
       // Fallback to env vars if not in database
       const qbClientId = integration?.qb_client_id || process.env.QUICKBOOKS_CLIENT_ID || '';
@@ -37,6 +61,9 @@ export default async function handler(
         companyName: integration?.company_name || null,
       });
     }
+
+    // For PATCH requests, authentication is required
+    const supabase = createAuthenticatedClient(req);
 
     if (req.method === 'PATCH') {
       // Update API keys and QB credentials

@@ -257,9 +257,21 @@ export default function SettingsPage() {
     const handleSaveApiKeys = async () => {
         setSaving(true)
         try {
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (!session) {
+                toast.error('Not authenticated. Please log in again.')
+                setSaving(false)
+                return
+            }
+
             const response = await fetch('/api/settings/integrations', {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
                 body: JSON.stringify({ geminiApiKey }),
             })
 
