@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ChevronUp, ChevronDown, Eye } from 'lucide-react';
+import { ChevronUp, ChevronDown, Eye, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { ComparisonRow, SortField, SortDirection, formatCurrency, formatDate, parseAmount } from '../utils/comparisonUtils';
 import { VisibleColumns } from '../hooks/useComparisonState';
 
@@ -12,6 +12,9 @@ interface ComparisonTableProps {
   onRowClick: (row: ComparisonRow) => void;
   currentPage: number;
   itemsPerPage: number;
+  onVouch: (row: ComparisonRow) => void;
+  onUnvouch: (row: ComparisonRow) => void;
+  vouchingId: string | null;
 }
 
 const SortIcon: React.FC<{ field: SortField; sortField: SortField; sortDirection: SortDirection }> = ({
@@ -36,6 +39,9 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   onRowClick,
   currentPage,
   itemsPerPage,
+  onVouch,
+  onUnvouch,
+  vouchingId,
 }) => {
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -327,17 +333,50 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                   </td>
 
                   {/* Issue Column */}
-                  <td className={`px-1 py-0.5 text-left border-r-2 border-gray-300 max-w-[180px] ${row.hasIssue ? 'bg-red-50' : ''}`}>
-                    {row.issues && row.issues.length > 0 ? (
+                  <td className={`px-1 py-0.5 text-left border-r-2 border-gray-300 max-w-[180px] ${row.hasIssue && !row.vouched ? 'bg-red-50' : row.vouched ? 'bg-green-50' : ''}`}>
+                    {row.vouched ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9px] text-green-700 font-semibold flex items-center gap-0.5">
+                          <CheckCircle size={10} className="text-green-600" />
+                          Vouched
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUnvouch(row);
+                          }}
+                          disabled={vouchingId === row.id}
+                          className="text-[8px] text-red-600 hover:text-red-800 underline disabled:opacity-50"
+                          title="Remove vouch"
+                        >
+                          {vouchingId === row.id ? <Loader2 size={8} className="animate-spin" /> : 'Unvouch'}
+                        </button>
+                      </div>
+                    ) : row.issues && row.issues.length > 0 ? (
                       <div className="flex flex-col gap-0.5">
-                        {row.issues.slice(0, 2).map((issue, i) => (
-                          <span key={i} className="text-[9px] text-red-700 leading-tight truncate" title={issue}>
-                            {row.isDuplicate && i === 0 ? '⚠️ ' : '• '}{issue}
-                          </span>
-                        ))}
-                        {row.issues.length > 2 && (
-                          <span className="text-[8px] text-red-500">+{row.issues.length - 2} more</span>
-                        )}
+                        <div className="flex items-start justify-between gap-1">
+                          <div className="flex-1 min-w-0">
+                            {row.issues.slice(0, 2).map((issue, i) => (
+                              <div key={i} className="text-[9px] text-red-700 leading-tight truncate" title={issue}>
+                                {row.isDuplicate && i === 0 ? '⚠️ ' : '• '}{issue}
+                              </div>
+                            ))}
+                            {row.issues.length > 2 && (
+                              <span className="text-[8px] text-red-500">+{row.issues.length - 2} more</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onVouch(row);
+                            }}
+                            disabled={vouchingId === row.id}
+                            className="flex-shrink-0 px-1.5 py-0.5 text-[8px] bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 font-medium"
+                            title="Mark this issue as acceptable/resolved"
+                          >
+                            {vouchingId === row.id ? <Loader2 size={8} className="animate-spin" /> : 'Vouch'}
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <span className="text-[9px] text-green-600">✓</span>

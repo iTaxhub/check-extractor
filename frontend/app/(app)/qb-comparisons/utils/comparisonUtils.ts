@@ -46,6 +46,9 @@ export interface ComparisonRow {
   issues?: string[];
   hasIssue?: boolean;
   isDuplicate?: boolean;
+  vouched?: boolean;
+  vouchedBy?: string;
+  vouchedAt?: string;
 }
 
 export type SortField = 'checkNumber' | 'date' | 'amount' | 'payee' | 'matchStatus';

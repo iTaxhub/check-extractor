@@ -68,6 +68,8 @@ export default function QBComparisonsPage() {
 
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showIssuesOnly, setShowIssuesOnly] = useState(false);
+  const [vouchedMap, setVouchedMap] = useState<Record<string, any>>({});
+  const [vouchingId, setVouchingId] = useState<string | null>(null);
 
   // Check if QuickBooks is configured and connected
   useEffect(() => {
@@ -192,10 +194,42 @@ export default function QBComparisonsPage() {
     return Array.from(names).sort();
   }, [extractions]);
 
+  // Load vouched status on mount
+  useEffect(() => {
+    const loadVouchedStatus = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch('/api/checks/vouched', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        });
+        if (response.ok) {
+          const { vouched } = await response.json();
+          setVouchedMap(vouched || {});
+        }
+      } catch (err) {
+        console.error('Failed to load vouched status:', err);
+      }
+    };
+    loadVouchedStatus();
+  }, []);
+
   // Step 1: Run matching ONLY when raw data changes (not on every filter change)
   const matchedRows = useMemo(() => {
-    return intelligentMatch(extractions, qbEntries);
-  }, [extractions, qbEntries]);
+    const rows = intelligentMatch(extractions, qbEntries);
+    // Apply vouched status to rows
+    rows.forEach(row => {
+      const vouchedData = vouchedMap[row.id];
+      if (vouchedData) {
+        row.vouched = true;
+        row.vouchedBy = vouchedData.vouchedBy;
+        row.vouchedAt = vouchedData.vouchedAt;
+      }
+    });
+    return rows;
+  }, [extractions, qbEntries, vouchedMap]);
 
   // Step 2: Apply filters separately (cheap operation)
   const comparisonData = useMemo(() => {
@@ -239,9 +273,9 @@ export default function QBComparisonsPage() {
       });
     }
 
-    // "Show Issues Only" toggle: only keep rows with issues
+    // "Show Issues Only" toggle: only keep rows with issues that are NOT vouched
     if (showIssuesOnly) {
-      rows = rows.filter(row => row.hasIssue);
+      rows = rows.filter(row => row.hasIssue && !row.vouched);
     }
 
     rows = filterByDateRange(rows, startDate, endDate);
@@ -296,6 +330,75 @@ export default function QBComparisonsPage() {
   const handleExportExcel = () => {
     exportToExcel(comparisonData, visibleColumns);
     setShowExportDropdown(false);
+  };
+
+  const handleVouch = async (row: ComparisonRow) => {
+    setVouchingId(row.id);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/checks/vouch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          checkIdentifier: row.id,
+          checkNumber: row.checkNumber,
+        }),
+      });
+
+      if (response.ok) {
+        // Update local vouched map
+        setVouchedMap(prev => ({
+          ...prev,
+          [row.id]: {
+            vouchedBy: session.user.id,
+            vouchedAt: new Date().toISOString(),
+          },
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to vouch check:', err);
+    } finally {
+      setVouchingId(null);
+    }
+  };
+
+  const handleUnvouch = async (row: ComparisonRow) => {
+    setVouchingId(row.id);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/checks/vouch', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          checkIdentifier: row.id,
+        }),
+      });
+
+      if (response.ok) {
+        // Remove from local vouched map
+        setVouchedMap(prev => {
+          const newMap = { ...prev };
+          delete newMap[row.id];
+          return newMap;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to unvouch check:', err);
+    } finally {
+      setVouchingId(null);
+    }
   };
 
   if (error) {
@@ -550,6 +653,9 @@ export default function QBComparisonsPage() {
             onRowClick={setSelectedRow}
             currentPage={currentPage}
             itemsPerPage={itemsPerPage}
+            onVouch={handleVouch}
+            onUnvouch={handleUnvouch}
+            vouchingId={vouchingId}
           />
           
           <Pagination
