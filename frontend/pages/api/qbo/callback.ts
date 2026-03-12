@@ -64,7 +64,7 @@ export default async function handler(
         const cookieClient = createClientFromCookies(req);
         const { data } = await cookieClient
           .from('integrations')
-          .select('qb_client_id, qb_client_secret, qb_redirect_uri')
+          .select('qb_client_id, qb_client_secret, qb_redirect_uri, tenant_id')
           .eq('provider', 'quickbooks')
           .single();
         integration = data;
@@ -122,73 +122,28 @@ export default async function handler(
 
     const tokens = await tokenResponse.json();
 
-    // --- Identify the user and their tenant_id ---
-    // Try cookie-based client first for user identity
-    let user = null;
-    let userClient = null;
-    try {
-      userClient = createClientFromCookies(req);
-      const { data: { user: cookieUser } } = await userClient.auth.getUser();
-      user = cookieUser;
-    } catch (cookieErr: any) {
-      console.warn('⚠️ QB Callback: Cookie auth failed for user identity:', cookieErr.message);
+    // --- Get tenant_id from integration record (no user session required) ---
+    // The integration record already has tenant_id from when credentials were saved
+    const tenantId = integration?.tenant_id;
+
+    if (!tenantId) {
+      console.error('❌ QB Callback: No tenant_id in integration record');
+      return res.redirect('/settings?error=no_tenant&detail=integration_missing_tenant');
     }
 
-    if (!user) {
-      console.error('❌ QB Callback: No user found in session (cookies failed)');
-      return res.redirect('/settings?error=unauthorized&detail=no_session_cookie');
+    console.log('✅ Using tenant_id from integration:', tenantId);
+
+    // Save tokens to integrations table using service client
+    if (!serviceClient) {
+      console.error('❌ Service client not available for saving tokens');
+      return res.redirect('/settings?error=service_unavailable');
     }
 
-    console.log('✅ QB Callback: User authenticated:', user.email);
-
-    // Use service client for all DB operations (bypasses RLS issues)
-    const dbClient = serviceClient || userClient!;
-
-    let { data: profile } = await dbClient
-      .from('user_profiles')
-      .select('tenant_id')
-      .eq('id', user.id)
-      .single();
-
-    // If user has no tenant_id, create one
-    if (!profile?.tenant_id) {
-      console.warn('⚠️ User has no tenant_id, creating new tenant:', user.id);
-      
-      const newTenantId = crypto.randomUUID();
-      
-      const { error: updateError } = await dbClient
-        .from('user_profiles')
-        .update({ tenant_id: newTenantId })
-        .eq('id', user.id);
-      
-      if (updateError) {
-        console.error('❌ Failed to create tenant_id:', updateError);
-        return res.redirect('/settings?error=tenant_creation_failed');
-      }
-      
-      const { data: updatedProfile } = await dbClient
-        .from('user_profiles')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-      
-      profile = updatedProfile;
-      console.log('✅ Created new tenant_id:', newTenantId);
-    }
-
-    if (!profile?.tenant_id) {
-      console.error('❌ Still no tenant_id after creation attempt');
-      return res.redirect('/settings?error=no_tenant');
-    }
-
-    console.log('✅ Using tenant_id:', profile.tenant_id);
-
-    // Store tokens in Supabase with tenant_id
-    const { error } = await dbClient
+    const { error: saveError } = await serviceClient
       .from('integrations')
       .upsert({
         provider: 'quickbooks',
-        tenant_id: profile.tenant_id,
+        tenant_id: tenantId,
         realm_id: realmId,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
@@ -198,8 +153,8 @@ export default async function handler(
         onConflict: 'tenant_id,provider'
       });
 
-    if (error) {
-      console.error('Failed to store tokens:', error);
+    if (saveError) {
+      console.error('Failed to store tokens:', saveError);
       return res.redirect('/settings?error=storage_failed');
     }
 

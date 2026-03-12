@@ -13,7 +13,6 @@ function SettingsPageContent() {
     const [qbConfigured, setQbConfigured] = useState(false)
     const [companyId, setCompanyId] = useState<string | null>(null)
     const [companyName, setCompanyName] = useState<string | null>(null)
-    const [geminiApiKey, setGeminiApiKey] = useState('')
     const [saving, setSaving] = useState(false)
     const [showQBCredentialsDialog, setShowQBCredentialsDialog] = useState(false)
     const [qbClientId, setQbClientId] = useState('')
@@ -128,7 +127,6 @@ function SettingsPageContent() {
                 setCredentialsExist(data.credentialsExist || false)
                 setCompanyId(data.companyId || data.realmId || null)
                 setCompanyName(data.companyName || null)
-                setGeminiApiKey(data.geminiApiKey ? '••••••••••••' : '')
                 setQbClientId(data.qbClientId || '')
                 setQbClientSecret(data.qbClientSecret || '')
                 setQbRedirectUri(data.qbRedirectUri || '')
@@ -341,7 +339,7 @@ function SettingsPageContent() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session.access_token}`,
                 },
-                body: JSON.stringify({ geminiApiKey }),
+                body: JSON.stringify({}),
             })
 
             if (response.ok) {
@@ -763,71 +761,6 @@ function SettingsPageContent() {
                         </div>
                     </div>
 
-                    {/* API Keys */}
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <h2 className="text-xl font-semibold text-gray-900 mb-6">API Keys</h2>
-
-                        <div className="space-y-6">
-                            {/* Google Gemini API */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Google Gemini API Key
-                                </label>
-                                <div className="flex gap-3">
-                                    <div className="relative flex-1">
-                                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                        <input
-                                            type="password"
-                                            value={geminiApiKey}
-                                            onChange={(e) => setGeminiApiKey(e.target.value)}
-                                            placeholder="Enter your Gemini API key"
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-2">
-                                    Used for AI-powered check field extraction. Get your key from{' '}
-                                    <a
-                                        href="https://makersuite.google.com/app/apikey"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:underline"
-                                    >
-                                        Google AI Studio
-                                    </a>
-                                </p>
-                            </div>
-
-                            {/* Tesseract OCR (Local) */}
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="font-medium text-gray-900">Tesseract OCR</p>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            <span className="flex items-center gap-2 text-green-600">
-                                                <CheckCircle size={16} />
-                                                Installed locally
-                                            </span>
-                                        </p>
-                                    </div>
-                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                        No API key required
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button
-                                onClick={handleSaveApiKeys}
-                                disabled={saving}
-                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                            >
-                                <Save size={18} />
-                                {saving ? 'Saving...' : 'Save API Keys'}
-                            </button>
-                        </div>
-                    </div>
                 </div>
             )}
 
