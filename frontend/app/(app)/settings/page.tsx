@@ -462,6 +462,10 @@ export default function SettingsPage() {
                                                         Realm ID: {companyId}
                                                     </div>
                                                 )}
+                                                <div className="mt-2 ml-5 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                                                    <p className="font-medium mb-1">💡 Multiple Companies?</p>
+                                                    <p>To switch to a different QuickBooks company, click "Disconnect" then "Connect to QuickBooks" again and select the company you want to use.</p>
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="flex items-center gap-2 text-gray-500 text-sm">
