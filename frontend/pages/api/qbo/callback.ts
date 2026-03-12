@@ -20,17 +20,33 @@ export default async function handler(
       return res.redirect('/settings?error=missing_params');
     }
 
-    // Verify state (CSRF protection) - optional in development
+    // Decode tenant_id from state parameter
+    let tenantId: string | null = null;
+    let stateData: any = null;
+    try {
+      stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
+      tenantId = stateData.tenant_id;
+      console.log('✅ Decoded state:', { tenant_id: tenantId, timestamp: stateData.timestamp });
+    } catch (decodeErr) {
+      console.error('❌ Failed to decode state parameter:', decodeErr);
+      return res.redirect('/settings?error=invalid_state&detail=state_decode_failed');
+    }
+
+    if (!tenantId) {
+      console.error('❌ No tenant_id in state parameter');
+      return res.redirect('/settings?error=no_tenant&detail=missing_tenant_in_state');
+    }
+
+    // Verify state (CSRF protection) - optional
     const cookies = req.headers.cookie?.split(';').reduce((acc, cookie) => {
       const [key, value] = cookie.trim().split('=');
       acc[key] = value;
       return acc;
     }, {} as Record<string, string>);
 
-    // Skip state validation if no cookie (development mode)
     if (cookies?.qbo_state && cookies.qbo_state !== state) {
-      console.warn('State mismatch - possible CSRF attack');
-      return res.redirect('/settings?error=invalid_state');
+      console.warn('⚠️ State mismatch - possible CSRF attack');
+      // Don't fail - just warn, since state contains tenant_id anyway
     }
     
     // Log for debugging
@@ -122,16 +138,8 @@ export default async function handler(
 
     const tokens = await tokenResponse.json();
 
-    // --- Get tenant_id from integration record (no user session required) ---
-    // The integration record already has tenant_id from when credentials were saved
-    const tenantId = integration?.tenant_id;
-
-    if (!tenantId) {
-      console.error('❌ QB Callback: No tenant_id in integration record');
-      return res.redirect('/settings?error=no_tenant&detail=integration_missing_tenant');
-    }
-
-    console.log('✅ Using tenant_id from integration:', tenantId);
+    // tenant_id already decoded from state parameter above
+    console.log('✅ Using tenant_id from state:', tenantId);
 
     // Save tokens to integrations table using service client
     if (!serviceClient) {

@@ -18,10 +18,28 @@ export default async function handler(
     // Get QuickBooks credentials from database
     const supabase = createAuthenticatedClient(req);
 
+    // Get user's tenant_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+
+    const tenantId = userData?.tenant_id;
+    if (!tenantId) {
+      return res.status(400).json({ error: 'No tenant found for user' });
+    }
+
     const { data: integration, error: dbError } = await supabase
       .from('integrations')
       .select('qb_client_id, qb_redirect_uri')
       .eq('provider', 'quickbooks')
+      .eq('tenant_id', tenantId)
       .single();
 
     console.log('🔍 QB OAuth - Integration data:', {
@@ -50,11 +68,16 @@ export default async function handler(
       });
     }
 
-    // Generate state for CSRF protection
-    const state = Math.random().toString(36).substring(7);
+    // Generate state for CSRF protection - encode tenant_id in it
+    const stateData = {
+      random: Math.random().toString(36).substring(7),
+      tenant_id: tenantId,
+      timestamp: Date.now()
+    };
+    const state = Buffer.from(JSON.stringify(stateData)).toString('base64');
     
-    // Store state in session/cookie for verification
-    res.setHeader('Set-Cookie', `qbo_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`);
+    // Store state in session/cookie for verification (optional - state is self-contained)
+    res.setHeader('Set-Cookie', `qbo_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600; Secure`);
 
     // QuickBooks OAuth URL
     const authUrl = new URL('https://appcenter.intuit.com/connect/oauth2');
@@ -63,6 +86,8 @@ export default async function handler(
     authUrl.searchParams.append('redirect_uri', redirectUri);
     authUrl.searchParams.append('response_type', 'code');
     authUrl.searchParams.append('state', state);
+
+    console.log('✅ QB OAuth URL generated with tenant_id in state');
 
     return res.status(200).json({ authUrl: authUrl.toString() });
   } catch (error: any) {
