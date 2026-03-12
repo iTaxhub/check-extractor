@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Upload, Download, ChevronDown, RefreshCw, X, Filter } from 'lucide-react';
+import { Search, Upload, Download, ChevronDown, RefreshCw, X, Filter, AlertTriangle } from 'lucide-react';
 
 interface ComparisonControlsBarProps {
   searchQuery: string;
@@ -24,6 +24,9 @@ interface ComparisonControlsBarProps {
   onExportExcel: () => void;
   onResetFilters: () => void;
   hasActiveFilters: boolean;
+  showIssuesOnly: boolean;
+  setShowIssuesOnly: (show: boolean) => void;
+  issueCount: number;
 }
 
 export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
@@ -49,6 +52,9 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
   onExportExcel,
   onResetFilters,
   hasActiveFilters,
+  showIssuesOnly,
+  setShowIssuesOnly,
+  issueCount,
 }) => {
   return (
     <div className="px-3 py-2 bg-gray-100 border-b border-gray-300">
@@ -136,19 +142,39 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
           </select>
         </div>
 
-        <div className="col-span-1 flex gap-2">
+        <div className="col-span-1 flex gap-1 items-center">
           {hasActiveFilters && (
             <button
               onClick={onResetFilters}
-              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition"
+              className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition"
               title="Reset Filters"
             >
-              <Filter size={18} />
+              <Filter size={14} />
             </button>
           )}
         </div>
 
-        <div className="col-span-12 flex gap-2">
+        <div className="col-span-12 flex gap-2 items-center">
+          {/* Issues Toggle */}
+          <button
+            onClick={() => setShowIssuesOnly(!showIssuesOnly)}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition shadow-sm border ${
+              showIssuesOnly
+                ? 'bg-red-600 text-white border-red-600 hover:bg-red-700'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+            title={showIssuesOnly ? 'Show all data' : 'Show only issues (duplicates & discrepancies)'}
+          >
+            <AlertTriangle size={12} />
+            {showIssuesOnly ? 'Showing Issues' : 'Issues'}
+            {issueCount > 0 && (
+              <span className={`ml-0.5 px-1.5 py-0 rounded-full text-[10px] font-bold ${
+                showIssuesOnly ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'
+              }`}>
+                {issueCount}
+              </span>
+            )}
+          </button>
           <button
             onClick={onUpload}
             className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium transition shadow-sm"

@@ -21,6 +21,7 @@ import {
   ComparisonRow 
 } from './utils/comparisonUtils';
 import { exportToCSV, exportToExcel } from './utils/exportUtils';
+import { createClient } from '@/lib/supabase/client';
 
 export default function QBComparisonsPage() {
   const { loading, extractions, qbEntries, qbSources, error, refreshData } = useComparisonData();
@@ -66,12 +67,19 @@ export default function QBComparisonsPage() {
   } = useComparisonState();
 
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showIssuesOnly, setShowIssuesOnly] = useState(false);
 
   // Check if QuickBooks is configured and connected
   useEffect(() => {
     const checkQBConfig = async () => {
       try {
-        const response = await fetch('/api/settings/integrations');
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        const response = await fetch('/api/settings/integrations', { headers });
         if (response.ok) {
           const data = await response.json();
           const configured = !!(data.qbClientId || data.qboConnected);
@@ -100,9 +108,14 @@ export default function QBComparisonsPage() {
   const handleSaveCheck = async (checkId: string, updates: any) => {
     try {
       console.log('💾 Saving check edits:', checkId, updates);
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`/api/checks/${checkId}/update`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify(updates),
       });
 
@@ -128,9 +141,18 @@ export default function QBComparisonsPage() {
     setSyncing(true);
     try {
       console.log('📡 Calling QB pull-checks API...');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('❌ No session for QB sync');
+        return;
+      }
       const res = await fetch('/api/qbo/pull-checks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ store: true }),
       });
       const data = await res.json();
@@ -170,16 +192,21 @@ export default function QBComparisonsPage() {
     return Array.from(names).sort();
   }, [extractions]);
 
+  // Step 1: Run matching ONLY when raw data changes (not on every filter change)
+  const matchedRows = useMemo(() => {
+    return intelligentMatch(extractions, qbEntries);
+  }, [extractions, qbEntries]);
+
+  // Step 2: Apply filters separately (cheap operation)
   const comparisonData = useMemo(() => {
-    let rows = intelligentMatch(extractions, qbEntries);
+    let rows = [...matchedRows];
 
     // Filter by QB data source (online/uploaded/both)
     if (qbDataSource !== 'both') {
       rows = rows.filter(row => {
-        if (!row.qbData) return true; // Keep extraction-only rows
+        if (!row.qbData) return true;
         const isOnline = row.qbData.qbSource !== 'qbo_file_upload';
         const isUploaded = row.qbData.qbSource === 'qbo_file_upload';
-        
         if (qbDataSource === 'online') return isOnline || row.source === 'extraction';
         if (qbDataSource === 'uploaded') return isUploaded || row.source === 'extraction';
         return true;
@@ -201,64 +228,32 @@ export default function QBComparisonsPage() {
       rows = rows.filter(row => row.matchStatus === filterStatus);
     }
 
-    // Filter by PDF name
+    // Filter by PDF name — show ALL checks from the selected document
     if (selectedPdfName !== 'all') {
-      const beforeFilter = rows.length;
-      
-      // Debug: Log all unique PDF names in rows
-      const uniquePdfNames = new Set<string>();
-      const rowsBySource: Record<string, number> = {};
-      rows.forEach(row => {
-        rowsBySource[row.source] = (rowsBySource[row.source] || 0) + 1;
-        if (row.extractionData?.pdf_name) {
-          uniquePdfNames.add(row.extractionData.pdf_name);
-        }
-      });
-      
-      console.log(`📄 PDF Filter: "${selectedPdfName}"`);
-      console.log(`   Before filter: ${beforeFilter} rows`);
-      console.log(`   Rows by source:`, rowsBySource);
-      console.log(`   Unique PDF names found:`, Array.from(uniquePdfNames));
-      
-      // Log sample rows before filtering
-      const sampleBefore = rows.slice(0, 3).map(r => ({
-        checkNumber: r.checkNumber,
-        source: r.source,
-        matchStatus: r.matchStatus,
-        pdf_name: r.extractionData?.pdf_name || 'NO PDF NAME'
-      }));
-      console.log(`   Sample rows before filter:`, sampleBefore);
-      
-      const filteredRows = rows.filter(row => {
-        // For extraction or matched rows, check if they belong to the selected PDF
-        if (row.source === 'extraction' || row.source === 'matched') {
-          const matches = row.extractionData?.pdf_name === selectedPdfName;
-          return matches;
-        }
-        // For QB-only rows, exclude them when filtering by PDF
+      rows = rows.filter(row => {
+        // Keep rows that have extractionData from this PDF
+        if (row.extractionData?.pdf_name === selectedPdfName) return true;
+        // Also keep QB-only rows that matched with a check from this PDF
+        // (matched rows will have extractionData.pdf_name set)
         return false;
       });
-      
-      // Log sample rows after filtering
-      const sampleAfter = filteredRows.slice(0, 3).map(r => ({
-        checkNumber: r.checkNumber,
-        source: r.source,
-        matchStatus: r.matchStatus,
-        pdf_name: r.extractionData?.pdf_name
-      }));
-      console.log(`   Sample rows after filter:`, sampleAfter);
-      console.log(`   After filter: ${filteredRows.length} rows`);
-      console.log(`   Filtered out: ${beforeFilter - filteredRows.length} rows`);
-      
-      rows = filteredRows;
+    }
+
+    // "Show Issues Only" toggle: only keep rows with issues
+    if (showIssuesOnly) {
+      rows = rows.filter(row => row.hasIssue);
     }
 
     rows = filterByDateRange(rows, startDate, endDate);
     rows = filterByQBSource(rows, selectedQBSource);
     rows = sortRows(rows, sortField, sortDirection);
 
-    // Sort matched items to the top
+    // Sort: issues first, then matched, then rest
     rows.sort((a, b) => {
+      // If showIssuesOnly is off, still put issues/mismatches near top
+      const aIssue = a.hasIssue ? 1 : 0;
+      const bIssue = b.hasIssue ? 1 : 0;
+      if (aIssue !== bIssue) return bIssue - aIssue; // issues first
       const aMatched = a.matchStatus === 'matched' || a.matchStatus === 'mismatch';
       const bMatched = b.matchStatus === 'matched' || b.matchStatus === 'mismatch';
       if (aMatched && !bMatched) return -1;
@@ -267,7 +262,7 @@ export default function QBComparisonsPage() {
     });
 
     return rows;
-  }, [extractions, qbEntries, searchQuery, filterStatus, selectedPdfName, startDate, endDate, selectedQBSource, qbDataSource, sortField, sortDirection]);
+  }, [matchedRows, searchQuery, filterStatus, selectedPdfName, startDate, endDate, selectedQBSource, qbDataSource, sortField, sortDirection, showIssuesOnly]);
 
   const statistics = useMemo(() => {
     const matched = comparisonData.filter(r => r.matchStatus === 'matched').length;
@@ -286,7 +281,12 @@ export default function QBComparisonsPage() {
 
   const totalPages = Math.ceil(comparisonData.length / itemsPerPage);
 
-  const hasActiveFilters = searchQuery !== '' || filterStatus !== 'all' || selectedQBSource !== 'all' || selectedPdfName !== 'all' || startDate !== '' || endDate !== '';
+  const hasActiveFilters = searchQuery !== '' || filterStatus !== 'all' || selectedQBSource !== 'all' || selectedPdfName !== 'all' || startDate !== '' || endDate !== '' || showIssuesOnly;
+
+  // Count issues for the toggle badge
+  const issueCount = useMemo(() => {
+    return matchedRows.filter(r => r.hasIssue).length;
+  }, [matchedRows]);
 
   const handleExportCSV = () => {
     exportToCSV(comparisonData, visibleColumns);
@@ -532,8 +532,11 @@ export default function QBComparisonsPage() {
         onUpload={() => setShowUploadModal(true)}
         onExportCSV={handleExportCSV}
         onExportExcel={handleExportExcel}
-        onResetFilters={resetFilters}
+        onResetFilters={() => { resetFilters(); setShowIssuesOnly(false); }}
         hasActiveFilters={hasActiveFilters}
+        showIssuesOnly={showIssuesOnly}
+        setShowIssuesOnly={setShowIssuesOnly}
+        issueCount={issueCount}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">

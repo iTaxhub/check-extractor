@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2 } from 'lucide-react'
 import QuickBooksFilters, { FilterParams } from '@/components/QuickBooksFilters'
 import { createClient } from '@/lib/supabase/client'
 import toast, { Toaster } from 'react-hot-toast'
 
-export default function SettingsPage() {
+function SettingsPageContent() {
     const [activeTab, setActiveTab] = useState('general')
     const [qboConnected, setQboConnected] = useState(false)
     const [qbConfigured, setQbConfigured] = useState(false)
@@ -27,9 +28,52 @@ export default function SettingsPage() {
     const [mounted, setMounted] = useState(false)
     const [credentialsExist, setCredentialsExist] = useState(false)
 
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
     useEffect(() => {
         setMounted(true)
     }, [])
+
+    // Parse URL params for OAuth callback results
+    useEffect(() => {
+        if (!mounted || !searchParams) return
+        
+        const error = searchParams.get('error')
+        const success = searchParams.get('success')
+        const detail = searchParams.get('detail')
+        const tab = searchParams.get('tab')
+        
+        if (tab === 'integrations') {
+            setActiveTab('integrations')
+        }
+        
+        if (error) {
+            const errorMessages: Record<string, string> = {
+                token_exchange_failed: `QuickBooks rejected the connection. ${detail ? `Detail: ${decodeURIComponent(detail)}` : 'Check that your Redirect URI matches exactly what\'s in your QuickBooks app settings.'}`,
+                not_configured: 'QuickBooks credentials not found. Please configure your Client ID and Secret first.',
+                missing_params: 'QuickBooks callback was missing required parameters. Please try connecting again.',
+                invalid_state: 'Security check failed (state mismatch). Please try connecting again.',
+                unauthorized: `Not authenticated. ${detail === 'no_session_cookie' ? 'Your session cookie was not found. Try logging in again before connecting QB.' : 'Please log in and try again.'}`,
+                callback_failed: 'QuickBooks connection failed unexpectedly. Check the server logs for details.',
+                storage_failed: 'Connected to QuickBooks but failed to save tokens. Please try again.',
+                tenant_creation_failed: 'Failed to create your account tenant. Please contact support.',
+                no_tenant: 'No tenant found for your account. Please contact support.',
+            }
+            
+            const message = errorMessages[error] || `QuickBooks error: ${error}${detail ? ` - ${decodeURIComponent(detail)}` : ''}`
+            toast.error(message, { duration: 8000, icon: '\u274c' })
+            
+            // Clean URL params
+            router.replace('/settings?tab=integrations', { scroll: false })
+        }
+        
+        if (success === 'quickbooks_connected') {
+            toast.success('Successfully connected to QuickBooks!', { duration: 5000, icon: '\u2705' })
+            router.replace('/settings?tab=integrations', { scroll: false })
+            fetchIntegrationStatus()
+        }
+    }, [mounted, searchParams])
 
     useEffect(() => {
         if (mounted) {
@@ -129,7 +173,17 @@ export default function SettingsPage() {
     const handleTestConnection = async () => {
         setTestingConnection(true)
         try {
-            const response = await fetch('/api/qbo/pull-checks?test=true', { method: 'POST' })
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                toast.error('Session expired. Please refresh the page.')
+                setTestingConnection(false)
+                return
+            }
+            const response = await fetch('/api/qbo/pull-checks?test=true', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${session.access_token}` },
+            })
             const data = await response.json()
             if (response.ok) {
                 toast.success(`Connection successful! Company: ${data.companyName || 'Unknown'}, Entries: ${data.count || 0}`, {
@@ -154,9 +208,19 @@ export default function SettingsPage() {
         setPullingData(true)
         setPullResult(null)
         try {
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                toast.error('Session expired. Please refresh the page.')
+                setPullingData(false)
+                return
+            }
             const response = await fetch('/api/qbo/pull-checks', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
                 body: JSON.stringify({ ...filters, store: true })
             })
             const data = await response.json()
@@ -239,7 +303,12 @@ export default function SettingsPage() {
 
     const handleQBODisconnect = async () => {
         try {
-            const response = await fetch('/api/qbo/disconnect', { method: 'POST' })
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            const response = await fetch('/api/qbo/disconnect', { 
+                method: 'POST',
+                headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {},
+            })
             if (response.ok) {
                 setQboConnected(false)
                 toast.success('Disconnected from QuickBooks. Credentials preserved.', {
@@ -526,6 +595,49 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Connection Diagnostics */}
+                        {qbConfigured && (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                                <p className="font-medium text-gray-900 text-sm mb-3">Connection Diagnostics</p>
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="flex items-center gap-2">
+                                        {credentialsExist ? <CheckCircle size={14} className="text-green-600" /> : <XCircle size={14} className="text-red-500" />}
+                                        <span className={credentialsExist ? 'text-green-800' : 'text-red-700'}>
+                                            {credentialsExist ? 'Credentials saved in DB' : 'No credentials in DB (using env vars)'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {qboConnected ? <CheckCircle size={14} className="text-green-600" /> : <XCircle size={14} className="text-red-500" />}
+                                        <span className={qboConnected ? 'text-green-800' : 'text-red-700'}>
+                                            {qboConnected ? 'OAuth tokens present' : 'No OAuth tokens'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {companyId ? <CheckCircle size={14} className="text-green-600" /> : <XCircle size={14} className="text-gray-400" />}
+                                        <span className={companyId ? 'text-green-800' : 'text-gray-500'}>
+                                            {companyId ? `Realm ID: ${companyId}` : 'No company selected'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {companyName ? <CheckCircle size={14} className="text-green-600" /> : <XCircle size={14} className="text-gray-400" />}
+                                        <span className={companyName ? 'text-green-800' : 'text-gray-500'}>
+                                            {companyName ? `Company: ${companyName}` : 'Company name not fetched'}
+                                        </span>
+                                    </div>
+                                </div>
+                                {qboConnected && (
+                                    <button
+                                        onClick={handleTestConnection}
+                                        disabled={testingConnection}
+                                        className="mt-3 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center gap-1.5 disabled:opacity-50"
+                                    >
+                                        {testingConnection ? <Loader2 size={12} className="animate-spin" /> : <Plug size={12} />}
+                                        Diagnose Connection
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                             <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
@@ -826,5 +938,13 @@ export default function SettingsPage() {
             )}
         </div>
         </>
+    )
+}
+
+export default function SettingsPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading settings...</div>}>
+            <SettingsPageContent />
+        </Suspense>
     )
 }

@@ -43,6 +43,9 @@ export interface ComparisonRow {
   qbData?: QuickBooksEntry;
   confidence?: number;
   discrepancies?: string[];
+  issues?: string[];
+  hasIssue?: boolean;
+  isDuplicate?: boolean;
 }
 
 export type SortField = 'checkNumber' | 'date' | 'amount' | 'payee' | 'matchStatus';
@@ -110,28 +113,20 @@ export function calculateMatchConfidence(ext: CheckExtraction, qb: QuickBooksEnt
 }
 
 export function intelligentMatch(extractions: CheckExtraction[], qbEntries: QuickBooksEntry[]): ComparisonRow[] {
-  console.log('🔄 Starting intelligent match...');
-  console.log('📄 Extractions:', extractions.length);
-  console.log('💼 QB Entries:', qbEntries.length);
-  
   const rows: ComparisonRow[] = [];
   const matchedQbIds = new Set<string>();
-  const matchedExtIds = new Set<string>();
-  const seenExtIds = new Set<string>(); // Deduplicate extractions
+  // Use composite key (job_id + check_id) for dedup, not just check_id
+  const matchedExtCompositeIds = new Set<string>();
+  const seenExtCompositeIds = new Set<string>();
 
   // Phase 1: Match extractions with QB entries by check number
   extractions.forEach(ext => {
-    // Skip duplicates
-    const uniqueId = `${ext.job_id}-${ext.check_id}`;
-    if (seenExtIds.has(uniqueId)) {
-      console.log('⚠️ Skipping duplicate extraction:', uniqueId);
-      return;
-    }
-    seenExtIds.add(uniqueId);
+    const compositeId = `${ext.job_id}-${ext.check_id}`;
+    if (seenExtCompositeIds.has(compositeId)) return;
+    seenExtCompositeIds.add(compositeId);
     
     const extCheckNum = extVal(ext.extraction, 'checkNumber');
     
-    // Only try to match if we have a check number
     if (extCheckNum) {
       const qbMatch = qbEntries.find(qb => qb.checkNumber === extCheckNum && !matchedQbIds.has(qb.id));
       if (qbMatch) {
@@ -141,21 +136,21 @@ export function intelligentMatch(extractions: CheckExtraction[], qbEntries: Quic
         const extAmount = parseAmount(extVal(ext.extraction, 'amount'));
         const qbAmount = parseAmount(qbMatch.amount);
         if (Math.abs(extAmount - qbAmount) > 0.01) {
-          discrepancies.push(`Amount mismatch: $${extAmount.toFixed(2)} vs $${qbAmount.toFixed(2)}`);
+          discrepancies.push(`Amount: $${extAmount.toFixed(2)} vs $${qbAmount.toFixed(2)}`);
         }
         
         if (extVal(ext.extraction, 'checkDate') !== qbMatch.date) {
-          discrepancies.push(`Date mismatch: ${extVal(ext.extraction, 'checkDate')} vs ${qbMatch.date}`);
+          discrepancies.push(`Date: ${extVal(ext.extraction, 'checkDate')} vs ${qbMatch.date}`);
         }
         
         const extPayee = normalizeString(extVal(ext.extraction, 'payee'));
         const qbPayee = normalizeString(qbMatch.payee);
         if (extPayee && qbPayee && !extPayee.includes(qbPayee.substring(0, 5)) && !qbPayee.includes(extPayee.substring(0, 5))) {
-          discrepancies.push(`Payee mismatch: ${extVal(ext.extraction, 'payee')} vs ${qbMatch.payee}`);
+          discrepancies.push(`Payee: ${extVal(ext.extraction, 'payee')} vs ${qbMatch.payee}`);
         }
         
         rows.push({
-          id: `matched-${ext.job_id}-${ext.check_id}`,
+          id: `matched-${compositeId}`,
           checkNumber: extCheckNum,
           date: extVal(ext.extraction, 'checkDate') || qbMatch.date,
           amount: extVal(ext.extraction, 'amount') || qbMatch.amount,
@@ -171,24 +166,28 @@ export function intelligentMatch(extractions: CheckExtraction[], qbEntries: Quic
         });
         
         matchedQbIds.add(qbMatch.id);
-        matchedExtIds.add(ext.check_id);
+        matchedExtCompositeIds.add(compositeId);
         return;
       }
     }
   });
 
-  // Phase 2: Add unmatched extractions (INCLUDING those without check numbers)
+  // Phase 2: Add unmatched extractions — use composite key so checks from different docs aren't skipped
   extractions.forEach(ext => {
-    const uniqueId = `${ext.job_id}-${ext.check_id}`;
-    if (!seenExtIds.has(uniqueId)) {
-      seenExtIds.add(uniqueId);
+    const compositeId = `${ext.job_id}-${ext.check_id}`;
+    if (seenExtCompositeIds.has(compositeId) && matchedExtCompositeIds.has(compositeId)) return;
+    // Mark as seen if not yet
+    if (!seenExtCompositeIds.has(compositeId)) {
+      seenExtCompositeIds.add(compositeId);
+    } else if (matchedExtCompositeIds.has(compositeId)) {
+      return; // Already matched
     }
-    
-    if (matchedExtIds.has(ext.check_id)) return;
+    // Check if this compositeId was already added as unmatched
+    if (rows.some(r => r.id === `ext-${compositeId}`)) return;
     
     rows.push({
-      id: `ext-${ext.job_id}-${ext.check_id}`,
-      checkNumber: extVal(ext.extraction, 'checkNumber') || ext.check_id, // Use check_id if no number
+      id: `ext-${compositeId}`,
+      checkNumber: extVal(ext.extraction, 'checkNumber') || ext.check_id,
       date: extVal(ext.extraction, 'checkDate'),
       amount: extVal(ext.extraction, 'amount'),
       payee: extVal(ext.extraction, 'payee'),
@@ -200,6 +199,7 @@ export function intelligentMatch(extractions: CheckExtraction[], qbEntries: Quic
     });
   });
 
+  // Phase 3: Unmatched QB entries
   qbEntries.forEach(qb => {
     if (matchedQbIds.has(qb.id)) return;
     
@@ -217,25 +217,62 @@ export function intelligentMatch(extractions: CheckExtraction[], qbEntries: Quic
     });
   });
 
-  console.log('✅ Match complete - Total rows:', rows.length);
-  console.log('   - Matched:', rows.filter(r => r.matchStatus === 'matched').length);
-  console.log('   - Mismatched:', rows.filter(r => r.matchStatus === 'mismatch').length);
-  console.log('   - Missing in QB:', rows.filter(r => r.matchStatus === 'missing-in-qb').length);
-  console.log('   - Missing in Extraction:', rows.filter(r => r.matchStatus === 'missing-in-extraction').length);
-  
-  // Log PDF name distribution
-  const pdfCounts: Record<string, number> = {};
-  rows.forEach(row => {
-    if (row.extractionData?.pdf_name) {
-      pdfCounts[row.extractionData.pdf_name] = (pdfCounts[row.extractionData.pdf_name] || 0) + 1;
-    }
-  });
-  console.log('📄 Rows per PDF:');
-  Object.entries(pdfCounts).forEach(([pdf, count]) => {
-    console.log(`   - ${pdf}: ${count} rows`);
-  });
+  // Phase 4: Detect duplicates and assign issues to every row
+  detectIssues(rows);
 
   return rows;
+}
+
+/**
+ * Post-process rows to detect duplicates, missing data, and other issues.
+ * Mutates the rows in-place for performance.
+ */
+export function detectIssues(rows: ComparisonRow[]): void {
+  // Build check number frequency map (only non-empty check numbers)
+  const checkNumCounts: Record<string, number> = {};
+  rows.forEach(row => {
+    const num = row.checkNumber?.trim();
+    if (num) {
+      checkNumCounts[num] = (checkNumCounts[num] || 0) + 1;
+    }
+  });
+
+  rows.forEach(row => {
+    const issues: string[] = [];
+    const num = row.checkNumber?.trim();
+
+    // Duplicate check number
+    if (num && checkNumCounts[num] > 1) {
+      issues.push(`Duplicate check #${num} (${checkNumCounts[num]} occurrences)`);
+      row.isDuplicate = true;
+    }
+
+    // Discrepancies from matching
+    if (row.discrepancies && row.discrepancies.length > 0) {
+      issues.push(...row.discrepancies);
+    }
+
+    // Missing in QB
+    if (row.matchStatus === 'missing-in-qb') {
+      issues.push('Not found in QuickBooks');
+    }
+
+    // Missing in extraction
+    if (row.matchStatus === 'missing-in-extraction') {
+      issues.push('Not found in check extractions');
+    }
+
+    // Missing critical data
+    if (!num) {
+      issues.push('Missing check number');
+    }
+    if (!row.amount || parseAmount(row.amount) === 0) {
+      issues.push('Missing or zero amount');
+    }
+
+    row.issues = issues.length > 0 ? issues : undefined;
+    row.hasIssue = issues.length > 0;
+  });
 }
 
 export function filterByDateRange(

@@ -72,6 +72,10 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   const shadeB = { section: '#2a5498', column: '#3a70b8', hover: '#4880c5' };
 
   const getMatchStatusColor = (row: ComparisonRow) => {
+    // Red highlight for rows with issues (when they have actual problems)
+    if (row.hasIssue && (row.isDuplicate || row.matchStatus === 'mismatch')) {
+      return 'bg-red-50 border-l-4 border-red-500';
+    }
     if (row.matchStatus === 'matched') return 'bg-green-50 border-l-4 border-green-500';
     if (row.matchStatus === 'mismatch') return 'bg-amber-50 border-l-4 border-amber-500';
     if (row.matchStatus === 'missing-in-qb') return 'bg-blue-50';
@@ -117,7 +121,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
               <th 
                 className="px-1 py-0.5 text-center font-semibold text-[9px] uppercase tracking-wider"
                 style={{ backgroundColor: shadeA.section, borderRight: '2px solid #0d1f3c' }}
-                colSpan={2}
+                colSpan={3}
               >
                 Comparison
               </th>
@@ -230,16 +234,22 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
               </th>
               <th
                 className="px-1 py-0.5 text-center text-[9px] font-medium uppercase"
-                style={{ backgroundColor: shadeA.column, borderRight: '2px solid #0d1f3c' }}
+                style={{ backgroundColor: shadeA.column, borderRight: '1px solid rgba(255,255,255,0.15)' }}
               >
                 Conf %
+              </th>
+              <th
+                className="px-1 py-0.5 text-left text-[9px] font-medium uppercase"
+                style={{ backgroundColor: '#8b2020', borderRight: '2px solid #0d1f3c' }}
+              >
+                Issue
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-2 py-8 text-center text-gray-400 text-xs">
+                <td colSpan={15} className="px-2 py-8 text-center text-gray-400 text-xs">
                   No matching records found
                 </td>
               </tr>
@@ -308,12 +318,30 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                   <td className={`px-1 py-0.5 text-center text-[9px] font-semibold border-r border-gray-200 ${row.matchStatus === 'matched' ? 'text-emerald-700' : row.matchStatus === 'mismatch' ? 'text-amber-700' : row.matchStatus === 'missing-in-qb' ? 'text-blue-700' : 'text-red-700'}`}>
                     {getMatchStatusText(row)}
                   </td>
-                  <td className="px-1 py-0.5 text-center font-semibold border-r-2 border-gray-300">
+                  <td className="px-1 py-0.5 text-center font-semibold border-r border-gray-200">
                     {row.confidence !== undefined ? (
                       <span className={row.confidence >= 80 ? 'text-emerald-600' : row.confidence >= 60 ? 'text-amber-600' : 'text-red-600'}>
                         {row.confidence}%
                       </span>
                     ) : '—'}
+                  </td>
+
+                  {/* Issue Column */}
+                  <td className={`px-1 py-0.5 text-left border-r-2 border-gray-300 max-w-[180px] ${row.hasIssue ? 'bg-red-50' : ''}`}>
+                    {row.issues && row.issues.length > 0 ? (
+                      <div className="flex flex-col gap-0.5">
+                        {row.issues.slice(0, 2).map((issue, i) => (
+                          <span key={i} className="text-[9px] text-red-700 leading-tight truncate" title={issue}>
+                            {row.isDuplicate && i === 0 ? '⚠️ ' : '• '}{issue}
+                          </span>
+                        ))}
+                        {row.issues.length > 2 && (
+                          <span className="text-[8px] text-red-500">+{row.issues.length - 2} more</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[9px] text-green-600">✓</span>
+                    )}
                   </td>
 
                   {/* Actions */}
@@ -355,7 +383,8 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                   Δ {formatCurrency(Math.abs(totals.difference))}
                 </span>
               </td>
-              <td className="px-1 py-0.5 text-center border-r-2 border-gray-400">—</td>
+              <td className="px-1 py-0.5 text-center border-r border-gray-300">—</td>
+              <td className="px-1 py-0.5 border-r-2 border-gray-400"></td>
               <td className="px-1 py-0.5"></td>
             </tr>
           </tfoot>

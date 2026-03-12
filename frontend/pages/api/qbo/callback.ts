@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClientFromCookies } from '@/lib/supabase/api';
+import { createClientFromCookies, createServiceClient } from '@/lib/supabase/api';
 
 /**
  * QuickBooks OAuth Callback Endpoint
@@ -36,19 +36,53 @@ export default async function handler(
     // Log for debugging
     console.log('OAuth callback received:', { code: code?.toString().substring(0, 20) + '...', realmId, hasState: !!state });
 
-    // Get QuickBooks credentials from database using cookies (OAuth callback doesn't have Authorization header)
-    const supabase = createClientFromCookies(req);
+    // Use SERVICE CLIENT to read QB credentials (bypasses RLS — credentials aren't user-scoped)
+    // This avoids the fragile cookie-based auth that fails with chunked Supabase cookies
+    let serviceClient;
+    let integration = null;
+    try {
+      serviceClient = createServiceClient();
+      const { data, error: dbError } = await serviceClient
+        .from('integrations')
+        .select('qb_client_id, qb_client_secret, qb_redirect_uri, tenant_id')
+        .eq('provider', 'quickbooks')
+        .limit(1)
+        .single();
+      
+      if (dbError) {
+        console.warn('⚠️ Service client DB read failed:', dbError.message);
+      } else {
+        integration = data;
+      }
+    } catch (svcErr: any) {
+      console.warn('⚠️ Service client unavailable, falling back to cookie auth:', svcErr.message);
+    }
 
-    const { data: integration } = await supabase
-      .from('integrations')
-      .select('qb_client_id, qb_client_secret, qb_redirect_uri')
-      .eq('provider', 'quickbooks')
-      .single();
+    // Fallback: try cookie-based client if service client didn't work
+    if (!integration) {
+      try {
+        const cookieClient = createClientFromCookies(req);
+        const { data } = await cookieClient
+          .from('integrations')
+          .select('qb_client_id, qb_client_secret, qb_redirect_uri')
+          .eq('provider', 'quickbooks')
+          .single();
+        integration = data;
+      } catch (cookieErr: any) {
+        console.warn('⚠️ Cookie client also failed:', cookieErr.message);
+      }
+    }
 
     // Fallback to env vars
     const clientId = integration?.qb_client_id || process.env.QUICKBOOKS_CLIENT_ID;
     const clientSecret = integration?.qb_client_secret || process.env.QUICKBOOKS_CLIENT_SECRET;
     const redirectUri = integration?.qb_redirect_uri || process.env.QUICKBOOKS_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/qbo/callback`;
+    
+    console.log('🔑 QB Callback credentials source:', {
+      fromDB: !!integration?.qb_client_id,
+      fromEnv: !integration?.qb_client_id && !!clientId,
+      redirectUri,
+    });
 
     if (!clientId || !clientSecret) {
       return res.redirect('/settings?tab=integrations&error=not_configured');
@@ -88,16 +122,29 @@ export default async function handler(
 
     const tokens = await tokenResponse.json();
 
-    // Get user's tenant_id
-    const { data: { user } } = await supabase.auth.getUser();
+    // --- Identify the user and their tenant_id ---
+    // Try cookie-based client first for user identity
+    let user = null;
+    let userClient = null;
+    try {
+      userClient = createClientFromCookies(req);
+      const { data: { user: cookieUser } } = await userClient.auth.getUser();
+      user = cookieUser;
+    } catch (cookieErr: any) {
+      console.warn('⚠️ QB Callback: Cookie auth failed for user identity:', cookieErr.message);
+    }
+
     if (!user) {
-      console.error('❌ QB Callback: No user found in session');
-      return res.redirect('/settings?error=unauthorized');
+      console.error('❌ QB Callback: No user found in session (cookies failed)');
+      return res.redirect('/settings?error=unauthorized&detail=no_session_cookie');
     }
 
     console.log('✅ QB Callback: User authenticated:', user.email);
 
-    let { data: profile } = await supabase
+    // Use service client for all DB operations (bypasses RLS issues)
+    const dbClient = serviceClient || userClient!;
+
+    let { data: profile } = await dbClient
       .from('user_profiles')
       .select('tenant_id')
       .eq('id', user.id)
@@ -107,11 +154,9 @@ export default async function handler(
     if (!profile?.tenant_id) {
       console.warn('⚠️ User has no tenant_id, creating new tenant:', user.id);
       
-      // Generate new tenant_id
       const newTenantId = crypto.randomUUID();
       
-      // Update user profile with new tenant_id
-      const { error: updateError } = await supabase
+      const { error: updateError } = await dbClient
         .from('user_profiles')
         .update({ tenant_id: newTenantId })
         .eq('id', user.id);
@@ -121,8 +166,7 @@ export default async function handler(
         return res.redirect('/settings?error=tenant_creation_failed');
       }
       
-      // Fetch updated profile
-      const { data: updatedProfile } = await supabase
+      const { data: updatedProfile } = await dbClient
         .from('user_profiles')
         .select('tenant_id')
         .eq('id', user.id)
@@ -140,7 +184,7 @@ export default async function handler(
     console.log('✅ Using tenant_id:', profile.tenant_id);
 
     // Store tokens in Supabase with tenant_id
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('integrations')
       .upsert({
         provider: 'quickbooks',
