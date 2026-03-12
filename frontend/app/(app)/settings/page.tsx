@@ -11,6 +11,7 @@ export default function SettingsPage() {
     const [qboConnected, setQboConnected] = useState(false)
     const [qbConfigured, setQbConfigured] = useState(false)
     const [companyId, setCompanyId] = useState<string | null>(null)
+    const [companyName, setCompanyName] = useState<string | null>(null)
     const [geminiApiKey, setGeminiApiKey] = useState('')
     const [saving, setSaving] = useState(false)
     const [showQBCredentialsDialog, setShowQBCredentialsDialog] = useState(false)
@@ -82,15 +83,46 @@ export default function SettingsPage() {
                 setQbConfigured(data.qbConfigured || false)
                 setCredentialsExist(data.credentialsExist || false)
                 setCompanyId(data.companyId || data.realmId || null)
+                setCompanyName(data.companyName || null)
                 setGeminiApiKey(data.geminiApiKey ? '••••••••••••' : '')
                 setQbClientId(data.qbClientId || '')
                 setQbClientSecret(data.qbClientSecret || '')
                 setQbRedirectUri(data.qbRedirectUri || '')
+                
+                // Fetch QB company info if connected but no company name stored
+                if (data.qboConnected && !data.companyName) {
+                    fetchQBCompanyInfo()
+                }
             }
         } catch (error) {
             console.error('Failed to fetch integration status:', error)
         } finally {
             setLoadingSettings(false)
+        }
+    }
+
+    const fetchQBCompanyInfo = async () => {
+        try {
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (!session) return
+
+            const response = await fetch('/api/qbo/company-info', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+            })
+            
+            if (response.ok) {
+                const data = await response.json()
+                setCompanyName(data.companyName || null)
+                console.log('✅ QB Company Info:', data.companyName)
+            } else {
+                console.warn('⚠️ Could not fetch QB company info')
+            }
+        } catch (error) {
+            console.error('Failed to fetch QB company info:', error)
         }
     }
 
@@ -415,9 +447,21 @@ export default function SettingsPage() {
                                             </div>
                                         )}
                                         {qboConnected ? (
-                                            <div className="flex items-center gap-2 text-green-600 text-sm">
-                                                <CheckCircle size={14} />
-                                                <span>Connected to QuickBooks{companyId ? ` (${companyId})` : ''}</span>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 text-green-600 text-sm">
+                                                    <CheckCircle size={14} />
+                                                    <span>Connected to QuickBooks</span>
+                                                </div>
+                                                {companyName && (
+                                                    <div className="text-sm font-semibold text-gray-900 ml-5">
+                                                        Company: {companyName}
+                                                    </div>
+                                                )}
+                                                {companyId && (
+                                                    <div className="text-xs text-gray-500 ml-5">
+                                                        Realm ID: {companyId}
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
                                             <div className="flex items-center gap-2 text-gray-500 text-sm">

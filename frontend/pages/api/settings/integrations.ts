@@ -34,6 +34,7 @@ export default async function handler(
         geminiApiKey: integration?.gemini_api_key || '',
         companyId: integration?.company_id || null,
         realmId: integration?.realm_id || null,
+        companyName: integration?.company_name || null,
       });
     }
 
