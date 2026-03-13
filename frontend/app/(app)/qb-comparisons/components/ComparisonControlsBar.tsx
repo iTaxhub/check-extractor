@@ -14,6 +14,9 @@ interface ComparisonControlsBarProps {
   selectedPdfName: string;
   setSelectedPdfName: (name: string) => void;
   pdfNames: string[];
+  selectedAccount: string;
+  setSelectedAccount: (account: string) => void;
+  accountNames: string[];
   filterStatus: string;
   setFilterStatus: (status: string) => void;
   showExportDropdown: boolean;
@@ -42,6 +45,9 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
   selectedPdfName,
   setSelectedPdfName,
   pdfNames,
+  selectedAccount,
+  setSelectedAccount,
+  accountNames,
   filterStatus,
   setFilterStatus,
   showExportDropdown,
@@ -59,7 +65,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
   return (
     <div className="px-3 py-2 bg-gray-100 border-b border-gray-300">
       <div className="grid grid-cols-12 gap-2 items-center">
-        <div className="col-span-3 relative">
+        <div className="col-span-2 relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
           <input
             type="text"
@@ -78,7 +84,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
           )}
         </div>
 
-        <div className="col-span-2">
+        <div className="col-span-1">
           <input
             type="date"
             value={startDate}
@@ -88,7 +94,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
           />
         </div>
 
-        <div className="col-span-2">
+        <div className="col-span-1">
           <input
             type="date"
             value={endDate}
@@ -96,6 +102,37 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="End Date"
           />
+        </div>
+
+        <div className="col-span-2">
+          <select
+            value={selectedPdfName}
+            onChange={(e) => setSelectedPdfName(e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="all">All Documents</option>
+            {pdfNames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="col-span-2">
+          <select
+            value={selectedAccount}
+            onChange={(e) => setSelectedAccount(e.target.value)}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            title="Filter by QuickBooks Account"
+          >
+            <option value="all">All QB Accounts</option>
+            {accountNames.map((account) => (
+              <option key={account} value={account}>
+                {account}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="col-span-1">
@@ -114,21 +151,6 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
         </div>
 
         <div className="col-span-2">
-          <select
-            value={selectedPdfName}
-            onChange={(e) => setSelectedPdfName(e.target.value)}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="all">All Documents</option>
-            {pdfNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="col-span-1">
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}

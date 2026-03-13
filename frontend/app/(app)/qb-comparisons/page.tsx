@@ -46,6 +46,8 @@ export default function QBComparisonsPage() {
     setQbDataSource,
     selectedPdfName,
     setSelectedPdfName,
+    selectedAccount,
+    setSelectedAccount,
     startDate,
     setStartDate,
     endDate,
@@ -194,6 +196,17 @@ export default function QBComparisonsPage() {
     return Array.from(names).sort();
   }, [extractions]);
 
+  // Extract unique account names from QB entries
+  const accountNames = useMemo(() => {
+    const accounts = new Set<string>();
+    qbEntries.forEach(entry => {
+      if (entry.account) {
+        accounts.add(entry.account);
+      }
+    });
+    return Array.from(accounts).sort();
+  }, [qbEntries]);
+
   // Load vouched status on mount
   useEffect(() => {
     const loadVouchedStatus = async () => {
@@ -273,6 +286,18 @@ export default function QBComparisonsPage() {
       });
     }
 
+    // Filter by QB Account
+    if (selectedAccount !== 'all') {
+      rows = rows.filter(row => {
+        // Filter QB entries by account name (partial match)
+        if (row.qbData?.account) {
+          return row.qbData.account.toLowerCase().includes(selectedAccount.toLowerCase());
+        }
+        // Keep extraction-only rows if no account filter
+        return row.source === 'extraction';
+      });
+    }
+
     // "Show Issues Only" toggle: only keep rows with issues that are NOT vouched
     if (showIssuesOnly) {
       rows = rows.filter(row => row.hasIssue && !row.vouched);
@@ -296,7 +321,7 @@ export default function QBComparisonsPage() {
     });
 
     return rows;
-  }, [matchedRows, searchQuery, filterStatus, selectedPdfName, startDate, endDate, selectedQBSource, qbDataSource, sortField, sortDirection, showIssuesOnly]);
+  }, [matchedRows, searchQuery, filterStatus, selectedPdfName, selectedAccount, startDate, endDate, selectedQBSource, qbDataSource, sortField, sortDirection, showIssuesOnly]);
 
   const statistics = useMemo(() => {
     const matched = comparisonData.filter(r => r.matchStatus === 'matched').length;
@@ -315,7 +340,7 @@ export default function QBComparisonsPage() {
 
   const totalPages = Math.ceil(comparisonData.length / itemsPerPage);
 
-  const hasActiveFilters = searchQuery !== '' || filterStatus !== 'all' || selectedQBSource !== 'all' || selectedPdfName !== 'all' || startDate !== '' || endDate !== '' || showIssuesOnly;
+  const hasActiveFilters = searchQuery !== '' || filterStatus !== 'all' || selectedQBSource !== 'all' || selectedPdfName !== 'all' || selectedAccount !== 'all' || startDate !== '' || endDate !== '' || showIssuesOnly;
 
   // Count issues for the toggle badge
   const issueCount = useMemo(() => {
@@ -627,6 +652,9 @@ export default function QBComparisonsPage() {
         selectedPdfName={selectedPdfName}
         setSelectedPdfName={setSelectedPdfName}
         pdfNames={pdfNames}
+        selectedAccount={selectedAccount}
+        setSelectedAccount={setSelectedAccount}
+        accountNames={accountNames}
         filterStatus={filterStatus}
         setFilterStatus={setFilterStatus}
         showExportDropdown={showExportDropdown}

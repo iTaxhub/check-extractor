@@ -309,11 +309,15 @@ function SettingsPageContent() {
             })
             if (response.ok) {
                 setQboConnected(false)
-                toast.success('Disconnected from QuickBooks. Credentials preserved.', {
+                setCompanyName(null)
+                setCompanyId(null)
+                toast.success('Disconnected from QuickBooks. You can now reconnect to a different company.', {
                     duration: 3000,
                     icon: '✅'
                 })
                 await fetchIntegrationStatus()
+                // Reload page to ensure clean state
+                setTimeout(() => window.location.reload(), 1500)
             }
         } catch (error) {
             console.error('Failed to disconnect QBO:', error)

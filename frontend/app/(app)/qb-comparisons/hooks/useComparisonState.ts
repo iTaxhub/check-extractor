@@ -12,6 +12,10 @@ export interface VisibleColumns {
   matchStatus: boolean;
   confidence: boolean;
   qbSource: boolean;
+  qbType: boolean;
+  currency: boolean;
+  pdfName: boolean;
+  issues: boolean;
   actions: boolean;
 }
 
@@ -23,6 +27,7 @@ export function useComparisonState() {
   const [selectedQBSource, setSelectedQBSource] = useState<string>('all');
   const [qbDataSource, setQbDataSource] = useState<'online' | 'uploaded' | 'both'>('both');
   const [selectedPdfName, setSelectedPdfName] = useState<string>('all');
+  const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,6 +43,10 @@ export function useComparisonState() {
     matchStatus: true,
     confidence: false,
     qbSource: false,
+    qbType: false,
+    currency: false,
+    pdfName: false,
+    issues: true,
     actions: true,
   });
   const [showColumnSettings, setShowColumnSettings] = useState(false);
@@ -59,6 +68,7 @@ export function useComparisonState() {
     setSelectedQBSource('all');
     setQbDataSource('both');
     setSelectedPdfName('all');
+    setSelectedAccount('all');
     setStartDate('');
     setEndDate('');
     setCurrentPage(1);
@@ -79,6 +89,8 @@ export function useComparisonState() {
     setQbDataSource,
     selectedPdfName,
     setSelectedPdfName,
+    selectedAccount,
+    setSelectedAccount,
     startDate,
     setStartDate,
     endDate,

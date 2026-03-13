@@ -52,7 +52,7 @@ export default async function handler(
         refresh_token: null,
         expires_at: null,
         realm_id: null,
-        company_id: null,
+        company_name: null,
         updated_at: new Date().toISOString(),
       })
       .eq('provider', 'quickbooks');

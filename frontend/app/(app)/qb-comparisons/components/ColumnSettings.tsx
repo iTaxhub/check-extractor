@@ -26,8 +26,12 @@ export const ColumnSettings: React.FC<ColumnSettingsProps> = ({
     { key: 'memo', label: 'Memo' },
     { key: 'source', label: 'Source' },
     { key: 'matchStatus', label: 'Match Status' },
+    { key: 'issues', label: 'Issues' },
     { key: 'confidence', label: 'Confidence' },
-    { key: 'qbSource', label: 'QB Source' },
+    { key: 'qbSource', label: 'QB Transaction Source' },
+    { key: 'qbType', label: 'QB Transaction Type' },
+    { key: 'currency', label: 'Currency' },
+    { key: 'pdfName', label: 'PDF Document Name' },
     { key: 'actions', label: 'Actions' },
   ];
 
