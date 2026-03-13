@@ -197,14 +197,84 @@ export default async function handler(
     // Extract filter parameters from query or body
     const params = req.method === 'POST' ? req.body : req.query;
     
-    // Date range filters
-    const startDate = params?.startDate as string | undefined;
-    const endDate = params?.endDate as string | undefined;
-    const dateFilter = startDate && endDate
-      ? ` AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`
-      : startDate
-        ? ` AND TxnDate >= '${startDate}'`
-        : '';
+    // Date range filters - ensure YYYY-MM-DD format for QuickBooks
+    const rawStartDate = params?.startDate as string | undefined;
+    const rawEndDate = params?.endDate as string | undefined;
+    
+    /**
+     * Robust date parser: handles all common formats → YYYY-MM-DD
+     * Supported: YYYY-MM-DD, MM/DD/YYYY, DD-MM-YYYY, DD/MM/YYYY,
+     *            M/D/YYYY, ISO 8601, epoch ms, natural Date strings
+     */
+    function toQBDate(raw: string | undefined): string | undefined {
+      if (!raw || raw.trim() === '') return undefined;
+      const s = raw.trim();
+
+      // Already YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+      // MM/DD/YYYY or M/D/YYYY
+      const slashMDY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (slashMDY) {
+        const [, mm, dd, yyyy] = slashMDY;
+        return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+      }
+
+      // DD-MM-YYYY or DD/MM/YYYY (when day > 12, we know it's DD first)
+      const dashDMY = s.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})$/);
+      if (dashDMY) {
+        const [, a, b, yyyy] = dashDMY;
+        const aNum = parseInt(a, 10);
+        const bNum = parseInt(b, 10);
+        // If first part > 12, it must be day
+        if (aNum > 12) return `${yyyy}-${b}-${a}`;
+        // If second part > 12, first is month
+        if (bNum > 12) return `${yyyy}-${a}-${b}`;
+        // Ambiguous — assume MM-DD-YYYY (US convention)
+        return `${yyyy}-${a}-${b}`;
+      }
+
+      // ISO 8601 with time (strip time portion, use date part directly)
+      const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})[T ]/);
+      if (isoMatch) return isoMatch[1];
+
+      // Epoch milliseconds
+      if (/^\d{10,13}$/.test(s)) {
+        const d = new Date(parseInt(s.length > 10 ? s : s + '000', 10));
+        if (!isNaN(d.getTime())) {
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+      }
+
+      // Fallback: let JS parse, but extract local date parts to avoid TZ shift
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) {
+        // Use UTC parts if the string looks like it has no time component
+        const hasTime = /[T :]/.test(s);
+        if (hasTime) {
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        // For date-only strings, JS parses as UTC midnight, so use getUTC*
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      }
+
+      console.warn(`⚠️ Could not parse date: "${s}", ignoring filter`);
+      return undefined;
+    }
+
+    const formattedStartDate = toQBDate(rawStartDate);
+    const formattedEndDate = toQBDate(rawEndDate);
+    
+    console.log('📅 Date filter input:', { rawStartDate, rawEndDate });
+    console.log('📅 Date filter parsed:', { formattedStartDate, formattedEndDate });
+
+    const dateFilter = formattedStartDate && formattedEndDate
+      ? ` AND TxnDate >= '${formattedStartDate}' AND TxnDate <= '${formattedEndDate}'`
+      : formattedStartDate
+        ? ` AND TxnDate >= '${formattedStartDate}'`
+        : formattedEndDate
+          ? ` AND TxnDate <= '${formattedEndDate}'`
+          : '';
     
     // Amount range filters
     const minAmount = params?.minAmount ? parseFloat(params.minAmount as string) : undefined;
@@ -225,26 +295,33 @@ export default async function handler(
     // ── 1. Purchase (PaymentType=Check) — Cheques written to vendors ──
     try {
       const purchaseQuery = `SELECT * FROM Purchase WHERE PaymentType = 'Check'${dateFilter} MAXRESULTS 1000`;
+      console.log('🔍 Purchase query:', purchaseQuery);
       const purchaseData = await qboQuery(accessToken, realmId, purchaseQuery, useSandbox);
       const purchases = purchaseData?.QueryResponse?.Purchase || [];
+      console.log(`✅ Purchases found: ${purchases.length}`);
       purchases.forEach((p: any) => allEntries.push(normalizePurchaseCheck(p)));
     } catch (e: any) {
+      console.error('❌ Purchase query error:', e.message);
       errors.push(`Purchase query failed: ${e.message}`);
     }
 
     // ── 2. BillPayment (PayType=Check) — Bills paid by cheque ──
     try {
       const bpQuery = `SELECT * FROM BillPayment WHERE PayType = 'Check'${dateFilter} MAXRESULTS 1000`;
+      console.log('🔍 BillPayment query:', bpQuery);
       const bpData = await qboQuery(accessToken, realmId, bpQuery, useSandbox);
       const billPayments = bpData?.QueryResponse?.BillPayment || [];
+      console.log(`✅ BillPayments found: ${billPayments.length}`);
       billPayments.forEach((bp: any) => allEntries.push(normalizeBillPaymentCheck(bp)));
     } catch (e: any) {
+      console.error('❌ BillPayment query error:', e.message);
       errors.push(`BillPayment query failed: ${e.message}`);
     }
 
     // ── 3. Payment — Cheques received from customers ──
     try {
       const paymentQuery = `SELECT * FROM Payment${dateFilter ? ' WHERE 1=1' + dateFilter : ''} MAXRESULTS 1000`;
+      console.log('🔍 Payment query:', paymentQuery);
       const paymentData = await qboQuery(accessToken, realmId, paymentQuery, useSandbox);
       const payments = paymentData?.QueryResponse?.Payment || [];
       // Filter for cheque payments (PaymentMethodRef with name containing 'check' or 'cheque')
@@ -252,10 +329,14 @@ export default async function handler(
         const methodName = (p.PaymentMethodRef?.name || '').toLowerCase();
         return methodName.includes('check') || methodName.includes('cheque');
       });
+      console.log(`✅ Payments found: ${payments.length}, cheque payments: ${chequePayments.length}`);
       chequePayments.forEach((p: any) => allEntries.push(normalizePaymentCheck(p)));
     } catch (e: any) {
+      console.error('❌ Payment query error:', e.message);
       errors.push(`Payment query failed: ${e.message}`);
     }
+
+    console.log(`📊 Total entries before filters: ${allEntries.length}`);
 
     // Apply client-side filters (for fields not supported in QBO queries)
     let filteredEntries = allEntries;
@@ -308,10 +389,16 @@ export default async function handler(
         if (!tenantId) {
           errors.push('Storage failed: User has no tenant_id');
         } else {
-          // Upsert entries into a qb_entries table with tenant_id
+          // Clear old QB entries for this tenant before storing new ones
+          await supabase
+            .from('qb_entries')
+            .delete()
+            .eq('tenant_id', tenantId);
+          
+          // Insert new entries into qb_entries table with tenant_id
           const { error: storeError } = await supabase
             .from('qb_entries')
-            .upsert(
+            .insert(
               filteredEntries.map(e => ({
                 id: e.id,
                 tenant_id: tenantId,
@@ -325,8 +412,7 @@ export default async function handler(
                 memo: e.memo,
                 raw_data: e.raw,
                 synced_at: new Date().toISOString(),
-              })),
-              { onConflict: 'id' }
+              }))
             );
 
           if (storeError) {
@@ -338,13 +424,15 @@ export default async function handler(
       }
     }
 
+    console.log(`📊 Total entries after filters: ${filteredEntries.length}`);
+
     return res.status(200).json({
       success: true,
       entries: filteredEntries,
       count: filteredEntries.length,
       total_before_filters: allEntries.length,
       filters_applied: {
-        date_range: startDate || endDate ? { startDate, endDate } : null,
+        date_range: formattedStartDate || formattedEndDate ? { startDate: formattedStartDate, endDate: formattedEndDate } : null,
         amount_range: minAmount || maxAmount ? { minAmount, maxAmount } : null,
         vendor: vendorFilter || null,
         account: accountFilter || null,

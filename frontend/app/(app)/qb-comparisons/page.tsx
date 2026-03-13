@@ -93,11 +93,11 @@ export default function QBComparisonsPage() {
           
           console.log('🔐 QB Status:', { configured, connected });
           
-          // Auto-sync if connected and no QB entries exist
+          // Auto-refresh from database if connected but no local QB entries
           if (connected && qbEntries.length === 0 && !autoSyncAttempted) {
-            console.log('🔄 Auto-syncing from QuickBooks...');
+            console.log('🔄 Refreshing QB data from database...');
             setAutoSyncAttempted(true);
-            handleAutoSync();
+            refreshData();
           }
         }
       } catch (error) {
@@ -289,12 +289,18 @@ export default function QBComparisonsPage() {
     // Filter by QB Account
     if (selectedAccount !== 'all') {
       rows = rows.filter(row => {
-        // Filter QB entries by account name (partial match)
+        // If row has QB data, check if account matches
         if (row.qbData?.account) {
-          return row.qbData.account.toLowerCase().includes(selectedAccount.toLowerCase());
+          return row.qbData.account === selectedAccount;
         }
-        // Keep extraction-only rows if no account filter
-        return row.source === 'extraction';
+        // Also check bankAccount field (set from qbData.account in matched rows)
+        if (row.bankAccount && row.source === 'matched') {
+          return row.bankAccount === selectedAccount;
+        }
+        // Keep extraction-only rows visible (they have no QB account info)
+        if (row.source === 'extraction') return true;
+        // Hide QB-only rows that don't match
+        return false;
       });
     }
 

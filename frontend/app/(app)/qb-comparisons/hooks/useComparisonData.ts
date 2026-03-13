@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CheckExtraction, QuickBooksEntry } from '../utils/comparisonUtils';
 import { createClient } from '@/lib/supabase/client';
 import { useJobsStore } from '@/lib/store/useJobsStore';
@@ -9,15 +9,8 @@ export function useComparisonData() {
   const [qbEntries, setQbEntries] = useState<QuickBooksEntry[]>([]);
   const [qbSources, setQbSources] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const hasFetched = useRef(false);
 
   const fetchData = useCallback(async (force = false) => {
-    // Skip if already fetched and not forced
-    if (hasFetched.current && !force) {
-      console.log('📦 Using cached comparison data');
-      return;
-    }
-
     try {
       setLoading(true);
       setError(null);
@@ -74,7 +67,6 @@ export function useComparisonData() {
         setQbEntries([]);
         setQbSources([]);
       }
-      hasFetched.current = true;
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch data');

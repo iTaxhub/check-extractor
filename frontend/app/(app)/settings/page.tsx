@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2 } from 'lucide-react'
 import QuickBooksFilters, { FilterParams } from '@/components/QuickBooksFilters'
@@ -34,9 +34,10 @@ function SettingsPageContent() {
         setMounted(true)
     }, [])
 
-    // Parse URL params for OAuth callback results
+    // Parse URL params for OAuth callback results (fire only once)
+    const handledOAuthRef = useRef(false)
     useEffect(() => {
-        if (!mounted || !searchParams) return
+        if (!mounted || !searchParams || handledOAuthRef.current) return
         
         const error = searchParams.get('error')
         const success = searchParams.get('success')
@@ -48,6 +49,7 @@ function SettingsPageContent() {
         }
         
         if (error) {
+            handledOAuthRef.current = true
             const errorMessages: Record<string, string> = {
                 token_exchange_failed: `QuickBooks rejected the connection. ${detail ? `Detail: ${decodeURIComponent(detail)}` : 'Check that your Redirect URI matches exactly what\'s in your QuickBooks app settings.'}`,
                 not_configured: 'QuickBooks credentials not found. Please configure your Client ID and Secret first.',
@@ -61,6 +63,7 @@ function SettingsPageContent() {
             }
             
             const message = errorMessages[error] || `QuickBooks error: ${error}${detail ? ` - ${decodeURIComponent(detail)}` : ''}`
+            toast.dismiss()
             toast.error(message, { duration: 8000, icon: '\u274c' })
             
             // Clean URL params
@@ -68,6 +71,8 @@ function SettingsPageContent() {
         }
         
         if (success === 'quickbooks_connected') {
+            handledOAuthRef.current = true
+            toast.dismiss()
             toast.success('Successfully connected to QuickBooks!', { duration: 5000, icon: '\u2705' })
             router.replace('/settings?tab=integrations', { scroll: false })
             fetchIntegrationStatus()
@@ -223,9 +228,21 @@ function SettingsPageContent() {
             })
             const data = await response.json()
             if (response.ok) {
+                const filterInfo = data.filters_applied || {};
+                const filterSummary = [];
+                if (filterInfo.date_range) {
+                    filterSummary.push(`Date: ${filterInfo.date_range.startDate || 'any'} to ${filterInfo.date_range.endDate || 'any'}`);
+                }
+                if (filterInfo.account) {
+                    filterSummary.push(`Account: ${filterInfo.account}`);
+                }
+                if (filterInfo.vendor) {
+                    filterSummary.push(`Vendor: ${filterInfo.vendor}`);
+                }
+                
                 setPullResult({
                     success: true,
-                    message: `Successfully fetched ${data.count} cheque entries${data.total_before_filters !== data.count ? ` (${data.total_before_filters} total, ${data.count} after filters)` : ''}`,
+                    message: `Successfully fetched ${data.count} cheque entries${data.total_before_filters !== data.count ? ` (${data.total_before_filters} total, ${data.count} after filters)` : ''}${filterSummary.length > 0 ? `\nFilters: ${filterSummary.join(', ')}` : ''}`,
                     data
                 })
             } else {

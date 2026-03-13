@@ -44,7 +44,34 @@ export default async function handler(
       }
     }
 
-    // ONLY clear OAuth tokens — keep credentials intact
+    // Clear stored QB entries for this tenant so stale data doesn't persist
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('tenant_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.tenant_id) {
+          const { error: deleteError } = await supabase
+            .from('qb_entries')
+            .delete()
+            .eq('tenant_id', profile.tenant_id);
+          
+          if (deleteError) {
+            console.warn('Failed to clear qb_entries (non-critical):', deleteError);
+          } else {
+            console.log('✅ Cleared qb_entries for tenant:', profile.tenant_id);
+          }
+        }
+      }
+    } catch (clearError) {
+      console.warn('Failed to clear qb_entries (non-critical):', clearError);
+    }
+
+    // Clear OAuth tokens — keep credentials intact
     const { error } = await supabase
       .from('integrations')
       .update({
@@ -62,7 +89,7 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to disconnect' });
     }
 
-    return res.status(200).json({ success: true, message: 'Disconnected. Credentials preserved.' });
+    return res.status(200).json({ success: true, message: 'Disconnected. QB data cleared. Credentials preserved.' });
   } catch (error) {
     console.error('QuickBooks disconnect error:', error);
     return res.status(500).json({ error: 'Failed to disconnect QuickBooks' });

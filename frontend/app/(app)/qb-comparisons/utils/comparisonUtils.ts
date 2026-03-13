@@ -83,12 +83,37 @@ export function formatCurrency(amount: string | number): string {
 export function formatDate(dateStr: string): string {
   if (!dateStr) return '';
   try {
+    const s = dateStr.trim();
+
+    // Parse YYYY-MM-DD directly to avoid timezone shift
+    const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (ymd) {
+      const [, y, m, d] = ymd;
+      // Use UTC constructor to avoid shift, then format with UTC
+      const date = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d)));
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC',
+      });
+    }
+
+    // MM/DD/YYYY
+    const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdy) {
+      const [, m, d, y] = mdy;
+      const date = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d)));
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC',
+      });
+    }
+
+    // Fallback
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    }
+    return dateStr;
   } catch {
     return dateStr;
   }
@@ -278,42 +303,66 @@ export function detectIssues(rows: ComparisonRow[]): void {
   });
 }
 
+/**
+ * Normalize any date string to YYYY-MM-DD for safe comparison.
+ * Avoids Date object timezone pitfalls entirely.
+ */
+function toYMD(raw: string): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // MM/DD/YYYY or M/D/YYYY
+  const slashMDY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMDY) {
+    const [, mm, dd, yyyy] = slashMDY;
+    return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  }
+
+  // DD-MM-YYYY or DD/MM/YYYY
+  const dashDMY = s.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})$/);
+  if (dashDMY) {
+    const [, a, b, yyyy] = dashDMY;
+    const aNum = parseInt(a, 10);
+    if (aNum > 12) return `${yyyy}-${b}-${a}`;
+    return `${yyyy}-${a}-${b}`;
+  }
+
+  // ISO with time
+  const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})[T ]/);
+  if (isoMatch) return isoMatch[1];
+
+  // Fallback: extract UTC date parts
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  }
+
+  return null;
+}
+
 export function filterByDateRange(
   rows: ComparisonRow[],
   startDate: string | null,
   endDate: string | null
 ): ComparisonRow[] {
   if (!startDate && !endDate) return rows;
-  
+
+  const startYMD = startDate ? toYMD(startDate) : null;
+  const endYMD = endDate ? toYMD(endDate) : null;
+
   return rows.filter(row => {
-    if (!row.date) return false;
-    
-    // Parse row date (handle both YYYY-MM-DD and MM/DD/YYYY formats)
-    let rowDate: Date;
-    if (row.date.includes('/')) {
-      // MM/DD/YYYY format
-      const [month, day, year] = row.date.split('/');
-      rowDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    } else {
-      // YYYY-MM-DD format
-      rowDate = new Date(row.date);
-    }
-    
-    // Set time to midnight for accurate date comparison
-    rowDate.setHours(0, 0, 0, 0);
-    
-    if (startDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      if (rowDate < start) return false;
-    }
-    
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      if (rowDate > end) return false;
-    }
-    
+    // Use QB date if available, fallback to row date
+    const raw = row.qbData?.date || row.date;
+    if (!raw) return true; // keep rows with no date (don't hide data)
+
+    const rowYMD = toYMD(raw);
+    if (!rowYMD) return true; // unparseable — keep it visible
+
+    if (startYMD && rowYMD < startYMD) return false;
+    if (endYMD && rowYMD > endYMD) return false;
     return true;
   });
 }
