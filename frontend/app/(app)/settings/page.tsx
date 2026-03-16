@@ -25,6 +25,8 @@ function SettingsPageContent() {
     const [pullResult, setPullResult] = useState<any>(null)
     const [diagnosing, setDiagnosing] = useState(false)
     const [diagnosisResult, setDiagnosisResult] = useState<any>(null)
+    const [exploring, setExploring] = useState(false)
+    const [exploreResult, setExploreResult] = useState<any>(null)
     const [loadingSettings, setLoadingSettings] = useState(true)
     const [mounted, setMounted] = useState(false)
     const [credentialsExist, setCredentialsExist] = useState(false)
@@ -365,6 +367,30 @@ function SettingsPageContent() {
             setDiagnosisResult({ conclusion: `Error: ${error.message}`, steps: [] })
         } finally {
             setDiagnosing(false)
+        }
+    }
+
+    const handleExplore = async () => {
+        setExploring(true)
+        setExploreResult(null)
+        try {
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                toast.error('Session expired. Please refresh the page.')
+                setExploring(false)
+                return
+            }
+            const response = await fetch('/api/qbo/explore', {
+                headers: { 'Authorization': `Bearer ${session.access_token}` },
+            })
+            const data = await response.json()
+            setExploreResult(data)
+            console.log('🔍 QB Data Explorer:', JSON.stringify(data, null, 2))
+        } catch (error: any) {
+            setExploreResult({ error: error.message, entities: [] })
+        } finally {
+            setExploring(false)
         }
     }
 
@@ -792,6 +818,23 @@ function SettingsPageContent() {
                                                                 <span>📊 {diagnosisResult.summary.totalSteps} total checks</span>
                                                             </div>
                                                         )}
+                                                        {diagnosisResult.entitiesWithData && diagnosisResult.entitiesWithData.length > 0 && (
+                                                            <div className="mt-3 text-xs bg-emerald-100 p-2 rounded border border-emerald-300">
+                                                                <p className="font-medium text-emerald-900 mb-1">📊 Data Found In QuickBooks:</p>
+                                                                <ul className="space-y-0.5 text-emerald-800">
+                                                                    {diagnosisResult.entitiesWithData.map((item: any, i: number) => (
+                                                                        <li key={i}>
+                                                                            <strong>{item.type}</strong>: {item.count.toLocaleString()} records — {item.description}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+                                                        {diagnosisResult.entitiesWithData && diagnosisResult.entitiesWithData.length === 0 && (
+                                                            <div className="mt-3 text-xs bg-red-100 p-2 rounded border border-red-300">
+                                                                <p className="font-medium text-red-900">⚠️ No data found in ANY QuickBooks entity type. This company appears to be empty or you're connected to the wrong company.</p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <button
                                                         onClick={() => {
@@ -839,6 +882,99 @@ function SettingsPageContent() {
                                                                     </summary>
                                                                     <pre className="mt-1 text-[10px] text-gray-600 bg-white p-1 rounded overflow-x-auto max-h-40">
                                                                         {JSON.stringify(step.sample, null, 2)}
+                                                                    </pre>
+                                                                </details>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Explore All QB Data */}
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <button
+                                            onClick={handleExplore}
+                                            disabled={exploring}
+                                            className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition flex items-center gap-2"
+                                        >
+                                            {exploring ? (
+                                                <><Loader2 size={14} className="animate-spin" /> Exploring All Data...</>
+                                            ) : (
+                                                <><ExternalLink size={14} /> Explore All QB Data (14 Entity Types)</>
+                                            )}
+                                        </button>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            See what data actually exists in this QuickBooks company: Bills, Invoices, Purchases, Payments, etc.
+                                        </p>
+
+                                        {exploreResult && (
+                                            <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm">
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex-1">
+                                                        <p className="font-bold text-blue-900 mb-2">
+                                                            📊 Company: {exploreResult.company?.name || 'Unknown'}
+                                                        </p>
+                                                        {exploreResult.summary && (
+                                                            <div className="text-xs text-blue-700 flex gap-4 mb-2">
+                                                                <span>✅ {exploreResult.summary.entitiesWithData} have data</span>
+                                                                <span>⚪ {exploreResult.summary.entitiesWithoutData} empty</span>
+                                                                <span>📋 {exploreResult.summary.totalEntitiesChecked} total</span>
+                                                            </div>
+                                                        )}
+                                                        {exploreResult.hasData && exploreResult.hasData.length > 0 && (
+                                                            <div className="text-xs bg-blue-100 p-2 rounded border border-blue-300">
+                                                                <p className="font-medium text-blue-900 mb-1">💡 Data Found In:</p>
+                                                                <ul className="space-y-0.5">
+                                                                    {exploreResult.hasData.map((item: any, i: number) => (
+                                                                        <li key={i}>
+                                                                            <strong>{item.type}</strong>: {item.count.toLocaleString()} records — {item.description}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            const text = JSON.stringify(exploreResult, null, 2);
+                                                            navigator.clipboard.writeText(text);
+                                                            toast.success('Exploration report copied!', { duration: 2000 });
+                                                        }}
+                                                        className="ml-3 px-3 py-1 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50 transition flex items-center gap-1 flex-shrink-0"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                        </svg>
+                                                        Copy Report
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-2 max-h-96 overflow-y-auto">
+                                                    {exploreResult.entities?.map((entity: any, i: number) => (
+                                                        <div key={i} className={`p-2 rounded text-xs ${
+                                                            entity.totalCount > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'
+                                                        }`}>
+                                                            <div className="flex items-center gap-2 font-medium">
+                                                                <span>{entity.totalCount > 0 ? '✅' : '⚪'}</span>
+                                                                <span className="font-bold">{entity.entityType}</span>
+                                                                <span className="text-gray-600">— {entity.description}</span>
+                                                                {entity.totalCount !== undefined && (
+                                                                    <span className="ml-auto bg-white px-2 py-0.5 rounded text-gray-700">
+                                                                        {entity.totalCount.toLocaleString()} total
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {entity.error && (
+                                                                <p className="mt-1 text-red-700 text-[10px]">{entity.error}</p>
+                                                            )}
+                                                            {entity.samples && entity.samples.length > 0 && (
+                                                                <details className="mt-1">
+                                                                    <summary className="text-[10px] cursor-pointer text-gray-500 hover:text-gray-700">
+                                                                        View sample data ({entity.samples.length} records)
+                                                                    </summary>
+                                                                    <pre className="mt-1 text-[10px] text-gray-600 bg-white p-1 rounded overflow-x-auto max-h-40">
+                                                                        {JSON.stringify(entity.samples, null, 2)}
                                                                     </pre>
                                                                 </details>
                                                             )}

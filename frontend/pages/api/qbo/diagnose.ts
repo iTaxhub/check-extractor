@@ -292,50 +292,113 @@ export default async function handler(
       )
     );
 
-    // Step 13: Test with actual user filters (if provided in query params)
-    const testFilters = req.query.testFilters === 'true';
-    if (testFilters) {
+    // Step 13-26: Explore ALL entity types to see where data actually exists
+    const entityTypes = [
+      { type: 'Purchase', desc: 'Purchase transactions (expenses, checks written)' },
+      { type: 'Bill', desc: 'Unpaid bills from vendors' },
+      { type: 'Invoice', desc: 'Customer invoices' },
+      { type: 'Estimate', desc: 'Customer estimates/quotes' },
+      { type: 'SalesReceipt', desc: 'Cash sales receipts' },
+      { type: 'Deposit', desc: 'Bank deposits' },
+      { type: 'Transfer', desc: 'Transfers between accounts' },
+      { type: 'JournalEntry', desc: 'Manual journal entries' },
+      { type: 'Vendor', desc: 'Vendor list' },
+      { type: 'Customer', desc: 'Customer list' },
+      { type: 'Account', desc: 'Chart of accounts' },
+      { type: 'Item', desc: 'Products and services' },
+      { type: 'Employee', desc: 'Employee list' },
+      { type: 'Class', desc: 'Classes for categorization' },
+    ];
+
+    const entitiesWithData: any[] = [];
+    let stepNum = 13;
+
+    for (const entity of entityTypes) {
       try {
-        const filters = {
-          startDate: req.query.startDate as string,
-          endDate: req.query.endDate as string,
-          account: req.query.account as string,
-        };
+        const countQuery = `SELECT COUNT(*) FROM ${entity.type}`;
+        const countUrl = `${QBO_BASE}/v3/company/${realmId}/query?query=${encodeURIComponent(countQuery)}&minorversion=73`;
         
-        diagnostics.steps.push({
-          step: '13_test_with_user_filters',
-          message: 'Testing with your actual filters from Settings page',
-          filters,
+        const countRes = await fetch(countUrl, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
         });
 
-        // Note: We can't easily capture pull-checks logs here without refactoring
-        // But we can at least document what filters were used
-      } catch (filterErr: any) {
+        let totalCount = 0;
+        if (countRes.ok) {
+          const countData = await countRes.json();
+          totalCount = countData?.QueryResponse?.totalCount || 0;
+        }
+
         diagnostics.steps.push({
-          step: '13_test_with_user_filters',
-          success: false,
-          error: filterErr.message,
+          step: `${stepNum}_entity_${entity.type.toLowerCase()}`,
+          entityType: entity.type,
+          description: entity.desc,
+          success: true,
+          count: totalCount,
+          hasData: totalCount > 0,
         });
+
+        if (totalCount > 0) {
+          entitiesWithData.push({
+            type: entity.type,
+            count: totalCount,
+            description: entity.desc,
+          });
+        }
+
+        stepNum++;
+      } catch (entityErr: any) {
+        diagnostics.steps.push({
+          step: `${stepNum}_entity_${entity.type.toLowerCase()}`,
+          entityType: entity.type,
+          description: entity.desc,
+          success: false,
+          error: entityErr.message,
+        });
+        stepNum++;
       }
     }
 
-    // Conclusion
+    diagnostics.entitiesWithData = entitiesWithData;
+
+    // Conclusion with entity exploration insights
     const step4 = diagnostics.steps.find((s: any) => s.step === '4_purchase_wide_open');
     const step5 = diagnostics.steps.find((s: any) => s.step === '5_billpayment_wide_open');
     const step6 = diagnostics.steps.find((s: any) => s.step === '6_billpayment_all_types');
     const step7 = diagnostics.steps.find((s: any) => s.step === '7_purchase_all_types');
 
+    // Build entity summary for conclusion
+    const entitySummary = entitiesWithData.length > 0
+      ? `\n\n📊 DATA FOUND IN: ${entitiesWithData.map(e => `${e.type} (${e.count})`).join(', ')}`
+      : '\n\n⚠️ NO DATA FOUND in any entity type (Purchase, Bill, Invoice, Payment, etc.)';
+
     if (step4?.count === 0 && step5?.count === 0 && step6?.count === 0 && step7?.count === 0) {
-      diagnostics.conclusion = 'NO DATA: This company has zero Purchase and BillPayment transactions. Either the realmId points to the wrong company, or this company genuinely has no transactions.';
-      diagnostics.recommendation = 'ACTION REQUIRED: Disconnect and reconnect to QuickBooks. Make sure you select the correct company during OAuth. Check Step 3 above to confirm the company name matches what you expect.';
+      // No check transactions at all
+      if (entitiesWithData.length === 0) {
+        diagnostics.conclusion = `NO DATA: This company has ZERO transactions in any entity type. Either the realmId points to the wrong company, or this is a brand new/empty company.${entitySummary}`;
+        diagnostics.recommendation = 'ACTION REQUIRED: Check Step 3 to confirm the company name matches what you expect. If wrong, disconnect and reconnect to QuickBooks, selecting the correct company during OAuth.';
+      } else {
+        const hasBills = entitiesWithData.find(e => e.type === 'Bill');
+        const hasInvoices = entitiesWithData.find(e => e.type === 'Invoice');
+        diagnostics.conclusion = `NO CHECK DATA: Company has data but ZERO Purchase/BillPayment transactions.${entitySummary}`;
+        if (hasBills) {
+          diagnostics.recommendation = `ACTION REQUIRED: You have ${hasBills.count} Bills but 0 BillPayments. The bills exist but haven't been paid yet. Check QuickBooks to see if payments are pending or recorded differently.`;
+        } else if (hasInvoices) {
+          diagnostics.recommendation = `ACTION REQUIRED: You have ${hasInvoices.count} Invoices but no Purchase/BillPayment data. This company might only track customer invoices, not vendor payments.`;
+        } else {
+          diagnostics.recommendation = 'ACTION REQUIRED: Data exists in other entity types but not in Purchase/BillPayment. Your financial data might be in JournalEntry, Deposit, or other non-standard transaction types.';
+        }
+      }
     } else if (step4?.count === 0 && step5?.count === 0 && (step6?.count > 0 || step7?.count > 0)) {
-      diagnostics.conclusion = 'FILTER MISMATCH: Company has Purchase/BillPayment data but NONE with check payment type. The transactions may use a different payment method (ACH, credit card, etc). Check the raw sample data for PaymentType/PayType values.';
-      diagnostics.recommendation = 'ACTION REQUIRED: Expand the sample data above (click "View sample data") and check the PaymentType/PayType fields. Your transactions might be typed as "Cash", "CreditCard", "ACH", etc. instead of "Check".';
+      diagnostics.conclusion = `FILTER MISMATCH: Company has ${step6?.count || 0} BillPayments and ${step7?.count || 0} Purchases, but NONE are typed as "Check".${entitySummary}`;
+      diagnostics.recommendation = 'ACTION REQUIRED: Expand the sample data in steps 6-7 above and check the PaymentType/PayType fields. Your transactions are likely typed as "Cash", "CreditCard", "ACH", "EFT", or "Wire Transfer" instead of "Check". You may need to modify the pull-checks query to include these payment types.';
     } else if ((step4?.count > 0 || step5?.count > 0)) {
-      diagnostics.conclusion = 'DATA EXISTS: Wide-open queries return check data. The issue is likely in the date range or account filter applied on the Settings page.';
-      diagnostics.recommendation = 'ACTION REQUIRED: Try pulling data with NO filters (clear all dates and select "All Bank Accounts"). Check your server console logs for detailed filter debugging. The account name in QB might not match exactly what you selected.';
+      diagnostics.conclusion = `DATA EXISTS: Found ${step4?.count || 0} Purchase checks and ${step5?.count || 0} BillPayment checks. The 0 results issue is in your date range or account filter.${entitySummary}`;
+      diagnostics.recommendation = 'ACTION REQUIRED: (1) Try pulling data with NO filters (clear all dates and select "All Bank Accounts"). (2) Check your server console logs - they show exactly which filter eliminated your results. (3) The account name in QB might not match what you selected in the dropdown.';
     } else {
-      diagnostics.conclusion = 'INCONCLUSIVE: Some queries failed. Check individual step errors.';
+      diagnostics.conclusion = `INCONCLUSIVE: Some queries failed.${entitySummary}`;
       diagnostics.recommendation = 'Check the error messages in the failed steps above.';
     }
 
