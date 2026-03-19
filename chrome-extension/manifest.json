@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "CheckSync Pro",
+  "name": "Kyriq",
   "version": "1.0.0",
   "description": "AI-powered check reconciliation for QuickBooks. Upload checks, auto-match, and mark transactions as Cleared — right from your browser.",
   "icons": {
@@ -14,7 +14,7 @@
       "16": "icons/icon16.png",
       "48": "icons/icon48.png"
     },
-    "default_title": "CheckSync Pro"
+    "default_title": "Kyriq"
   },
   "background": {
     "service_worker": "background/service-worker.js",

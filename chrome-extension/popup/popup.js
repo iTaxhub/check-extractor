@@ -1,5 +1,5 @@
 /**
- * CheckSync Pro — Popup Controller
+ * Kyriq — Popup Controller
  * Drives the entire extension UI: login, company switching, upload, matching, approve+clear
  */
 

@@ -7,7 +7,7 @@ import AIKeyWarning from '@/components/common/AIKeyWarning'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'CheckSync Pro — Automated Check Reconciliation',
+  title: 'Kyriq — Automated Check Reconciliation',
   description: 'Upload check images, let AI extract the data, and auto-match against QuickBooks in seconds. Save 15+ hours per week per client. Built by iTax Hub.',
 }
 

@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Privacy Policy | CheckSync Pro',
-  description: 'Privacy Policy for CheckSync Pro by iTax Hub',
+  title: 'Privacy Policy | Kyriq',
+  description: 'Privacy Policy for Kyriq by iTax Hub',
 };
 
 export default function PrivacyPolicyPage() {
@@ -14,7 +14,7 @@ export default function PrivacyPolicyPage() {
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-2.5 group">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shadow-sm">CS</div>
-            <span className="text-base font-extrabold text-gray-900">CheckSync Pro</span>
+            <span className="text-base font-extrabold text-gray-900">Kyriq</span>
           </Link>
           <Link href="/" className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1.5 transition-colors">
             <ArrowLeft size={14} /> Back to home
@@ -30,7 +30,7 @@ export default function PrivacyPolicyPage() {
         <div className="prose prose-gray prose-sm max-w-none [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-8 [&_h2]:mb-3 [&_p]:text-gray-600 [&_p]:leading-relaxed [&_ul]:text-gray-600 [&_li]:leading-relaxed">
           <h2>1. Introduction</h2>
           <p>
-            CheckSync Pro (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) is operated by iTax Hub. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our check reconciliation platform, including our web application, Chrome extension, and related services (collectively, the &ldquo;Service&rdquo;).
+            Kyriq (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) is operated by iTax Hub. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our check reconciliation platform, including our web application, Chrome extension, and related services (collectively, the &ldquo;Service&rdquo;).
           </p>
 
           <h2>2. Information We Collect</h2>

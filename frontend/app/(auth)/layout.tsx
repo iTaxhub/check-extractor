@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function AuthLayout({
   children,
@@ -10,8 +11,8 @@ export default function AuthLayout({
       {/* Minimal nav */}
       <div className="px-6 py-4">
         <Link href="/" className="inline-flex items-center gap-2.5 group">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shadow-sm">CS</div>
-          <span className="text-base font-extrabold text-gray-900">CheckSync Pro</span>
+          <Image src="/Kyriq_Logo_Files/kyriq-icon.svg" alt="Kyriq" width={32} height={32} className="rounded-lg shadow-sm" />
+          <span className="text-base font-extrabold text-gray-900">Kyriq</span>
         </Link>
       </div>
 

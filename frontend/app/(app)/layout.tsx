@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { CheckSquare, Upload, Settings, List, BarChart3, Download, Receipt, GitCompare, LayoutDashboard, Scale, ArrowLeftRight } from 'lucide-react';
+import Image from 'next/image';
+import { Upload, Settings, List, BarChart3, Download, Receipt, GitCompare, LayoutDashboard, Scale, ArrowLeftRight } from 'lucide-react';
 import UserProfile from '@/components/UserProfile';
 import QBProviderWrapper from '@/components/QBProviderWrapper';
 import SidebarCompanySwitcher from '@/components/SidebarCompanySwitcher';
@@ -29,9 +30,9 @@ export default function AppLayout({
         {/* Sidebar - Fixed */}
         <aside className="w-[220px] bg-white/80 backdrop-blur-xl border-r border-gray-200/60 hidden md:flex flex-col fixed left-0 top-0 h-screen">
           <div className="px-5 py-5 border-b border-gray-100/80 flex-shrink-0">
-            <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-[15px] text-gray-900">
-              <CheckSquare className="w-5 h-5 text-blue-600" />
-              <span>CheckPro</span>
+            <Link href="/dashboard" className="flex items-center gap-2.5 font-semibold text-[15px] text-gray-900">
+              <Image src="/Kyriq_Logo_Files/kyriq-icon.svg" alt="Kyriq" width={28} height={28} className="rounded-md" />
+              <span>Kyriq</span>
             </Link>
           </div>
 
@@ -67,7 +68,7 @@ export default function AppLayout({
               <UserProfile />
             </div>
             <div className="px-5 py-2 text-[11px] text-gray-400 text-center">
-              CheckPro v1.0.0
+              Kyriq v1.0.0
             </div>
           </div>
         </aside>
@@ -77,8 +78,8 @@ export default function AppLayout({
           {/* Mobile Header */}
           <div className="md:hidden px-4 py-3 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 flex justify-between items-center">
             <Link href="/dashboard" className="font-semibold text-[15px] text-gray-900 flex items-center gap-2">
-              <CheckSquare className="w-4 h-4 text-blue-600" />
-              CheckPro
+              <Image src="/Kyriq_Logo_Files/kyriq-icon.svg" alt="Kyriq" width={24} height={24} className="rounded-md" />
+              Kyriq
             </Link>
             <Link href="/upload" className="p-1.5 bg-blue-50 rounded-lg">
               <Upload className="w-4 h-4 text-blue-600" />

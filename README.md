@@ -1,8 +1,8 @@
-# CheckPro — Automated Cheque Extraction
+# Kyriq — Automated Cheque Extraction
 
 Extract structured data from scanned cheque PDFs using **OpenCV detection**, **triple-engine OCR** (Tesseract + NuMarkdown + Gemini Flash), and **hybrid cross-validation**.
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/checkpro)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/kyriq)
 
 **[📖 Full Deployment Guide](DEPLOY.md)** | **[🚀 Quick Start](#quick-start)** | **[📚 API Docs](#api-reference)**
 

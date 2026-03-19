@@ -51,7 +51,7 @@ function LoginForm() {
     <div className="bg-white rounded-2xl shadow-xl shadow-gray-900/5 border border-gray-100 p-6 sm:p-8">
       <div className="text-center mb-8">
         <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Welcome Back</h1>
-        <p className="text-gray-500 mt-2 text-sm">Sign in to your CheckSync Pro account</p>
+        <p className="text-gray-500 mt-2 text-sm">Sign in to your Kyriq account</p>
       </div>
 
       <form onSubmit={handleLogin} className="space-y-5">

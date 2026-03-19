@@ -1,5 +1,5 @@
 /**
- * CheckSync Pro — Background Service Worker
+ * Kyriq — Background Service Worker
  * Handles: Supabase auth, QB API calls, token refresh, matching, clearing transactions
  */
 
@@ -162,7 +162,7 @@ async function clearQBTransaction(txnType, txnId) {
   // What we CAN do: update the transaction's PrivateNote to indicate it's been verified
   const updatePayload = {
     ...entity,
-    PrivateNote: `${entity.PrivateNote || ''}\n[CheckSync Pro] Verified & Cleared ${new Date().toISOString().split('T')[0]}`.trim(),
+    PrivateNote: `${entity.PrivateNote || ''}\n[Kyriq] Verified & Cleared ${new Date().toISOString().split('T')[0]}`.trim(),
   };
 
   const result = await qbApiRequest(
@@ -506,6 +506,6 @@ chrome.alarms.onAlarm.addListener(alarm => {
 
 // Update on install
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('CheckSync Pro installed');
+  console.log('Kyriq installed');
   updateBadge();
 });

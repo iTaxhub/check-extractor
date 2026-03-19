@@ -126,7 +126,7 @@ PYTHONUNBUFFERED=1
 ### Step 4: Generate Domain
 
 1. Settings → Networking → **Generate Domain**
-2. Copy the URL (e.g., `https://checkpro-production.up.railway.app`)
+2. Copy the URL (e.g., `https://kyriq-production.up.railway.app`)
 
 ### Step 5: Verify Deployment
 

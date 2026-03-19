@@ -1,5 +1,5 @@
 {
-  "name": "CheckPro - Cheque Extraction System",
+  "name": "Kyriq - Cheque Extraction System",
   "description": "Automated cheque processing with OpenCV detection, triple OCR (Tesseract + NuMarkdown + Gemini), and hybrid cross-validation",
   "repository": "https://github.com/imodoiepale/cheque-extractor",
   "services": [

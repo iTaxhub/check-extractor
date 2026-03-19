@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, Zap, Shield, Users, BarChart3,
@@ -63,8 +64,8 @@ function Nav() {
       className={cn('fixed top-0 inset-x-0 z-50 transition-all duration-500', scrolled ? 'bg-white/80 backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] border-b border-gray-200/50' : 'bg-transparent')}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 lg:h-[72px]">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center text-white text-xs font-black tracking-tight shadow-lg shadow-blue-600/20 group-hover:shadow-blue-600/40 transition-shadow">CS</div>
-          <span className="text-lg font-extrabold tracking-tight text-gray-900">CheckSync Pro</span>
+          <Image src="/Kyriq_Logo_Files/kyriq-icon.svg" alt="Kyriq" width={36} height={36} className="rounded-xl shadow-lg shadow-blue-600/20 group-hover:shadow-blue-600/40 transition-shadow" />
+          <span className="text-lg font-extrabold tracking-tight text-gray-900">Kyriq</span>
         </Link>
         <div className="hidden lg:flex items-center gap-1">
           {navLinks.map((l) => (
@@ -173,7 +174,7 @@ function ScreenshotSection() {
           <div className="rounded-2xl overflow-hidden shadow-2xl shadow-gray-900/10 border border-gray-200/50">
             <div className="bg-gray-100 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2">
               <div className="flex gap-1.5"><span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400" /><span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-400" /><span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-blue-400" /></div>
-              <div className="ml-3 flex-1 bg-white rounded-md px-3 py-1 text-[10px] sm:text-xs text-gray-400 font-mono truncate">app.checksyncpro.com/reconciliation</div>
+              <div className="ml-3 flex-1 bg-white rounded-md px-3 py-1 text-[10px] sm:text-xs text-gray-400 font-mono truncate">app.kyriq.com/reconciliation</div>
             </div>
             <div className="bg-gradient-to-br from-[#0a0f1e] via-[#111d35] to-[#0a1a12] p-3 sm:p-6 md:p-8">
               <div className="flex gap-3 sm:gap-4">
@@ -300,7 +301,7 @@ function Comparison() {
         <FadeIn>
           <div className="text-center mb-12 sm:mb-16">
             <span className="inline-block px-3.5 py-1.5 bg-blue-500/10 text-blue-400 rounded-full text-xs font-bold uppercase tracking-wider mb-4">Time Savings</span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white mb-4">Manual vs. CheckSync Pro</h2>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white mb-4">Manual vs. Kyriq</h2>
             <p className="text-base sm:text-lg text-white/40 max-w-xl mx-auto">See how much time you&apos;re wasting on manual reconciliation.</p>
           </div>
         </FadeIn>
@@ -309,7 +310,7 @@ function Comparison() {
             <div className="hidden sm:flex items-center py-4 px-4 sm:px-6 border-b border-white/[0.06]">
               <div className="flex-1 text-xs font-bold uppercase tracking-wider text-white/30">Task</div>
               <div className="w-28 sm:w-36 text-center text-xs font-bold uppercase tracking-wider text-white/20">Manual</div>
-              <div className="w-28 sm:w-36 text-center text-xs font-bold uppercase tracking-wider text-blue-400">CheckSync</div>
+              <div className="w-28 sm:w-36 text-center text-xs font-bold uppercase tracking-wider text-blue-400">Kyriq</div>
             </div>
             {rows.map((r, i) => (
               <motion.div key={i} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }} viewport={{ once: true }} className="border-b border-white/[0.03] last:border-0">
@@ -389,7 +390,7 @@ function TestimonialCard({ text, name, role, initials }: { text: string; name: s
 
 function Testimonials() {
   const testimonials = [
-    { text: 'We used to spend 8 hours a week reconciling checks for our farm service clients. CheckSync Pro cut that down to 20 minutes.', name: 'Maria Rodriguez', role: 'CPA, Rodriguez & Associates', initials: 'MR' },
+    { text: 'We used to spend 8 hours a week reconciling checks for our farm service clients. Kyriq cut that down to 20 minutes.', name: 'Maria Rodriguez', role: 'CPA, Rodriguez & Associates', initials: 'MR' },
     { text: 'The QuickBooks integration is seamless. We manage 30+ companies and can switch between them instantly.', name: 'James Thompson', role: 'Partner, Thompson Tax Group', initials: 'JT' },
     { text: 'The fuzzy name matching saved us from so many false mismatches. It knows that "FERNANDO L ORTEGA" and "FERNANDO LOPEZ ORTEGA" are the same person.', name: 'Sarah Kim', role: 'Staff Accountant, Pacific Bookkeeping', initials: 'SK' },
     { text: 'Our tax season went from chaos to calm. We process 2,000+ checks per month now with zero errors. The ROI was obvious within the first week.', name: 'David Chen', role: 'Managing Partner, Chen & Associates', initials: 'DC' },
@@ -401,7 +402,7 @@ function Testimonials() {
       <FadeIn><div className="text-center mb-10 sm:mb-14 px-4">
         <span className="inline-block px-3.5 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase tracking-wider mb-4">Testimonials</span>
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-gray-900 mb-4">Trusted by Firms Like Yours</h2>
-        <p className="text-base sm:text-lg text-gray-500 max-w-xl mx-auto">See why accounting professionals are switching to CheckSync Pro.</p>
+        <p className="text-base sm:text-lg text-gray-500 max-w-xl mx-auto">See why accounting professionals are switching to Kyriq.</p>
       </div></FadeIn>
       <Marquee pauseOnHover className="[--duration:30s] mb-4" gap="1rem">
         {testimonials.slice(0, 3).map((t) => <TestimonialCard key={t.name} {...t} />)}
@@ -449,7 +450,7 @@ function Footer() {
       <div className="max-w-7xl mx-auto py-10 sm:py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
           <div className="col-span-2 md:col-span-2">
-            <div className="flex items-center gap-2.5 mb-4"><div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shadow-sm">CS</div><span className="text-base font-extrabold text-gray-900">CheckSync Pro</span></div>
+            <div className="flex items-center gap-2.5 mb-4"><Image src="/Kyriq_Logo_Files/kyriq-icon.svg" alt="Kyriq" width={32} height={32} className="rounded-lg shadow-sm" /><span className="text-base font-extrabold text-gray-900">Kyriq</span></div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs">AI-powered check reconciliation for modern accounting firms. Built by iTax Hub.</p>
           </div>
           {Object.entries(footerLinks).map(([title, links]) => (
@@ -460,7 +461,7 @@ function Footer() {
           ))}
         </div>
         <div className="border-t border-gray-100 mt-8 sm:mt-12 pt-6 flex flex-col sm:flex-row justify-between gap-2 text-xs text-gray-400">
-          <span>&copy; 2026 iTax Hub. All rights reserved.</span><span>CheckSync Pro v1.0.0</span>
+          <span>&copy; 2026 iTax Hub. All rights reserved.</span><span>Kyriq v1.0.0</span>
         </div>
       </div>
     </footer>

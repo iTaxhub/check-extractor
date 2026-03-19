@@ -1,4 +1,4 @@
-# CheckSync Pro — Chrome Extension
+# Kyriq — Chrome Extension
 
 AI-powered check reconciliation for QuickBooks Online. Upload check images, extract data with Gemini AI, auto-match against QB transactions, and mark them as **Cleared** — all from your browser.
 
@@ -43,7 +43,7 @@ Click the extension icon → ⚙️ Settings (or right-click → Options):
 
 ### 4. Login
 
-Use your CheckSync Pro account credentials (same as the web app).
+Use your Kyriq account credentials (same as the web app).
 
 ## How It Works
 
@@ -62,7 +62,7 @@ chrome-extension/
 │   └── service-worker.js  # Auth, QB API, OCR, matching, clearing
 ├── popup/
 │   ├── popup.html         # Main extension UI
-│   ├── popup.css          # Styles (CheckSync Pro branding)
+│   ├── popup.css          # Styles (Kyriq branding)
 │   └── popup.js           # UI controller
 ├── content/
 │   ├── qbo-overlay.js     # Injected into QBO pages
@@ -83,7 +83,7 @@ The extension is **standalone** — it talks directly to:
 - **QuickBooks API** for pulling transactions and clearing them
 - **Gemini API** for OCR check extraction
 
-It shares the same database tables as the main CheckSync Pro web app:
+It shares the same database tables as the main Kyriq web app:
 - `qb_connections` — multi-company QB connections
 - `qb_transactions` — synced QB transactions
 - `matches` — check-to-transaction matches
@@ -94,7 +94,7 @@ It shares the same database tables as the main CheckSync Pro web app:
 When you approve a match, the extension calls the QB API to update the transaction's `PrivateNote` with a verification stamp:
 
 ```
-[CheckSync Pro] Verified & Cleared 2026-03-19
+[Kyriq] Verified & Cleared 2026-03-19
 ```
 
 This serves as proof of reconciliation. Full "Cleared" status in QB's reconcile screen requires the user to complete QB's reconciliation flow, but the verified note makes it immediately visible which transactions have been matched.

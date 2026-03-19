@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Terms of Service | CheckSync Pro',
-  description: 'Terms of Service for CheckSync Pro by iTax Hub',
+  title: 'Terms of Service | Kyriq',
+  description: 'Terms of Service for Kyriq by iTax Hub',
 };
 
 export default function TermsOfServicePage() {
@@ -14,7 +14,7 @@ export default function TermsOfServicePage() {
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-2.5 group">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shadow-sm">CS</div>
-            <span className="text-base font-extrabold text-gray-900">CheckSync Pro</span>
+            <span className="text-base font-extrabold text-gray-900">Kyriq</span>
           </Link>
           <Link href="/" className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1.5 transition-colors">
             <ArrowLeft size={14} /> Back to home
@@ -30,12 +30,12 @@ export default function TermsOfServicePage() {
         <div className="prose prose-gray prose-sm max-w-none [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-8 [&_h2]:mb-3 [&_p]:text-gray-600 [&_p]:leading-relaxed [&_ul]:text-gray-600 [&_li]:leading-relaxed">
           <h2>1. Acceptance of Terms</h2>
           <p>
-            By accessing or using CheckSync Pro (the &ldquo;Service&rdquo;), operated by iTax Hub, you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.
+            By accessing or using Kyriq (the &ldquo;Service&rdquo;), operated by iTax Hub, you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.
           </p>
 
           <h2>2. Description of Service</h2>
           <p>
-            CheckSync Pro is an AI-powered check reconciliation platform that allows users to upload check images, extract data using optical character recognition (OCR), and match extracted data against accounting software transactions (e.g., QuickBooks Online, Xero, Sage, Zoho).
+            Kyriq is an AI-powered check reconciliation platform that allows users to upload check images, extract data using optical character recognition (OCR), and match extracted data against accounting software transactions (e.g., QuickBooks Online, Xero, Sage, Zoho).
           </p>
 
           <h2>3. Account Registration</h2>

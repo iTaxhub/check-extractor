@@ -1,4 +1,4 @@
-# CheckPro — Railway Deployment Guide
+# Kyriq — Railway Deployment Guide
 
 One-click deployment to Railway with automatic builds and environment configuration.
 

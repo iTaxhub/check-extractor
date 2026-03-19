@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { isSuperAdmin } from '@/lib/super-admin';
 import {
-  Crown, LayoutDashboard, Building2, Users, DollarSign,
+  Crown, LayoutDashboard, Building2, DollarSign,
   ArrowLeft, RefreshCw, ChevronRight
 } from 'lucide-react';
 
@@ -54,12 +55,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="w-[240px] bg-white/80 backdrop-blur-xl border-r border-gray-200/60 hidden md:flex flex-col fixed left-0 top-0 h-screen">
         <div className="px-5 py-5 border-b border-gray-100/80">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
-              <Crown size={16} className="text-white" />
-            </div>
+            <Image src="/Kyriq_Logo_Files/kyriq-icon.svg" alt="Kyriq" width={32} height={32} className="rounded-lg" />
             <div>
-              <div className="text-sm font-bold text-gray-900">Super Admin</div>
-              <div className="text-[10px] text-gray-400">CheckSync Pro</div>
+              <div className="text-sm font-bold text-gray-900">Kyriq</div>
+              <div className="text-[10px] text-gray-400">Super Admin</div>
             </div>
           </div>
         </div>
@@ -102,8 +101,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Crown size={16} className="text-amber-500" />
-          <span className="text-sm font-bold text-gray-900">Admin</span>
+          <Image src="/Kyriq_Logo_Files/kyriq-icon.svg" alt="Kyriq" width={20} height={20} className="rounded" />
+          <span className="text-sm font-bold text-gray-900">Kyriq Admin</span>
         </div>
         <div className="flex items-center gap-2">
           {ADMIN_NAV.map((item) => {
