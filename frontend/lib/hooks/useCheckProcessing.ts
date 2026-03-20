@@ -242,7 +242,7 @@ export function useCheckProcessing(jobId: string, selectedMethods?: string[]) {
             }
         }
         
-        const interval = setInterval(doPoll, 3000) // Poll every 3s to reduce server load
+        const interval = setInterval(doPoll, 1000) // Poll every 1s for fast completion detection
 
         // Initial poll
         doPoll()

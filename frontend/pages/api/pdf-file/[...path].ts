@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { createClient } from '@supabase/supabase-js'
 
 const PYTHON_API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || ''
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -14,20 +17,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const [jobId] = pathParts
 
+    // Try Python backend first
     try {
         const response = await fetch(`${PYTHON_API}/api/jobs/${jobId}/pdf`)
-
-        if (!response.ok) {
-            return res.status(response.status).json({ error: 'PDF not found' })
+        if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer())
+            res.setHeader('Content-Type', 'application/pdf')
+            res.setHeader('Content-Disposition', 'inline')
+            res.setHeader('Cache-Control', 'public, max-age=86400')
+            return res.status(200).send(buffer)
         }
-
-        const buffer = Buffer.from(await response.arrayBuffer())
-        res.setHeader('Content-Type', 'application/pdf')
-        res.setHeader('Content-Disposition', 'inline')
-        res.setHeader('Cache-Control', 'public, max-age=86400')
-        return res.status(200).send(buffer)
-    } catch (error) {
-        console.error('PDF proxy error:', error)
-        return res.status(500).json({ error: 'Failed to fetch PDF' })
+    } catch {
+        // Python backend unavailable — fall through to Supabase Storage
     }
+
+    // Fallback: look up pdf_name from DB, then redirect to Supabase Storage
+    if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+        try {
+            const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+            const { data: job } = await supabase
+                .from('check_jobs')
+                .select('pdf_name, pdf_url')
+                .eq('job_id', jobId)
+                .single()
+            if (job?.pdf_url) {
+                return res.redirect(307, job.pdf_url)
+            }
+            if (job?.pdf_name) {
+                const storageUrl = `${SUPABASE_URL}/storage/v1/object/public/checks/jobs/${jobId}/${encodeURIComponent(job.pdf_name)}`
+                return res.redirect(307, storageUrl)
+            }
+        } catch (dbError) {
+            console.error('PDF DB fallback error:', dbError)
+        }
+    }
+
+    return res.status(404).json({ error: 'PDF not found' })
 }

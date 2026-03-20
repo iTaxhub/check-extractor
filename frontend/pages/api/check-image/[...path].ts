@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 const PYTHON_API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -17,16 +18,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const response = await fetch(`${PYTHON_API}/api/checks/${jobId}/${checkId}/image`)
 
-        if (!response.ok) {
-            return res.status(response.status).json({ error: 'Image not found' })
+        if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer())
+            res.setHeader('Content-Type', 'image/png')
+            res.setHeader('Cache-Control', 'public, max-age=86400')
+            return res.status(200).send(buffer)
         }
-
-        const buffer = Buffer.from(await response.arrayBuffer())
-        res.setHeader('Content-Type', 'image/png')
-        res.setHeader('Cache-Control', 'public, max-age=86400')
-        return res.status(200).send(buffer)
-    } catch (error) {
-        console.error('Check image proxy error:', error)
-        return res.status(500).json({ error: 'Failed to fetch check image' })
+    } catch {
+        // Python backend unavailable — fall through to Supabase Storage
     }
+
+    // Fallback: redirect to Supabase Storage public URL
+    if (SUPABASE_URL) {
+        const storageUrl = `${SUPABASE_URL}/storage/v1/object/public/checks/jobs/${jobId}/images/${checkId}.png`
+        res.setHeader('Cache-Control', 'public, max-age=86400')
+        res.redirect(307, storageUrl)
+        return
+    }
+
+    res.status(404).json({ error: 'Image not found' })
 }

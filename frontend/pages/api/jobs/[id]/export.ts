@@ -33,6 +33,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).send(body)
     } catch (error) {
         console.error('Export proxy error:', error)
-        return res.status(500).json({ error: 'Failed to connect to processing server' })
+        return res.status(503).json({ error: 'Export service is currently unavailable. Please try again in a moment.' })
     }
 }

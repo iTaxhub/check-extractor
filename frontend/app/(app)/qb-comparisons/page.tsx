@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Settings, Loader2, AlertCircle, RefreshCw, Upload } from 'lucide-react';
+import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useComparisonData } from './hooks/useComparisonData';
 import { useComparisonState } from './hooks/useComparisonState';
@@ -13,6 +13,7 @@ import { DetailModal } from './components/DetailModal';
 import { ColumnSettings } from './components/ColumnSettings';
 import { Pagination } from './components/Pagination';
 import { QBConnectionModal } from './components/QBConnectionModal';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { 
   intelligentMatch, 
   filterByDateRange, 
@@ -74,6 +75,9 @@ export default function QBComparisonsPage() {
   const [showIssuesOnly, setShowIssuesOnly] = useState(false);
   const [vouchedMap, setVouchedMap] = useState<Record<string, any>>({});
   const [vouchingId, setVouchingId] = useState<string | null>(null);
+  const [deletingQBEntry, setDeletingQBEntry] = useState<string | null>(null);
+  const [deletingAllQB, setDeletingAllQB] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
 
   // Check if QuickBooks is configured and connected
   useEffect(() => {
@@ -434,6 +438,63 @@ export default function QBComparisonsPage() {
     }
   };
 
+  const handleDeleteQBEntry = async (entryId: string) => {
+    setDeletingQBEntry(entryId);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(`/api/quickbooks/delete-entry?id=${entryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Refresh data to show updated list
+        await refreshData();
+      } else {
+        const error = await response.json();
+        console.error('Failed to delete QB entry:', error);
+      }
+    } catch (err) {
+      console.error('Failed to delete QB entry:', err);
+    } finally {
+      setDeletingQBEntry(null);
+    }
+  };
+
+  const handleDeleteAllQB = async () => {
+    setDeletingAllQB(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/quickbooks/delete-all', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Refresh data to show empty QB list
+        await refreshData();
+        setShowDeleteAllModal(false);
+      } else {
+        const error = await response.json();
+        console.error('Failed to delete all QB entries:', error);
+      }
+    } catch (err) {
+      console.error('Failed to delete all QB entries:', err);
+    } finally {
+      setDeletingAllQB(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -607,6 +668,18 @@ export default function QBComparisonsPage() {
             </button>
           </div>
           
+          {/* Delete All QB Data Button */}
+          {qbEntries.length > 0 && (
+            <button
+              onClick={() => setShowDeleteAllModal(true)}
+              disabled={deletingAllQB}
+              className="px-3 py-1.5 bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/30 text-xs font-medium transition disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {deletingAllQB ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+              Delete All QB Data
+            </button>
+          )}
+
           {/* QB Connection Status Badge */}
           <div className="flex items-center gap-2">
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
@@ -695,6 +768,8 @@ export default function QBComparisonsPage() {
             onVouch={handleVouch}
             onUnvouch={handleUnvouch}
             vouchingId={vouchingId}
+            onDeleteQBEntry={handleDeleteQBEntry}
+            deletingQBEntry={deletingQBEntry}
           />
           
           <Pagination
@@ -731,6 +806,16 @@ export default function QBComparisonsPage() {
           setShowUploadModal(false);
           refreshData();
         }}
+      />
+
+      <DeleteConfirmModal
+        isOpen={showDeleteAllModal}
+        onClose={() => setShowDeleteAllModal(false)}
+        onConfirm={handleDeleteAllQB}
+        title="Delete All QuickBooks Data"
+        message={`Are you sure you want to delete all ${qbEntries.length} QuickBooks entries? This will remove all QB data from comparisons. This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
       />
     </div>
   );

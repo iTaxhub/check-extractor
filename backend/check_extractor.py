@@ -781,8 +781,11 @@ def extract_with_openai(img_path):
                 "fields": _empty_fields(), "processing_time_ms": int((time.time() - t0) * 1000)}
 
 
-def extract_with_gemini(img_path):
-    """Call Gemini Flash 2.0 API with image. Tries all keys, then falls back to OpenAI."""
+def extract_with_gemini(img_path, key=None):
+    """Call Gemini Flash 2.0 API with image. Tries all keys, then falls back to OpenAI.
+    
+    If `key` is provided it is used first (pinned-worker mode), otherwise round-robin.
+    """
     t0 = time.time()
     with open(img_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode("utf-8")
@@ -797,9 +800,14 @@ def extract_with_gemini(img_path):
         "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024}
     }
 
+    # Build ordered key list: start with the pinned key (if provided), then others as fallback
+    if key and key in GEMINI_KEYS:
+        ordered_keys = [key] + [k for k in GEMINI_KEYS if k != key]
+    else:
+        ordered_keys = list(GEMINI_KEYS)  # fallback: use all keys round-robin
+
     last_err = None
-    for attempt in range(len(GEMINI_KEYS)):
-        key = _next_gemini_key()
+    for attempt, key in enumerate(ordered_keys):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
         try:
             resp = requests.post(url, json=payload, timeout=30)
@@ -1188,7 +1196,9 @@ class CheckExtractorApp:
                 if run_numd:
                     futures["numarkdown"] = pool.submit(extract_with_numarkdown, img_path)
                 if run_gemi:
-                    futures["gemini"] = pool.submit(extract_with_gemini, img_path)
+                    # Pin a Gemini key to this check by worker index to avoid race conditions
+                    pinned_key = GEMINI_KEYS[idx % len(GEMINI_KEYS)] if GEMINI_KEYS else None
+                    futures["gemini"] = pool.submit(extract_with_gemini, img_path, pinned_key)
 
                 if "tesseract" in futures:
                     tess_result = futures["tesseract"].result()
@@ -1273,7 +1283,10 @@ class CheckExtractorApp:
             return (idx, cid, page_num)
 
         # Process ALL checks in parallel (Promise.all equivalent)
-        max_concurrent_checks = min(4, total)  # Process up to 4 checks simultaneously
+        # Scale workers with number of Gemini keys: each key handles ~8 checks concurrently
+        n_keys = max(1, len(GEMINI_KEYS))
+        max_concurrent_checks = min(n_keys * 8, total, 50)  # Up to 50 concurrent
+        print(f"  Running {total} checks with {max_concurrent_checks} concurrent workers ({n_keys} API keys)")
         with ThreadPoolExecutor(max_workers=max_concurrent_checks) as executor:
             futures = [
                 executor.submit(process_single_check, idx, cid, img_path, page_num)

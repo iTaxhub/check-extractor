@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ChevronUp, ChevronDown, Eye, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, Eye, CheckCircle, XCircle, Loader2, Trash2 } from 'lucide-react';
 import { ComparisonRow, SortField, SortDirection, formatCurrency, formatDate, parseAmount, DateFormat } from '../utils/comparisonUtils';
 import { VisibleColumns } from '../hooks/useComparisonState';
 
@@ -16,6 +16,8 @@ interface ComparisonTableProps {
   onVouch: (row: ComparisonRow) => void;
   onUnvouch: (row: ComparisonRow) => void;
   vouchingId: string | null;
+  onDeleteQBEntry?: (entryId: string) => void;
+  deletingQBEntry?: string | null;
 }
 
 const SortIcon: React.FC<{ field: SortField; sortField: SortField; sortDirection: SortDirection }> = ({
@@ -44,6 +46,8 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   onVouch,
   onUnvouch,
   vouchingId,
+  onDeleteQBEntry,
+  deletingQBEntry,
 }) => {
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -308,17 +312,36 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                   </td>
                   <td className="px-1 py-0.5 text-center border-r-2 border-gray-300">
                     {row.qbData ? (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                        row.qbData.qbSource === 'qbo_file_upload' 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : row.qbData.qbSource?.includes('cheque') 
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-purple-100 text-purple-700'
-                      }`}>
-                        {row.qbData.qbSource === 'qbo_file_upload' ? 'File' : 
-                         row.qbData.qbSource?.includes('cheque') ? 'QB API' : 
-                         row.qbData.qbSource || 'Unknown'}
-                      </span>
+                      <div className="flex items-center justify-center gap-1">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                          row.qbData.qbSource === 'qbo_file_upload' 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : row.qbData.qbSource?.includes('cheque') 
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {row.qbData.qbSource === 'qbo_file_upload' ? 'File' : 
+                           row.qbData.qbSource?.includes('cheque') ? 'QB API' : 
+                           row.qbData.qbSource || 'Unknown'}
+                        </span>
+                        {onDeleteQBEntry && row.qbData.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteQBEntry(row.qbData!.id);
+                            }}
+                            disabled={deletingQBEntry === row.qbData.id}
+                            className="p-0.5 hover:bg-red-100 rounded transition disabled:opacity-50"
+                            title="Delete this QB entry"
+                          >
+                            {deletingQBEntry === row.qbData.id ? (
+                              <Loader2 size={10} className="text-red-600 animate-spin" />
+                            ) : (
+                              <Trash2 size={10} className="text-red-600" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     ) : '—'}
                   </td>
 

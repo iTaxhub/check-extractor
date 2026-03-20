@@ -27,6 +27,7 @@ import io
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
@@ -661,10 +662,13 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         except Exception as e:
             print(f"  PDF upload to storage failed: {e}")
 
-        # ── Upload check images to Supabase Storage ──────────────
-        print(f"  Uploading {len(checks)} check images to Supabase Storage...")
+        # ── Upload check images to Supabase Storage (parallel) ───
+        print(f"  Uploading {len(checks)} check images to Supabase Storage in parallel...")
         uploaded_count = 0
-        for check in checks:
+        upload_lock = threading.Lock()
+
+        def _upload_one_check(check):
+            nonlocal uploaded_count
             try:
                 img_p = check["image_path"]
                 with open(img_p, "rb") as f:
@@ -676,12 +680,13 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
                     )
                 if url:
                     check["storage_url"] = url
-                    uploaded_count += 1
-                    print(f"    ✓ {check['check_id']}: {url}")
-                else:
-                    print(f"    ✗ {check['check_id']}: Upload returned None")
+                    with upload_lock:
+                        uploaded_count += 1
             except Exception as e:
                 print(f"    ✗ {check['check_id']}: {e}")
+
+        with ThreadPoolExecutor(max_workers=min(20, len(checks))) as _up_pool:
+            list(_up_pool.map(_upload_one_check, checks))
         print(f"  Uploaded {uploaded_count}/{len(checks)} check images to Storage")
 
         # ── Phase 2: Run OCR (Tesseract + Gemini) ────────────────
@@ -717,53 +722,45 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
             print(f"OCR phase error (non-fatal): {ocr_err}")
             traceback.print_exc()
 
-        # ── Upload page images to Supabase Storage ───────────────
-        pages_dir = Path(out_dir) / "pages"
-        if pages_dir.exists():
-            for page_file in pages_dir.glob("page_*.png"):
-                try:
-                    with open(page_file, "rb") as f:
-                        _supabase_upload_file(
-                            "checks",
-                            f"jobs/{job_id}/pages/{page_file.name}",
-                            f.read(),
-                            "image/png",
-                        )
-                except Exception as e:
-                    print(f"  Page image upload failed for {page_file.name}: {e}")
-
-        # ── Upload OCR result JSONs to Supabase Storage ──────────
-        ocr_results_dir = Path(out_dir) / "ocr_results"
-        if ocr_results_dir.exists():
-            for check_dir in ocr_results_dir.iterdir():
-                if check_dir.is_dir():
-                    for json_file in check_dir.glob("*.json"):
-                        try:
-                            with open(json_file, "rb") as f:
-                                _supabase_upload_file(
-                                    "checks",
-                                    f"jobs/{job_id}/ocr_results/{check_dir.name}/{json_file.name}",
-                                    f.read(),
-                                    "application/octet-stream",  # Generic binary type
-                                )
-                        except Exception as e:
-                            print(f"  OCR JSON upload failed for {json_file.name}: {e}")
-
-        # ── Upload extraction summary to Supabase Storage ─────────
-        summary_file = Path(out_dir) / "extraction_summary.json"
-        if summary_file.exists():
+        # ── Background: upload page images + OCR JSONs to Storage ──
+        # Runs in a daemon thread so it doesn't block completion
+        def _background_storage_uploads():
             try:
-                with open(summary_file, "rb") as f:
-                    _supabase_upload_file(
-                        "checks",
-                        f"jobs/{job_id}/extraction_summary.json",
-                        f.read(),
-                        "application/octet-stream",  # Generic binary type
-                    )
-            except Exception as e:
-                print(f"  Extraction summary upload failed: {e}")
+                pages_dir = Path(out_dir) / "pages"
+                ocr_results_dir = Path(out_dir) / "ocr_results"
+                summary_file = Path(out_dir) / "extraction_summary.json"
 
-        # ── Save final results to Supabase ───────────────────────
+                upload_tasks = []
+                if pages_dir.exists():
+                    for pf in pages_dir.glob("page_*.png"):
+                        upload_tasks.append(("checks", f"jobs/{job_id}/pages/{pf.name}", str(pf), "image/png"))
+                if ocr_results_dir.exists():
+                    for cd in ocr_results_dir.iterdir():
+                        if cd.is_dir():
+                            for jf in cd.glob("*.json"):
+                                upload_tasks.append(("checks", f"jobs/{job_id}/ocr_results/{cd.name}/{jf.name}", str(jf), "application/octet-stream"))
+                if summary_file.exists():
+                    upload_tasks.append(("checks", f"jobs/{job_id}/extraction_summary.json", str(summary_file), "application/octet-stream"))
+
+                def _do_upload(task):
+                    bucket, path, fpath, ctype = task
+                    try:
+                        with open(fpath, "rb") as fh:
+                            _supabase_upload_file(bucket, path, fh.read(), ctype)
+                    except Exception as ue:
+                        print(f"  BG upload failed {path}: {ue}")
+
+                with ThreadPoolExecutor(max_workers=10) as _bg_pool:
+                    list(_bg_pool.map(_do_upload, upload_tasks))
+                print(f"  ✓ Background storage uploads complete ({len(upload_tasks)} files)")
+            except Exception as bg_err:
+                print(f"  Background storage upload error: {bg_err}")
+
+        bg_thread = threading.Thread(target=_background_storage_uploads, daemon=True)
+        bg_thread.start()
+
+        # ── Save final results to Supabase immediately after OCR ─
+        # (Storage uploads run concurrently in background — don't block completion)
         # Build clean checks_data JSON (no local paths)
         checks_data = []
         for c in checks:
@@ -932,15 +929,18 @@ async def upload_analyze(file: UploadFile = File(...), _auth=Depends(_verify_tok
     if file_size > 100 * 1024 * 1024:  # 100MB limit
         raise HTTPException(413, "File too large (max 100MB)")
 
-    # Duplicate detection
+    # Duplicate detection (check in-memory jobs only, not DB)
+    # Skip duplicate check if jobs dict is empty (fresh start)
     file_hash = hashlib.md5(content).hexdigest()
-    for existing in jobs.values():
-        if (existing.get("pdf_name") == file.filename
-                and existing.get("file_size") == file_size
-                and existing.get("file_hash") == file_hash
-                and existing.get("status") not in ("error",)):
-            return {"job_id": existing["job_id"], "status": existing["status"],
-                    "message": "Duplicate detected — returning existing job", "duplicate": True}
+    if jobs:  # Only check duplicates if we have jobs in memory
+        for existing in jobs.values():
+            if (existing.get("pdf_name") == file.filename
+                    and existing.get("file_size") == file_size
+                    and existing.get("file_hash") == file_hash
+                    and existing.get("status") not in ("error",)):
+                print(f"  Duplicate detected: {existing['job_id']}")
+                return {"job_id": existing["job_id"], "status": existing["status"],
+                        "message": "Duplicate detected — returning existing job", "duplicate": True}
 
     job_id = str(uuid.uuid4())[:8]
     pdf_path = str(UPLOAD_DIR / f"{job_id}.pdf")
@@ -1037,8 +1037,8 @@ async def upload_analyze(file: UploadFile = File(...), _auth=Depends(_verify_tok
         except Exception as e:
             print(f"  PDF storage upload failed: {e}")
 
-        # Upload check images to storage
-        for check in checks:
+        # Upload check images to storage (parallel)
+        def _upload_analyze_image(check):
             try:
                 with open(check["image_path"], "rb") as f:
                     url = _supabase_upload_file(
@@ -1051,6 +1051,10 @@ async def upload_analyze(file: UploadFile = File(...), _auth=Depends(_verify_tok
                     check["storage_url"] = url
             except Exception as e:
                 print(f"  Image upload failed for {check['check_id']}: {e}")
+
+        from concurrent.futures import ThreadPoolExecutor as TPE
+        with TPE(max_workers=min(20, len(checks))) as _ua_pool:
+            list(_ua_pool.map(_upload_analyze_image, checks))
 
         # Build clean checks list for the response (no local paths)
         checks_response = []
@@ -1359,51 +1363,39 @@ def start_extraction(req: StartExtractionRequest, _auth=Depends(_verify_token)):
             for check in checks:
                 _load_engine_results(results_dir, check)
 
-            # ── Upload page images to Supabase Storage ───────────────
-            pages_dir = Path(out_dir) / "pages"
-            if pages_dir.exists():
-                for page_file in pages_dir.glob("page_*.png"):
-                    try:
-                        with open(page_file, "rb") as f:
-                            _supabase_upload_file(
-                                "checks",
-                                f"jobs/{req.job_id}/pages/{page_file.name}",
-                                f.read(),
-                                "image/png",
-                            )
-                    except Exception as e:
-                        print(f"  Page image upload failed for {page_file.name}: {e}")
-
-            # ── Upload OCR result JSONs to Supabase Storage ──────────
-            ocr_results_dir = Path(out_dir) / "ocr_results"
-            if ocr_results_dir.exists():
-                for check_dir in ocr_results_dir.iterdir():
-                    if check_dir.is_dir():
-                        for json_file in check_dir.glob("*.json"):
-                            try:
-                                with open(json_file, "rb") as f:
-                                    _supabase_upload_file(
-                                        "checks",
-                                        f"jobs/{req.job_id}/ocr_results/{check_dir.name}/{json_file.name}",
-                                        f.read(),
-                                        "application/octet-stream",  # Generic binary type
-                                    )
-                            except Exception as e:
-                                print(f"  OCR JSON upload failed for {json_file.name}: {e}")
-
-            # ── Upload extraction summary to Supabase Storage ─────────
-            summary_file = Path(out_dir) / "extraction_summary.json"
-            if summary_file.exists():
+            # ── Background: upload page images + OCR JSONs (non-blocking) ──
+            def _bg_uploads_reextract():
                 try:
-                    with open(summary_file, "rb") as f:
-                        _supabase_upload_file(
-                            "checks",
-                            f"jobs/{req.job_id}/extraction_summary.json",
-                            f.read(),
-                            "application/octet-stream",  # Generic binary type
-                        )
-                except Exception as e:
-                    print(f"  Extraction summary upload failed: {e}")
+                    upload_tasks = []
+                    pages_dir = Path(out_dir) / "pages"
+                    ocr_results_dir = Path(out_dir) / "ocr_results"
+                    summary_file = Path(out_dir) / "extraction_summary.json"
+                    if pages_dir.exists():
+                        for pf in pages_dir.glob("page_*.png"):
+                            upload_tasks.append(("checks", f"jobs/{req.job_id}/pages/{pf.name}", str(pf), "image/png"))
+                    if ocr_results_dir.exists():
+                        for cd in ocr_results_dir.iterdir():
+                            if cd.is_dir():
+                                for jf in cd.glob("*.json"):
+                                    upload_tasks.append(("checks", f"jobs/{req.job_id}/ocr_results/{cd.name}/{jf.name}", str(jf), "application/octet-stream"))
+                    if summary_file.exists():
+                        upload_tasks.append(("checks", f"jobs/{req.job_id}/extraction_summary.json", str(summary_file), "application/octet-stream"))
+
+                    def _do(task):
+                        bucket, path, fpath, ctype = task
+                        try:
+                            with open(fpath, "rb") as fh:
+                                _supabase_upload_file(bucket, path, fh.read(), ctype)
+                        except Exception as ue:
+                            print(f"  BG upload failed {path}: {ue}")
+
+                    with ThreadPoolExecutor(max_workers=10) as _bg_p:
+                        list(_bg_p.map(_do, upload_tasks))
+                    print(f"  ✓ BG uploads complete ({len(upload_tasks)} files)")
+                except Exception as bg_err:
+                    print(f"  BG upload error: {bg_err}")
+
+            threading.Thread(target=_bg_uploads_reextract, daemon=True).start()
 
             # Save to DB and log API usage
             checks_data = []

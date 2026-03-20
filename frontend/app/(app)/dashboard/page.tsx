@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
 import {
-  Upload, FileText, Image as ImageIcon, CheckCircle, Clock,
-  Loader2, Eye, X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut,
-  FileCheck, Download, ExternalLink, AlertCircle, RefreshCw, Trash2, RotateCcw,
+  FileText, Upload, Download, Trash2, Eye, X, ChevronRight, ChevronLeft,
+  Loader2, AlertCircle, RefreshCw, CheckCircle, Clock, Copy, FileCheck,
+  ImageIcon, ExternalLink, RotateCcw,
 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import ChequeDialog from './components/ChequeDialog';
+import DocumentSidebar from './components/DocumentSidebar';
+import ConfigureExtractionDialog from './components/ConfigureExtractionDialog';
 
 // ── Types ──────────────────────────────────────────────────
 interface JobCheck {
@@ -110,7 +114,23 @@ export default function DashboardPage() {
   const [imageZoom, setImageZoom] = useState(1);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [reExtracting, setReExtracting] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; jobId: string | null; message: string }>({ isOpen: false, jobId: null, message: '' });
   const [deletingDuplicates, setDeletingDuplicates] = useState(false);
+
+  // Sidebar filtering state
+  const [selectedDocFilter, setSelectedDocFilter] = useState<string | null>(null);
+  const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set());
+
+  // Configure extraction dialog
+  const [configureDialogOpen, setConfigureDialogOpen] = useState(false);
+  const [configureJob, setConfigureJob] = useState<Job | null>(null);
+
+  // Ensure check dialog closes when PDF opens
+  useEffect(() => {
+    if (pdfOpen) {
+      setSelectedCheckIdx(null);
+    }
+  }, [pdfOpen]);
 
   const EXPORT_FORMATS = [
     { id: 'csv', name: 'Generic CSV', desc: 'Excel, Google Sheets' },
@@ -127,48 +147,69 @@ export default function DashboardPage() {
   };
 
   const handleDelete = async (jobId: string) => {
-    if (!confirm('Delete this document and all its extracted data?')) return;
+    setDeleteModal({
+      isOpen: true,
+      jobId,
+      message: 'Delete this document and all its extracted data? This action cannot be undone.'
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.jobId) return;
     try {
-      const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/jobs/${deleteModal.jobId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete');
-      setJobs((prev) => prev.filter((j) => j.job_id !== jobId));
-      if (selectedJob?.job_id === jobId) { setSelectedJob(null); setSelectedCheckIdx(null); }
+      setJobs((prev) => prev.filter((j) => j.job_id !== deleteModal.jobId));
+      if (selectedJob?.job_id === deleteModal.jobId) { setSelectedJob(null); setSelectedCheckIdx(null); }
     } catch (e: any) {
       setError(e.message);
     }
   };
 
   const handleRetryFailed = async (jobId: string) => {
-    setReExtracting(true);
-    try {
-      const res = await fetch('/api/start-extraction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId, methods: ['hybrid'], force: false }),
-      });
-      if (!res.ok) throw new Error('Failed to start retry');
-      window.location.href = `/process/${jobId}?methods=hybrid`;
-    } catch (e: any) {
-      setError(e.message);
-      setReExtracting(false);
+    const job = jobs.find((j) => j.job_id === jobId);
+    if (job) {
+      setConfigureJob(job);
+      setConfigureDialogOpen(true);
     }
   };
 
   const handleReExtract = async (jobId: string) => {
+    const job = jobs.find((j) => j.job_id === jobId);
+    if (job) {
+      setConfigureJob(job);
+      setConfigureDialogOpen(true);
+    }
+  };
+
+  const handleConfigureSubmit = async (config: any) => {
     setReExtracting(true);
     try {
       const res = await fetch('/api/start-extraction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId, methods: ['hybrid'], force: true }),
+        body: JSON.stringify(config),
       });
-      if (!res.ok) throw new Error('Failed to start re-extraction');
-      // Redirect to process page to watch progress
-      window.location.href = `/process/${jobId}?methods=hybrid`;
+      if (!res.ok) throw new Error('Failed to start extraction');
+      const methodsParam = config.methods.join(',');
+      window.location.href = `/process/${config.job_id}?methods=${methodsParam}`;
     } catch (e: any) {
       setError(e.message);
       setReExtracting(false);
+      setConfigureDialogOpen(false);
     }
+  };
+
+  const handleToggleStatusFilter = (status: string) => {
+    setStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) {
+        next.delete(status);
+      } else {
+        next.add(status);
+      }
+      return next;
+    });
   };
 
   // Fetch jobs
@@ -281,7 +322,16 @@ export default function DashboardPage() {
     }));
 
   const handleDeleteDuplicates = async () => {
-    if (!confirm(`Delete ${duplicateGroups.reduce((sum, g) => sum + g.count - 1, 0)} duplicate documents? This will keep the most recent version of each.`)) return;
+    const count = duplicateGroups.reduce((sum, g) => sum + g.count - 1, 0);
+    setDeleteModal({
+      isOpen: true,
+      jobId: 'duplicates',
+      message: `Delete ${count} duplicate documents? This will keep the most recent version of each. This action cannot be undone.`
+    });
+  };
+
+  const confirmDeleteDuplicates = async () => {
+    if (deleteModal.jobId !== 'duplicates') return;
     
     setDeletingDuplicates(true);
     try {
@@ -299,15 +349,36 @@ export default function DashboardPage() {
     }
   };
 
-  // All checks flattened for "Recent Cheques" table
-  const allChecks = jobs
-    .filter((j) => j.status === 'complete' && j.checks?.length > 0)
-    .flatMap((j) =>
-      j.checks.map((c) => ({ ...c, job_id: j.job_id, pdf_name: j.pdf_name, job_created: j.created_at }))
-    )
-    .slice(0, 50);
+  const handleConfirmDelete = () => {
+    if (deleteModal.jobId === 'duplicates') {
+      confirmDeleteDuplicates();
+    } else {
+      confirmDelete();
+    }
+  };
+
+  // Filter checks by selected document
+  const filteredChecks = useMemo(() => {
+    let checks = jobs
+      .filter((j) => j.status === 'complete' && j.checks?.length > 0)
+      .flatMap((j) =>
+        j.checks.map((c) => ({ ...c, job_id: j.job_id, pdf_name: j.pdf_name, job_created: j.created_at }))
+      );
+
+    // Filter by selected document
+    if (selectedDocFilter) {
+      checks = checks.filter((c: any) => c.job_id === selectedDocFilter);
+    }
+
+    return checks; // Show all checks, no limit
+  }, [jobs, selectedDocFilter]);
 
   const selectedCheck = selectedCheckIdx !== null && selectedJob ? selectedJob.checks[selectedCheckIdx] : null;
+
+  // Get selected document name for title
+  const selectedDocName = selectedDocFilter
+    ? jobs.find((j) => j.job_id === selectedDocFilter)?.pdf_name
+    : null;
 
   return (
     <div className="max-w-7xl mx-auto p-5 space-y-5">
@@ -390,8 +461,173 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Jobs Table ──────────────────────────────── */}
+      {/* ── 2-Column Layout: Sidebar + Main Content ──── */}
       {!loading && jobs.length > 0 && (
+        <div className="flex gap-3 h-[calc(100vh-240px)]">
+          {/* Left Sidebar */}
+          <div className="w-[20%] min-w-[200px]">
+            <DocumentSidebar
+              jobs={jobs}
+              selectedJobId={selectedDocFilter}
+              onSelectJob={setSelectedDocFilter}
+              statusFilters={statusFilters}
+              onToggleStatusFilter={handleToggleStatusFilter}
+            />
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col">
+            {/* Title Bar */}
+            <div className="bg-white rounded-t-xl border border-gray-100 px-4 py-2 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">
+                  {selectedDocName ? `${selectedDocName}` : 'All Recent Cheques'}
+                </h2>
+                <p className="text-[10px] text-gray-500">
+                  {filteredChecks.length} cheque{filteredChecks.length !== 1 ? 's' : ''}
+                  {selectedDocFilter && (() => {
+                    const job = jobs.find(j => j.job_id === selectedDocFilter);
+                    if (!job) return '';
+                    return ` • ${job.total_pages} pages • ${fmtSize(job.file_size)} • ${fmtDate(job.created_at)}`;
+                  })()}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedDocFilter && (() => {
+                  const job = jobs.find(j => j.job_id === selectedDocFilter);
+                  if (!job) return null;
+                  return (
+                    <>
+                      <button
+                        onClick={() => { 
+                          setSelectedCheckIdx(null); // Close check detail dialog if open
+                          setSelectedJob(job); 
+                          setPdfOpen(true); 
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 rounded transition"
+                        title="View PDF"
+                      >
+                        <ExternalLink size={12} />
+                        View PDF
+                      </button>
+                      <button
+                        onClick={() => handleExport(job.job_id, 'csv')}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded transition"
+                        title="Export CSV"
+                      >
+                        <Download size={12} />
+                        Export
+                      </button>
+                      <button
+                        onClick={() => handleReExtract(job.job_id)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition"
+                        title="Re-extract"
+                      >
+                        <RotateCcw size={12} />
+                        Re-extract
+                      </button>
+                      <button
+                        onClick={() => handleDelete(job.job_id)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-red-700 bg-red-50 hover:bg-red-100 rounded transition"
+                        title="Delete"
+                      >
+                        <Trash2 size={12} />
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => setSelectedDocFilter(null)}
+                        className="text-xs text-gray-500 hover:text-gray-700 ml-2"
+                      >
+                        Show all
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Checks Table */}
+            <div className="flex-1 bg-white rounded-b-xl border-l border-r border-b border-gray-100 overflow-hidden flex flex-col">
+              <div className="flex-1 overflow-auto">
+                {filteredChecks.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-sm text-gray-400">
+                    No extracted cheques to display
+                  </div>
+                ) : (
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-gray-100 border-b border-gray-200 z-10">
+                      <tr>
+                        <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">#</th>
+                        <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Preview</th>
+                        {!selectedDocFilter && (
+                          <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Source</th>
+                        )}
+                        <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Payee</th>
+                        <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+                        <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                        <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Check #</th>
+                        <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Bank</th>
+                        <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Page</th>
+                        <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredChecks.map((c: any, idx: number) => {
+                        const ext = c.extraction;
+                        return (
+                          <tr
+                            key={`${c.job_id}-${c.check_id}`}
+                            className="hover:bg-blue-50/50 cursor-pointer transition"
+                            onClick={() => {
+                              const job = jobs.find((j) => j.job_id === c.job_id);
+                              if (job) {
+                                const ci = job.checks.findIndex((ch) => ch.check_id === c.check_id);
+                                setPdfOpen(false); // Close PDF dialog if open
+                                setSelectedJob(job);
+                                setSelectedCheckIdx(ci >= 0 ? ci : 0);
+                              }
+                            }}
+                          >
+                            <td className="px-2 py-1.5 text-[10px] font-semibold text-gray-400">{idx + 1}</td>
+                            <td className="px-2 py-1.5">
+                              <div className="w-12 h-7 bg-gray-100 rounded overflow-hidden">
+                                <img
+                                  src={`/api/check-image/${c.job_id}/${c.check_id}`}
+                                  alt=""
+                                  loading="lazy"
+                                  className="w-full h-full object-contain"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                              </div>
+                            </td>
+                            {!selectedDocFilter && (
+                              <td className="px-2 py-1.5 text-gray-500 text-[11px] truncate max-w-[100px]">{c.pdf_name}</td>
+                            )}
+                            <td className="px-2 py-1.5 font-medium text-gray-900">{extVal(ext, 'payee') || '—'}</td>
+                            <td className="px-2 py-1.5 font-semibold text-emerald-700">{extVal(ext, 'amount') || '—'}</td>
+                            <td className="px-2 py-1.5 text-gray-600">{extVal(ext, 'checkDate') || '—'}</td>
+                            <td className="px-2 py-1.5 text-gray-600">{extVal(ext, 'checkNumber') || '—'}</td>
+                            <td className="px-2 py-1.5 text-gray-500 text-[11px]">{extVal(ext, 'bankName') || '—'}</td>
+                            <td className="px-2 py-1.5 text-center text-gray-500">{c.page}</td>
+                            <td className="px-2 py-1.5 text-center">
+                              <button className="text-blue-500 hover:text-blue-700">
+                                <Eye size={12} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Old Jobs Table (Hidden, replaced by sidebar) ── */}
+      {false && !loading && jobs.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">Recent Documents</h2>
@@ -484,7 +720,11 @@ export default function DashboardPage() {
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => { setSelectedJob(job); setPdfOpen(true); }}
+                          onClick={() => { 
+                            setSelectedCheckIdx(null); // Close check detail dialog if open
+                            setSelectedJob(job); 
+                            setPdfOpen(true); 
+                          }}
                           className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
                           title="View PDF"
                         >
@@ -553,12 +793,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Recent Cheques Table ─────────────────────── */}
-      {!loading && allChecks.length > 0 && (
+      {/* ── Recent Cheques Table (removed - replaced by 2-column layout) ─────────────────────── */}
+      {false && !loading && (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">Recent Cheques</h2>
-            <span className="text-[11px] text-gray-400">{allChecks.length} cheques</span>
+            <span className="text-[11px] text-gray-400">Recent cheques</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
@@ -596,6 +836,7 @@ export default function DashboardPage() {
                           <img
                             src={`/api/check-image/${c.job_id}/${c.check_id}`}
                             alt=""
+                            loading="lazy"
                             className="w-full h-full object-contain"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                           />
@@ -638,39 +879,9 @@ export default function DashboardPage() {
       )}
 
       {/* ══════════════════════════════════════════════
-          PDF IFRAME VIEWER
-         ══════════════════════════════════════════════ */}
-      {pdfOpen && selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setPdfOpen(false)}>
-          <div
-            className="bg-white rounded-xl shadow-2xl w-[92vw] max-w-5xl h-[88vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 py-3 border-b">
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-gray-500" />
-                <h3 className="text-sm font-semibold text-gray-900">{selectedJob.pdf_name}</h3>
-                <span className="text-[11px] text-gray-400">{selectedJob.total_pages} pages</span>
-              </div>
-              <button onClick={() => setPdfOpen(false)} className="p-1.5 hover:bg-gray-100 rounded">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                src={`/api/pdf-file/${selectedJob.job_id}`}
-                className="w-full h-full border-0"
-                title="PDF Viewer"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════
           CHECK DETAIL DIALOG WITH TABS
          ══════════════════════════════════════════════ */}
-      {selectedCheckIdx !== null && selectedJob && (
+      {!pdfOpen && selectedCheckIdx !== null && selectedJob && (
         <ChequeDialog
           job={selectedJob}
           selectedCheckIdx={selectedCheckIdx}
@@ -681,6 +892,60 @@ export default function DashboardPage() {
           reExtracting={reExtracting}
         />
       )}
+
+      {/* PDF Viewer Dialog */}
+      {pdfOpen && selectedJob && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => setPdfOpen(false)}>
+          <div
+            className="bg-white rounded-xl shadow-2xl w-[60vw] h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">{selectedJob.pdf_name}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {selectedJob.total_pages} pages • {selectedJob.total_checks} checks
+                </p>
+              </div>
+              <button
+                onClick={() => setPdfOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090'}/api/jobs/${selectedJob.job_id}/pdf`}
+                className="w-full h-full border-0"
+                title="PDF Viewer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Configure Extraction Dialog */}
+      {configureJob && (
+        <ConfigureExtractionDialog
+          job={configureJob}
+          isOpen={configureDialogOpen}
+          onClose={() => {
+            setConfigureDialogOpen(false);
+            setConfigureJob(null);
+          }}
+          onSubmit={handleConfigureSubmit}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, jobId: null, message: '' })}
+        onConfirm={handleConfirmDelete}
+        title="Confirm Delete"
+        message={deleteModal.message}
+      />
     </div>
   );
 }

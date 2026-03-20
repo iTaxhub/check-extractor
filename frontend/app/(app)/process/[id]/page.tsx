@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useCheckProcessing } from '@/lib/hooks/useCheckProcessing';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
@@ -38,6 +38,7 @@ function extConf(ext: any, field: string): number {
 export default function ProcessingPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const jobId = params?.id ?? '';
 
   // Get selected methods from URL query (passed from upload page)
@@ -49,22 +50,25 @@ export default function ProcessingPage() {
   const { currentStage, progress, isComplete, error, jobData, methodsProgress } =
     useCheckProcessing(jobId, selectedMethods);
 
-  // Log extraction summary only when complete (not on every render)
+  // Auto-redirect to review page when extraction completes
   useEffect(() => {
-    if (jobData?.checks && isComplete) {
-      console.log('✅ Extraction Complete:', {
-        jobId,
-        totalChecks: jobData.checks.length,
-        methods: selectedMethods,
-        status: jobData.status
-      });
+    if (isComplete && jobData?.checks && jobData.checks.length > 0) {
+      // Brief flash of completion state, then redirect
+      const timer = setTimeout(() => {
+        router.push(`/review/${jobId}`);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [isComplete]);
+  }, [isComplete, jobData?.checks, jobId, router]);
 
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [imageZoom, setImageZoom] = useState(1);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const imageRef = useRef<HTMLImageElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const stageIndex = STAGES.findIndex((s) => s.name === currentStage);
@@ -119,15 +123,20 @@ export default function ProcessingPage() {
   };
 
   const handleReExtract = async (force: boolean = true) => {
+    const wantsAllMethods = window.confirm('Use all extraction methods for this re-run? Click OK for the full extraction suite or Cancel to continue with the recommended fast re-run.');
+    if (wantsAllMethods) {
+      window.alert('This re-run currently uses the recommended fast extraction path to avoid reprocessing every engine. Continuing with the fast re-run.');
+    }
+
     setReExtracting(true);
     try {
       const res = await fetch('/api/start-extraction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId, methods: selectedMethods, force }),
+        body: JSON.stringify({ job_id: jobId, methods: ['ai'], force }),
       });
       if (!res.ok) throw new Error('Failed to start re-extraction');
-      window.location.reload();
+      window.location.href = `/process/${jobId}?methods=ai`;
     } catch (e: any) {
       console.error('Re-extract error:', e);
       setReExtracting(false);
@@ -183,10 +192,10 @@ export default function ProcessingPage() {
               onClick={() => handleReExtract(missingCount > 0 ? false : true)}
               disabled={reExtracting}
               className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition disabled:opacity-50 text-sm font-medium"
-              title={missingCount > 0 ? `Re-extract ${missingCount} missing cheques` : 'Force re-extract all cheques'}
+              title={missingCount > 0 ? `Re-run extraction for ${missingCount} missing cheques` : 'Re-run extraction for all cheques'}
             >
               {reExtracting ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-              {missingCount > 0 ? `Re-extract (${missingCount} missing)` : 'Re-extract'}
+              {missingCount > 0 ? `Re-run (${missingCount} missing)` : 'Re-run extraction'}
             </button>
             {/* Export dropdown */}
             <div className="relative">
@@ -695,16 +704,31 @@ export default function ProcessingPage() {
                 <span className="text-xs text-gray-400">Page {selected.page}</span>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setImageZoom(Math.max(0.5, imageZoom - 0.25))} className="p-1.5 hover:bg-gray-100 rounded" disabled={imageZoom <= 0.5}>
+                <button 
+                  onClick={() => { 
+                    setImageZoom(Math.max(0.5, imageZoom - 0.25)); 
+                    if (imageZoom - 0.25 <= 1) setPanOffset({ x: 0, y: 0 });
+                  }} 
+                  className="p-1.5 hover:bg-gray-100 rounded" 
+                  disabled={imageZoom <= 0.5}
+                >
                   <ZoomOut size={16} />
                 </button>
                 <span className="text-xs font-medium text-gray-500 min-w-[2.5rem] text-center">{(imageZoom * 100).toFixed(0)}%</span>
-                <button onClick={() => setImageZoom(Math.min(3, imageZoom + 0.25))} className="p-1.5 hover:bg-gray-100 rounded" disabled={imageZoom >= 3}>
+                <button 
+                  onClick={() => setImageZoom(Math.min(3, imageZoom + 0.25))} 
+                  className="p-1.5 hover:bg-gray-100 rounded" 
+                  disabled={imageZoom >= 3}
+                >
                   <ZoomIn size={16} />
                 </button>
                 <div className="w-px h-5 bg-gray-200 mx-1" />
                 <button
-                  onClick={() => { setSelectedIdx(Math.max(0, selectedIdx - 1)); setImageZoom(1); }}
+                  onClick={() => { 
+                    setSelectedIdx(Math.max(0, selectedIdx - 1)); 
+                    setImageZoom(1); 
+                    setPanOffset({ x: 0, y: 0 });
+                  }}
                   disabled={selectedIdx === 0}
                   className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"
                   title="Previous"
@@ -713,14 +737,18 @@ export default function ProcessingPage() {
                 </button>
                 <span className="text-sm text-gray-500">{selectedIdx + 1}/{checks.length}</span>
                 <button
-                  onClick={() => { setSelectedIdx(Math.min(checks.length - 1, selectedIdx + 1)); setImageZoom(1); }}
+                  onClick={() => { 
+                    setSelectedIdx(Math.min(checks.length - 1, selectedIdx + 1)); 
+                    setImageZoom(1); 
+                    setPanOffset({ x: 0, y: 0 });
+                  }}
                   disabled={selectedIdx === checks.length - 1}
                   className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"
                   title="Next"
                 >
                   <ChevronRight size={20} />
                 </button>
-                <button onClick={() => { setSelectedIdx(null); setImageZoom(1); }} className="p-1.5 rounded hover:bg-gray-100 ml-2">
+                <button onClick={() => { setSelectedIdx(null); setImageZoom(1); setPanOffset({ x: 0, y: 0 }); }} className="p-1.5 rounded hover:bg-gray-100 ml-2">
                   <X size={20} />
                 </button>
               </div>
@@ -728,13 +756,34 @@ export default function ProcessingPage() {
 
             {/* Dialog body: image left, data right */}
             <div className="flex flex-1 overflow-hidden min-h-0">
-              <div className="w-1/2 flex items-center justify-center bg-gray-50 border-r overflow-auto p-4">
+              <div 
+                className="w-1/2 flex items-center justify-center bg-gray-50 border-r overflow-hidden p-4 relative"
+                style={{ cursor: imageZoom > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
+                onMouseDown={(e) => {
+                  if (imageZoom > 1) {
+                    setIsPanning(true);
+                    setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+                  }
+                }}
+                onMouseMove={(e) => {
+                  if (isPanning && imageZoom > 1) {
+                    setPanOffset({
+                      x: e.clientX - panStart.x,
+                      y: e.clientY - panStart.y
+                    });
+                  }
+                }}
+                onMouseUp={() => setIsPanning(false)}
+                onMouseLeave={() => setIsPanning(false)}
+              >
                 <img
+                  ref={imageRef}
                   src={`/api/check-image/${jobId}/${selected.check_id}`}
                   alt={selected.check_id}
-                  className="rounded shadow-lg transition-transform"
+                  className="rounded shadow-lg transition-transform select-none"
+                  draggable={false}
                   style={{
-                    transform: `scale(${imageZoom})`,
+                    transform: `scale(${imageZoom}) translate(${panOffset.x / imageZoom}px, ${panOffset.y / imageZoom}px)`,
                     transformOrigin: 'center center',
                     maxWidth: '100%',
                     maxHeight: '70vh',

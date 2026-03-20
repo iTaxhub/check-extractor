@@ -77,6 +77,7 @@ export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progressMessages, setProgressMessages] = useState<Record<string, string[]>>({});
 
   // ── Multi-job state ────────────────────────────────────────
   const [jobEntries, setJobEntries] = useState<JobEntry[]>([]);
@@ -105,8 +106,124 @@ export default function UploadPage() {
   const totalChecks = analyzeResult?.total_checks || 0;
 
   // ── Helpers ────────────────────────────────────────────────
+  const hydrateJobResult = useCallback(async (jobId: string, fallbackFile: File, fallbackDuplicate = false) => {
+    const response = await fetch(`/api/jobs/${jobId}?source=db`);
+    if (!response.ok) {
+      throw new Error('Failed to load saved document details');
+    }
+
+    const job = await response.json();
+    const checks = Array.isArray(job.checks) ? job.checks : [];
+    const derivedTotalPages = Number(job.total_pages) || 0;
+    const pageCount = derivedTotalPages > 0
+      ? derivedTotalPages
+      : checks.reduce((max: number, check: any) => Math.max(max, Number(check.page) || 0), 0);
+
+    const checksPerPage = new Map<number, number>();
+    for (const check of checks) {
+      const pageNumber = Number(check.page) || 0;
+      if (pageNumber > 0) {
+        checksPerPage.set(pageNumber, (checksPerPage.get(pageNumber) || 0) + 1);
+      }
+    }
+
+    const hydratedPages: PageInfo[] = Array.from({ length: Math.max(pageCount, 1) }, (_, index) => ({
+      page_number: index + 1,
+      width: 0,
+      height: 0,
+      checks_on_page: checksPerPage.get(index + 1) || 0,
+    }));
+
+    return {
+      job_id: job.job_id || jobId,
+      pdf_name: job.pdf_name || fallbackFile.name,
+      file_size: fallbackFile.size || 0,
+      doc_format: job.doc_format || 'Auto',
+      total_pages: pageCount,
+      total_checks: Number(job.total_checks) || checks.length,
+      pages: hydratedPages,
+      checks: checks.map((check: any) => ({
+        check_id: check.check_id,
+        page: Number(check.page) || 1,
+        width: Number(check.width) || 0,
+        height: Number(check.height) || 0,
+      })),
+      isDuplicate: fallbackDuplicate,
+    } as AnalyzeResult;
+  }, []);
+
   const updateJob = useCallback((id: string, patch: Partial<JobEntry>) => {
     setJobEntries((prev) => prev.map((j) => (j.id === id ? { ...j, ...patch } : j)));
+  }, []);
+
+  const pollJobProgress = useCallback(async (jobId: string, entryId: string) => {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090';
+    const maxPolls = 60; // Poll for up to 60 seconds
+    let pollCount = 0;
+    let lastStatus = '';
+
+    const poll = async () => {
+      if (pollCount >= maxPolls) return;
+      pollCount++;
+
+      try {
+        const response = await fetch(`${backendUrl}/api/jobs/${jobId}`);
+        if (response.ok) {
+          const jobData = await response.json();
+          
+          // Build detailed progress messages
+          const messages: string[] = [];
+          
+          // Status-based messages
+          if (jobData.status === 'pending' || jobData.status === 'analyzing') {
+            messages.push('Converting PDF to images...');
+          }
+          
+          // Show page conversion progress
+          if (jobData.total_pages > 0) {
+            messages.push(`Converted ${jobData.total_pages} pages`);
+            if (jobData.doc_format) {
+              messages.push(`Format: ${jobData.doc_format}`);
+            }
+          }
+          
+          // Show check detection progress
+          if (jobData.total_checks > 0) {
+            messages.push(`${jobData.total_checks} checks detected across ${jobData.total_pages || 0} pages`);
+          }
+          
+          // Show per-page detection if available
+          if (jobData.pages && Array.isArray(jobData.pages) && jobData.pages.length > 0) {
+            const pagesWithChecks = jobData.pages.filter((p: any) => p.checks_on_page > 0);
+            if (pagesWithChecks.length > 0 && pagesWithChecks.length <= 5) {
+              // Show first few pages with check counts
+              pagesWithChecks.slice(0, 5).forEach((p: any) => {
+                messages.push(`Page ${p.page_number}: ${p.checks_on_page} checks`);
+              });
+            }
+          }
+          
+          // Only update if messages changed
+          const newStatus = messages.join('|');
+          if (newStatus !== lastStatus) {
+            setProgressMessages(prev => ({ ...prev, [entryId]: messages }));
+            lastStatus = newStatus;
+          }
+
+          // If complete, stop polling
+          if (jobData.status === 'analyzed' || jobData.status === 'complete') {
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Progress poll error:', err);
+      }
+
+      // Continue polling every 500ms for faster updates
+      setTimeout(poll, 500);
+    };
+
+    poll();
   }, []);
 
   const analyzeOneFile = useCallback(async (file: File, entryId: string) => {
@@ -117,6 +234,10 @@ export default function UploadPage() {
 
     let data: any;
     let isDuplicate = false;
+    
+    // Set initial progress message
+    setProgressMessages(prev => ({ ...prev, [entryId]: ['Uploading PDF...'] }));
+    
     try {
       const response = await fetch(`${backendUrl}/api/upload-analyze`, {
         method: 'POST',
@@ -125,10 +246,17 @@ export default function UploadPage() {
       if (response.ok) {
         data = await response.json();
         isDuplicate = data.duplicate === true;
+        
+        // Start polling for progress if we have a job_id
+        if (data.job_id) {
+          pollJobProgress(data.job_id, entryId);
+        }
       } else {
         throw new Error('analyze endpoint unavailable');
       }
     } catch {
+      setProgressMessages(prev => ({ ...prev, [entryId]: ['Converting PDF to images...'] }));
+      
       const formData2 = new FormData();
       formData2.append('file', file);
       const response = await fetch(`${backendUrl}/api/upload-pdf`, {
@@ -141,6 +269,55 @@ export default function UploadPage() {
       }
       data = await response.json();
       isDuplicate = data.duplicate === true;
+      
+      // Start polling for progress
+      if (data.job_id || data.id) {
+        pollJobProgress(data.job_id || data.id, entryId);
+      }
+    }
+
+    const jobId = data.job_id || data.id;
+    
+    // Wait for backend to complete Phase 1 (check detection)
+    // Poll until status is 'analyzed' or 'complete'
+    if (jobId && !isDuplicate) {
+      console.log(`⏳ Waiting for Phase 1 completion for job ${jobId}...`);
+      let attempts = 0;
+      const maxAttempts = 120; // 60 seconds max (500ms * 120)
+      
+      while (attempts < maxAttempts) {
+        try {
+          const statusRes = await fetch(`${backendUrl}/api/jobs/${jobId}`);
+          if (statusRes.ok) {
+            const jobData = await statusRes.json();
+            
+            // Check if Phase 1 is complete: status is 'analyzed' OR we have real page+check data
+            if (jobData.status === 'analyzed' || jobData.status === 'complete' ||
+                (jobData.total_pages > 0 && jobData.total_checks > 0)) {
+              console.log(`✅ Phase 1 complete: ${jobData.total_pages} pages, ${jobData.total_checks} checks`);
+              data = jobData; // Use the complete data
+              break;
+            }
+          }
+        } catch (pollErr) {
+          console.error('Status poll error:', pollErr);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
+      }
+      
+      if (attempts >= maxAttempts) {
+        console.warn('⚠️ Timeout waiting for Phase 1 completion');
+      }
+    }
+
+    if (isDuplicate && (data.job_id || data.id)) {
+      try {
+        return await hydrateJobResult(data.job_id || data.id, file, true);
+      } catch (hydrateError) {
+        console.warn('Failed to hydrate duplicate job details:', hydrateError);
+      }
     }
 
     const result: AnalyzeResult = {
@@ -181,6 +358,16 @@ export default function UploadPage() {
 
   const handleUploadAndAnalyze = async () => {
     if (files.length === 0) return;
+    
+    // Check for large files and warn user
+    const largeFiles = files.filter(f => f.size > 5 * 1024 * 1024); // > 5MB
+    if (largeFiles.length > 0) {
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+      const sizeInMB = (totalSize / (1024 * 1024)).toFixed(1);
+      console.log(`📦 Processing ${files.length} file(s) (${sizeInMB} MB total)`);
+      console.log('⏱️ Large files detected - this may take 1-2 minutes');
+    }
+    
     setUploading(true);
     setError(null);
 
@@ -274,9 +461,19 @@ export default function UploadPage() {
 
     try {
       const r = job.result;
+      const isReExtract = forceExtract;
+      const methodsToRun = isReExtract ? ['ai'] : selectedMethods;
+
+      if (isReExtract) {
+        const wantsAllMethods = window.confirm('Use all extraction methods for this re-run? Click OK for the full extraction suite or Cancel to continue with the recommended fast re-run.');
+        if (wantsAllMethods) {
+          window.alert('This re-run currently uses the recommended fast extraction path to avoid reprocessing every engine. Continuing with the fast re-run.');
+        }
+      }
+
       const body: Record<string, unknown> = {
         job_id: jobId,
-        methods: selectedMethods,
+        methods: methodsToRun,
         force: forceExtract,
       };
       if (rangeType === 'pages') {
@@ -299,7 +496,7 @@ export default function UploadPage() {
       }
 
       updateJob(jobId, { status: 'complete' });
-      const methodsParam = selectedMethods.join(',');
+      const methodsParam = methodsToRun.join(',');
       router.push(`/process/${jobId}?methods=${methodsParam}`);
     } catch (err: any) {
       console.error('Start extraction error:', err);
@@ -393,6 +590,95 @@ export default function UploadPage() {
                 </div>
               </div>
 
+              {/* Progress Display During Upload */}
+              {uploading && jobEntries.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <Loader2 className="text-blue-600 flex-shrink-0 mt-0.5 animate-spin" size={20} />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-semibold text-blue-900">Processing Documents...</h3>
+                        {(() => {
+                          const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+                          const largeFile = totalSize > 5 * 1024 * 1024;
+                          if (largeFile) {
+                            return (
+                              <span className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+                                ⏱️ Large file - may take 1-2 minutes
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                      <div className="space-y-2">
+                        {jobEntries.map((entry) => {
+                          const messages = progressMessages[entry.id] || [];
+                          return (
+                            <div key={entry.id} className="space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-blue-800 font-medium truncate max-w-[300px]">
+                                  {entry.file.name}
+                                </span>
+                                <div className="flex items-center gap-3 ml-4">
+                                  {entry.status === 'uploading' && (
+                                    <span className="text-blue-600 flex items-center gap-1">
+                                      <Loader2 size={12} className="animate-spin" />
+                                      {messages.length > 0 ? messages[messages.length - 1] : 'Analyzing...'}
+                                    </span>
+                                  )}
+                                  {entry.status === 'analyzed' && entry.result && (
+                                    <span className="text-emerald-700 font-semibold flex items-center gap-2">
+                                      <CheckCircle size={12} />
+                                      {entry.result.total_pages} pages, {entry.result.total_checks} checks found
+                                    </span>
+                                  )}
+                                  {entry.status === 'error' && (
+                                    <span className="text-red-600 flex items-center gap-1">
+                                      <AlertCircle size={12} />
+                                      {entry.error || 'Failed'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {/* Show all progress messages */}
+                              {entry.status === 'uploading' && messages.length > 0 && (
+                                <div className="ml-4 space-y-0.5">
+                                  {messages.map((msg, idx) => (
+                                    <div key={idx} className="text-[11px] text-blue-600 flex items-center gap-1">
+                                      <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
+                                      {msg}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Helpful tips during processing */}
+                      <div className="mt-3 pt-3 border-t border-blue-200">
+                        <p className="text-xs text-blue-700 flex items-start gap-2">
+                          <span className="text-blue-500 mt-0.5">💡</span>
+                          <span>
+                            <strong>Tip:</strong> Processing time varies by file size. 
+                            {(() => {
+                              const analyzing = jobEntries.filter(e => e.status === 'uploading').length;
+                              const completed = jobEntries.filter(e => e.status === 'analyzed').length;
+                              if (analyzing > 0 && completed > 0) {
+                                return ` ${completed} of ${jobEntries.length} completed.`;
+                              }
+                              return ' You can continue working while we process in the background.';
+                            })()}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setFiles([])}
@@ -409,7 +695,7 @@ export default function UploadPage() {
                   {uploading ? (
                     <>
                       <Loader2 size={14} className="animate-spin" />
-                      Analyzing...
+                      Analyzing {files.length} file{files.length > 1 ? 's' : ''}...
                     </>
                   ) : (
                     <>
@@ -476,6 +762,38 @@ export default function UploadPage() {
               })}
             </div>
           )}
+
+          {/* ── Action Buttons (Top) ──────────────────── */}
+          <div className="flex items-center justify-between gap-3 bg-white rounded-xl border border-gray-100 p-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setStep('upload');
+                  setActiveJobId(null);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-[13px] text-gray-600 transition"
+              >
+                <ChevronLeft size={14} />
+                Back to Upload
+              </button>
+              <button
+                onClick={() => {
+                  router.push('/dashboard');
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-[13px] text-gray-600 transition"
+              >
+                <X size={14} />
+                Extract Later
+              </button>
+            </div>
+            <button
+              onClick={() => setStep('configure')}
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 text-[13px] font-medium transition shadow-sm"
+            >
+              Continue to Configure
+              <ChevronRight size={14} />
+            </button>
+          </div>
 
           {/* ── Duplicate Warning Banner ──────────────── */}
           {analyzeResult.isDuplicate && (
@@ -695,16 +1013,6 @@ export default function UploadPage() {
             </div>
           )}
 
-          {/* ── Continue to Configure button ──────────── */}
-          <div className="flex justify-end pt-2">
-            <button
-              onClick={() => setStep('configure')}
-              className="flex items-center gap-1.5 px-5 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 text-[13px] font-medium transition shadow-sm"
-            >
-              Continue to Configure
-              <ChevronRight size={14} />
-            </button>
-          </div>
 
           {/* ── Full-size page image modal ──────────────── */}
           {selectedPage !== null && (
@@ -993,8 +1301,8 @@ export default function UploadPage() {
               className="w-3.5 h-3.5 rounded border-gray-300 text-gray-900 focus:ring-gray-500 disabled:opacity-50"
             />
             <span className="text-[12px] text-gray-600">
-              Force re-extract
-              <span className="text-gray-400 ml-1">— re-run even if results already exist</span>
+              Force re-run extraction
+              <span className="text-gray-400 ml-1">— run again even if results already exist</span>
             </span>
           </label>
 

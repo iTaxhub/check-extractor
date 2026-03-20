@@ -38,7 +38,7 @@ function extVal(ext: any, field: string): string {
 }
 
 export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigate, onExport, onReExtract, reExtracting }: Props) {
-  const [viewMode, setViewMode] = useState<'image' | 'table'>('image');
+  const [viewMode, setViewMode] = useState<'image' | 'table' | 'pdf'>('image');
   const [imageZoom, setImageZoom] = useState(1);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -111,7 +111,7 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-2xl w-[92vw] max-w-6xl max-h-[90vh] flex flex-col"
+        className="bg-white rounded-xl shadow-2xl w-[60vw] h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -180,6 +180,16 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
                   }`}
                 >
                   Table View
+                </button>
+                <button
+                  onClick={() => setViewMode('pdf')}
+                  className={`px-3 py-1 text-xs font-medium rounded transition ${
+                    viewMode === 'pdf' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  PDF View
                 </button>
               </div>
             </div>
@@ -259,7 +269,15 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
         </div>
 
         {/* Body */}
-        {viewMode === 'image' ? (
+        {viewMode === 'pdf' ? (
+          <div className="flex-1 overflow-hidden">
+            <iframe
+              src={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090'}/api/jobs/${job.job_id}/pdf`}
+              className="w-full h-full border-0"
+              title="PDF Viewer"
+            />
+          </div>
+        ) : viewMode === 'image' ? (
           <div className="flex flex-1 overflow-hidden min-h-0">
             {/* Image */}
             <div className="w-1/2 flex items-center justify-center bg-gray-50 border-r overflow-auto p-4">
@@ -305,43 +323,46 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-auto p-4">
-            <table className="w-full text-[13px]">
+          <div className="flex-1 overflow-auto p-3">
+            <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-400 uppercase">Preview</th>
-                  <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-400 uppercase">Payee</th>
-                  <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-400 uppercase">Amount</th>
-                  <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-400 uppercase">Date</th>
-                  <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-400 uppercase">Check #</th>
-                  <th className="px-3 py-2 text-center text-[11px] font-medium text-gray-400 uppercase">Page</th>
-                  <th className="px-3 py-2 text-center text-[11px] font-medium text-gray-400 uppercase">View</th>
+                <tr className="border-b border-gray-200 bg-gray-100">
+                  <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-600 uppercase">#</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-600 uppercase">Preview</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-600 uppercase">Payee</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-600 uppercase">Amount</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-600 uppercase">Date</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-gray-600 uppercase">Check #</th>
+                  <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-gray-600 uppercase">Page</th>
+                  <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-gray-600 uppercase">View</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {job.checks.map((check, idx) => (
-                  <tr key={check.check_id} className={`hover:bg-blue-50/30 transition ${idx === selectedCheckIdx ? 'bg-blue-50' : ''}`}>
-                    <td className="px-3 py-2">
-                      <div className="w-16 h-10 bg-gray-100 rounded overflow-hidden">
+                  <tr key={check.check_id} className={`hover:bg-blue-50/50 transition ${idx === selectedCheckIdx ? 'bg-blue-50' : ''}`}>
+                    <td className="px-2 py-1.5 text-[10px] font-semibold text-gray-400">{idx + 1}</td>
+                    <td className="px-2 py-1.5">
+                      <div className="w-12 h-7 bg-gray-100 rounded overflow-hidden">
                         <img
                           src={`/api/check-image/${job.job_id}/${check.check_id}`}
                           alt=""
+                          loading="lazy"
                           className="w-full h-full object-contain"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
                       </div>
                     </td>
-                    <td className="px-3 py-2 font-medium text-gray-900">{extVal(check.extraction, 'payee') || '—'}</td>
-                    <td className="px-3 py-2 font-medium text-emerald-700">{extVal(check.extraction, 'amount') || '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{extVal(check.extraction, 'checkDate') || '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{extVal(check.extraction, 'checkNumber') || '—'}</td>
-                    <td className="px-3 py-2 text-center text-gray-500">{check.page}</td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        onClick={() => { onNavigate(idx); setViewMode('image'); }}
+                    <td className="px-2 py-1.5 font-medium text-gray-900">{extVal(check.extraction, 'payee') || '—'}</td>
+                    <td className="px-2 py-1.5 font-semibold text-emerald-700">{extVal(check.extraction, 'amount') || '—'}</td>
+                    <td className="px-2 py-1.5 text-gray-600">{extVal(check.extraction, 'checkDate') || '—'}</td>
+                    <td className="px-2 py-1.5 text-gray-600">{extVal(check.extraction, 'checkNumber') || '—'}</td>
+                    <td className="px-2 py-1.5 text-center text-gray-500">{check.page}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      <button 
+                        onClick={() => onNavigate(idx)}
                         className="text-blue-500 hover:text-blue-700"
                       >
-                        <Eye size={14} />
+                        <Eye size={12} />
                       </button>
                     </td>
                   </tr>
