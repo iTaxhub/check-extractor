@@ -26,13 +26,13 @@ export default function AppLayout({
   // Route protection is handled by proxy.ts
   return (
     <QBProviderWrapper>
-      <div className="min-h-screen bg-[#f5f5f7] flex">
-        {/* Sidebar - Fixed */}
-        <aside className="w-[220px] bg-white/80 backdrop-blur-xl border-r border-gray-200/60 hidden md:flex flex-col fixed left-0 top-0 h-screen">
-          <div className="px-5 py-5 border-b border-gray-100/80 flex-shrink-0">
-            <Link href="/dashboard" className="flex items-center gap-2.5 font-semibold text-[15px] text-gray-900">
+      <div className="min-h-screen bg-[#f4f6fb] flex">
+        {/* Sidebar - Fixed - Kyriq Dark Purple */}
+        <aside className="w-[220px] bg-[#1e2235] hidden md:flex flex-col fixed left-0 top-0 h-screen">
+          <div className="px-5 py-5 border-b border-white/[0.06] flex-shrink-0">
+            <Link href="/dashboard" className="flex items-center gap-2.5 font-semibold text-[15px] text-white">
               <Image src="/Kyriq_Logo_Files/kyriq-icon.svg" alt="Kyriq" width={28} height={28} className="rounded-md" />
-              <span>Kyriq</span>
+              <span className="font-extrabold tracking-tight">kyriq</span>
             </Link>
           </div>
 
@@ -43,18 +43,18 @@ export default function AppLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-2.5 px-2.5 py-[7px] text-[13px] font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100/70 rounded-lg transition-colors"
+                className="sidebar-item flex items-center gap-2.5 px-2.5 py-[7px] text-[13px] font-medium text-white/55 hover:text-white/80 hover:bg-white/[0.06] rounded-lg transition-colors"
               >
                 <item.icon className="w-[16px] h-[16px]" />
                 <span>{item.label}</span>
               </Link>
             ))}
 
-            <div className="my-2 border-t border-gray-100/80" />
+            <div className="my-2 border-t border-white/[0.06]" />
 
             <Link
               href="/settings"
-              className="flex items-center gap-2.5 px-2.5 py-[7px] text-[13px] font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100/70 rounded-lg transition-colors"
+              className="sidebar-item flex items-center gap-2.5 px-2.5 py-[7px] text-[13px] font-medium text-white/55 hover:text-white/80 hover:bg-white/[0.06] rounded-lg transition-colors"
             >
               <Settings className="w-[16px] h-[16px]" />
               <span>Settings</span>
@@ -63,11 +63,11 @@ export default function AppLayout({
             <SuperAdminLink />
           </nav>
 
-          <div className="border-t border-gray-100/80 flex-shrink-0">
+          <div className="border-t border-white/[0.06] flex-shrink-0">
             <div className="px-2 py-3">
               <UserProfile />
             </div>
-            <div className="px-5 py-2 text-[11px] text-gray-400 text-center">
+            <div className="px-5 py-2 text-[11px] text-white/35 text-center">
               Kyriq v1.0.0
             </div>
           </div>
