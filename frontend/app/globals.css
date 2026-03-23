@@ -99,7 +99,8 @@
 @layer components {
   /* Buttons */
   .btn-primary {
-    @apply bg-gradient-to-br from-primary to-primary-light text-white shadow-lg shadow-primary/35;
+    @apply bg-gradient-to-br from-primary to-primary-light text-white shadow-lg;
+    box-shadow: 0 10px 15px -3px hsl(var(--primary) / 0.35), 0 4px 6px -4px hsl(var(--primary) / 0.35);
   }
   
   .btn-success {
@@ -108,7 +109,9 @@
   
   /* Sidebar */
   .sidebar-item.active {
-    @apply bg-primary/18 text-primary-light font-semibold;
+    @apply font-semibold;
+    background-color: hsl(var(--primary) / 0.18);
+    color: hsl(var(--primary-light));
   }
   
   /* Status pills */
