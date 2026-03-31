@@ -35,6 +35,39 @@ interface QBTokens {
 }
 
 async function getTokens(supabase: any): Promise<QBTokens | null> {
+  // Prefer qb_connections (active connection) — multi-company source of truth
+  // This stays in sync with what the extension and company switcher use
+  try {
+    const { data: activeConn } = await supabase
+      .from('qb_connections')
+      .select('access_token, refresh_token, realm_id, token_expires_at')
+      .eq('is_active', true)
+      .order('connected_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (activeConn?.access_token && activeConn?.realm_id) {
+      // Also read credentials from integrations for token refresh
+      const { data: creds } = await supabase
+        .from('integrations')
+        .select('qb_client_id, qb_client_secret')
+        .eq('provider', 'quickbooks')
+        .maybeSingle();
+
+      return {
+        access_token: activeConn.access_token,
+        refresh_token: activeConn.refresh_token,
+        realm_id: activeConn.realm_id,
+        expires_at: activeConn.token_expires_at,
+        qb_client_id: creds?.qb_client_id,
+        qb_client_secret: creds?.qb_client_secret,
+      };
+    }
+  } catch (_) {
+    // Fall through to integrations fallback
+  }
+
+  // Fallback: legacy integrations table (single-company)
   const { data } = await supabase
     .from('integrations')
     .select('access_token, refresh_token, realm_id, expires_at, qb_client_id, qb_client_secret')
@@ -72,16 +105,28 @@ async function refreshAccessToken(supabase: any, tokens: QBTokens): Promise<stri
 
     const newTokens = await response.json();
 
-    // Update tokens in database
+    const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
+
+    // Update tokens in integrations table
     await supabase
       .from('integrations')
       .update({
         access_token: newTokens.access_token,
         refresh_token: newTokens.refresh_token,
-        expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+        expires_at: newExpiresAt,
         updated_at: new Date().toISOString(),
       })
       .eq('provider', 'quickbooks');
+
+    // Also sync to qb_connections to keep multi-company source of truth current
+    await supabase
+      .from('qb_connections')
+      .update({
+        access_token: newTokens.access_token,
+        refresh_token: newTokens.refresh_token,
+        token_expires_at: newExpiresAt,
+      })
+      .eq('realm_id', tokens.realm_id);
 
     return newTokens.access_token;
   } catch (error) {
@@ -181,6 +226,22 @@ function normalizePaymentCheck(payment: any): any {
     memo: payment.PrivateNote || '',
     currency: payment.CurrencyRef?.value || 'USD',
     raw: payment,
+  };
+}
+
+function normalizeQBCheck(check: any): any {
+  return {
+    id: `check-${check.Id}`,
+    qb_type: 'Check',
+    qb_source: 'payroll_check',
+    check_number: check.DocNumber || '',
+    date: check.TxnDate || '',
+    amount: check.TotalAmt?.toString() || '0',
+    payee: check.PayeeRef?.name || check.EntityRef?.name || '',
+    account: check.BankAccountRef?.name || check.AccountRef?.name || '',
+    memo: check.PrivateNote || '',
+    currency: check.CurrencyRef?.value || 'USD',
+    raw: check,
   };
 }
 
@@ -362,7 +423,22 @@ export default async function handler(
       errors.push(`BillPayment query failed: ${e.message}`);
     }
 
-    // ── 3. Payment — Cheques received from customers ──
+    // ── 3. Check — Payroll checks and direct disbursements (not tied to bills) ──
+    try {
+      const checkQuery = `SELECT * FROM Check${dateFilter}`;
+      console.log('🔍 Check query:', checkQuery);
+      const checks = await qboQueryAll(accessToken, realmId, checkQuery, 'Check', useSandbox);
+      console.log(`✅ Checks found: ${checks.length}`);
+      if (checks.length > 0) {
+        console.log('  📝 Sample Check:', { Id: checks[0].Id, DocNumber: checks[0].DocNumber, TxnDate: checks[0].TxnDate, TotalAmt: checks[0].TotalAmt, Payee: checks[0].PayeeRef?.name || checks[0].EntityRef?.name });
+      }
+      checks.forEach((c: any) => allEntries.push(normalizeQBCheck(c)));
+    } catch (e: any) {
+      console.error('❌ Check query error:', e.message);
+      errors.push(`Check query failed: ${e.message}`);
+    }
+
+    // ── 4. Payment — Cheques received from customers ──
     try {
       // QB query language: WHERE clause needs actual conditions, not 'WHERE 1=1'
       const paymentDateFilter = dateFilter
@@ -505,6 +581,7 @@ export default async function handler(
               realm_id: realmId,
               txn_id: e.id,
               txn_type: e.qb_type,
+              qb_source: e.qb_source,
               txn_date: e.date || null,
               payee: e.payee || null,
               amount: e.amount ? parseFloat(e.amount) : null,
@@ -552,6 +629,7 @@ export default async function handler(
         cheques_written: filteredEntries.filter(e => e.qb_source === 'cheque_written').length,
         bills_paid_by_cheque: filteredEntries.filter(e => e.qb_source === 'bill_paid_by_cheque').length,
         cheques_received: filteredEntries.filter(e => e.qb_source === 'cheque_received').length,
+        payroll_checks: filteredEntries.filter(e => e.qb_source === 'payroll_check').length,
       },
       errors: errors.length > 0 ? errors : undefined,
       synced_at: new Date().toISOString(),

@@ -246,7 +246,14 @@ export default async function handler(
     // Clear state cookie
     res.setHeader('Set-Cookie', 'qbo_state=; Path=/; HttpOnly; Max-Age=0');
 
-    // Redirect to settings with success
+    // If OAuth was initiated from the extension, redirect to the lightweight completion page
+    // so the extension's tabs.onUpdated listener can detect it and auto-refresh connections.
+    if (stateData?.source === 'extension') {
+      console.log('✅ Extension OAuth complete — redirecting to /qb-oauth-complete');
+      return res.redirect(`/qb-oauth-complete?company=${encodeURIComponent(companyName || '')}`);
+    }
+
+    // Redirect to settings with success (web app flow)
     return res.redirect('/settings?tab=integrations&success=quickbooks_connected');
   } catch (error) {
     console.error('QuickBooks callback error:', error);

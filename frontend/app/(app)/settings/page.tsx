@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2 } from 'lucide-react'
 import QuickBooksFilters, { FilterParams } from '@/components/QuickBooksFilters'
 import { createClient } from '@/lib/supabase/client'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import dynamic from 'next/dynamic'
 
 const QBDataPreview = dynamic(() => import('@/components/QBDataPreview'), { ssr: false })
@@ -20,7 +20,7 @@ function SettingsPageContent() {
     const [showQBCredentialsDialog, setShowQBCredentialsDialog] = useState(false)
     const [qbClientId, setQbClientId] = useState('')
     const [qbClientSecret, setQbClientSecret] = useState('')
-    const [qbRedirectUri, setQbRedirectUri] = useState('')
+    const QB_REDIRECT_URI = 'https://kyriq.com/api/qbo/callback'
     const [testingConnection, setTestingConnection] = useState(false)
     const [uploadingQBO, setUploadingQBO] = useState(false)
     const [qboUploadResult, setQboUploadResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -144,7 +144,7 @@ function SettingsPageContent() {
                 setCompanyName(data.companyName || null)
                 setQbClientId(data.qbClientId || '')
                 setQbClientSecret(data.qbClientSecret || '')
-                setQbRedirectUri(data.qbRedirectUri || '')
+                // qbRedirectUri is always fixed — no need to load from DB
                 
                 // Fetch QB company info if connected but no company name stored
                 if (data.qboConnected && !data.companyName) {
@@ -487,7 +487,7 @@ function SettingsPageContent() {
                 body: JSON.stringify({ 
                     qbClientId, 
                     qbClientSecret, 
-                    qbRedirectUri 
+                    qbRedirectUri: QB_REDIRECT_URI 
                 }),
             })
 
@@ -521,25 +521,7 @@ function SettingsPageContent() {
     ]
 
     return (
-        <>
-            <Toaster 
-                position="top-right"
-                toastOptions={{
-                    success: {
-                        style: {
-                            background: '#10b981',
-                            color: '#fff',
-                        },
-                    },
-                    error: {
-                        style: {
-                            background: '#ef4444',
-                            color: '#fff',
-                        },
-                    },
-                }}
-            />
-            <div className="p-8 max-w-6xl mx-auto">
+        <div className="p-8 max-w-6xl mx-auto">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
                 <p className="text-gray-600 mb-8">Manage your application settings and integrations</p>
 
@@ -1208,14 +1190,11 @@ function SettingsPageContent() {
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Redirect URI</label>
-                                <input
-                                    type="text"
-                                    value={qbRedirectUri}
-                                    onChange={(e) => setQbRedirectUri(e.target.value)}
-                                    placeholder="http://localhost:3000/api/qbo/callback"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">This must match the redirect URI in your QuickBooks app settings</p>
+                                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/></svg>
+                                    <span className="text-sm text-gray-700 font-mono select-all">{QB_REDIRECT_URI}</span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Auto-configured — add this exact URL to your QuickBooks app&apos;s Redirect URIs</p>
                             </div>
                         </div>
 
@@ -1239,7 +1218,6 @@ function SettingsPageContent() {
                 </div>
             )}
         </div>
-        </>
     )
 }
 

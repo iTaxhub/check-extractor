@@ -2498,6 +2498,123 @@ def get_api_keys_status(_auth=Depends(_verify_token)):
 #     }
 
 
+@app.get("/api/qbo/auth")
+async def initiate_qbo_auth(request: Request, source: str = "web"):
+    """
+    Initiate QuickBooks OAuth flow.
+    Accepts Supabase Bearer JWT to identify the tenant, then returns the Intuit auth URL.
+    Called by the Chrome extension with Authorization: Bearer {access_token}.
+    """
+    import base64, json as _json, secrets as _secrets, time as _time, string as _string
+
+    # ── Decode user JWT to get user_id ──────────────────────────────
+    auth_header = request.headers.get("Authorization", "")
+    user_id = None
+    tenant_id = None
+
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        try:
+            payload = _pyjwt.decode(
+                token,
+                _jwt_secret or _sb_key,
+                algorithms=["HS256"],
+                options={"verify_aud": False},
+            )
+            user_id = payload.get("sub")
+        except Exception as e:
+            print(f"⚠️ /api/qbo/auth: JWT decode failed: {e}")
+
+    # ── Resolve tenant_id from user_profiles (or profiles fallback) ─
+    if user_id and _supabase_ok:
+        for profile_table in ("user_profiles", "profiles"):
+            try:
+                resp = _requests.get(
+                    f"{_sb_url}/rest/v1/{profile_table}?id=eq.{user_id}&select=tenant_id&limit=1",
+                    headers=_sb_headers(), timeout=10,
+                )
+                if resp.status_code == 200:
+                    rows = resp.json()
+                    if rows and rows[0].get("tenant_id"):
+                        tenant_id = rows[0]["tenant_id"]
+                        break
+            except Exception as e:
+                print(f"⚠️ /api/qbo/auth: profile lookup failed ({profile_table}): {e}")
+
+    # ── Get QB credentials from integrations table ──────────────────
+    qb_client_id = None
+    qb_redirect_uri = None
+
+    if tenant_id and _supabase_ok:
+        try:
+            resp = _requests.get(
+                f"{_sb_url}/rest/v1/integrations?provider=eq.quickbooks&tenant_id=eq.{tenant_id}&select=qb_client_id,qb_redirect_uri&limit=1",
+                headers=_sb_headers(), timeout=10,
+            )
+            if resp.status_code == 200:
+                rows = resp.json()
+                if rows:
+                    qb_client_id = rows[0].get("qb_client_id")
+                    qb_redirect_uri = rows[0].get("qb_redirect_uri")
+        except Exception as e:
+            print(f"⚠️ /api/qbo/auth: integrations lookup failed: {e}")
+
+        if not qb_client_id:
+            # Fallback: any QB integration
+            try:
+                resp = _requests.get(
+                    f"{_sb_url}/rest/v1/integrations?provider=eq.quickbooks&select=qb_client_id,qb_redirect_uri&limit=1",
+                    headers=_sb_headers(), timeout=10,
+                )
+                if resp.status_code == 200:
+                    rows = resp.json()
+                    if rows:
+                        qb_client_id = rows[0].get("qb_client_id")
+                        qb_redirect_uri = rows[0].get("qb_redirect_uri")
+            except Exception:
+                pass
+
+    # ── Fallback to environment variables ───────────────────────────
+    if not qb_client_id:
+        qb_client_id = (
+            os.environ.get("QUICKBOOKS_CLIENT_ID") or
+            os.environ.get("INTUIT_CLIENT_ID") or ""
+        )
+    if not qb_redirect_uri:
+        qb_redirect_uri = (
+            os.environ.get("QUICKBOOKS_REDIRECT_URI") or
+            os.environ.get("INTUIT_REDIRECT_URI") or ""
+        )
+
+    if not qb_client_id:
+        raise HTTPException(400, "QuickBooks Client ID not configured. Save it in Settings → Integrations.")
+    if not qb_redirect_uri:
+        raise HTTPException(400, "QuickBooks Redirect URI not configured. Set QUICKBOOKS_REDIRECT_URI env var.")
+
+    # ── Build state (encodes tenant_id for callback) ─────────────────
+    state_data = {
+        "random": ''.join(_secrets.choice(_string.ascii_lowercase + _string.digits) for _ in range(7)),
+        "tenant_id": tenant_id or "",
+        "timestamp": int(_time.time() * 1000),
+        "source": source,
+    }
+    state = base64.b64encode(_json.dumps(state_data).encode()).decode()
+
+    # ── Build Intuit OAuth URL ────────────────────────────────────────
+    from urllib.parse import urlencode
+    params = {
+        "client_id": qb_client_id,
+        "redirect_uri": qb_redirect_uri,
+        "response_type": "code",
+        "scope": "com.intuit.quickbooks.accounting",
+        "state": state,
+    }
+    auth_url = f"https://appcenter.intuit.com/connect/oauth2?{urlencode(params)}"
+
+    print(f"✅ /api/qbo/auth: auth URL built for tenant={tenant_id}, source={source}")
+    return {"authUrl": auth_url}
+
+
 # @app.get("/api/qbo/callback")
 # async def qbo_oauth_callback(code: str, state: str, realmId: str):
 #     """

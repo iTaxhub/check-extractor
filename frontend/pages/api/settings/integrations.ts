@@ -98,7 +98,8 @@ export default async function handler(
       if (geminiApiKey !== undefined) updates.gemini_api_key = geminiApiKey;
       if (qbClientId !== undefined) updates.qb_client_id = qbClientId;
       if (qbClientSecret !== undefined) updates.qb_client_secret = qbClientSecret;
-      if (qbRedirectUri !== undefined) updates.qb_redirect_uri = qbRedirectUri;
+      // Always enforce the canonical redirect URI — ignore client-supplied value
+      updates.qb_redirect_uri = 'https://kyriq.com/api/qbo/callback';
       updates.updated_at = new Date().toISOString();
 
       // Upsert integration record with tenant_id

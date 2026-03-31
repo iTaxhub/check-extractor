@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kyriq</title>
+  <link rel="icon" href="../icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../icons/icon32.png" type="image/png">
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════════════════
+       HEADER (always visible)
+  ═══════════════════════════════════════════ -->
+  <header id="header">
+    <div class="logo">
+      <svg class="logo-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="hStemGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#6366f1"/></linearGradient></defs>
+        <rect width="100" height="100" rx="22" fill="#1a1a2e"/>
+        <rect x="22" y="20" width="11" height="60" rx="5.5" fill="url(#hStemGrad)"/>
+        <line x1="33" y1="50" x2="68" y2="20" stroke="#10b981" stroke-width="11" stroke-linecap="round"/>
+        <line x1="33" y1="50" x2="68" y2="80" stroke="#6366f1" stroke-width="11" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text">kyriq</span>
+    </div>
+    <div class="header-right">
+      <button id="btn-profile" class="user-chip profile-chip" style="display:none;" title="Account &amp; Settings">
+        <span id="user-chip-text"></span>
+        <svg width="10" height="10" viewBox="0 0 10 6" fill="none" style="flex-shrink:0;opacity:0.6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <button id="btn-debug" class="icon-btn" title="Debug console">🪲</button>
+    </div>
+  </header>
+
+  <!-- Profile dropdown -->
+  <div id="profile-panel" class="profile-panel" style="display:none;">
+    <div class="profile-top">
+      <div class="profile-avatar" id="profile-avatar">?</div>
+      <div class="profile-info">
+        <div class="profile-name" id="profile-name">—</div>
+        <div class="profile-email" id="profile-email">—</div>
+      </div>
+    </div>
+    <div class="profile-divider"></div>
+    <div class="profile-meta">
+      <span class="profile-label">🏢 Kyriq by iTax Hub</span>
+      <a href="https://kyriq.com/settings" target="_blank" class="profile-link">↗ Web Settings</a>
+    </div>
+    <div class="profile-divider"></div>
+    <button id="btn-profile-logout" class="btn-profile-logout">↩ Sign out</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       DEBUG PANEL (collapsed by default)
+  ═══════════════════════════════════════════ -->
+  <div id="debug-panel" style="display:none;">
+    <div class="debug-header">
+      <span>Console</span>
+      <button id="btn-debug-clear" class="debug-clear">Clear</button>
+    </div>
+    <div id="debug-log" class="debug-log"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       VIEW: AUTH (Login / Sign Up)
+  ═══════════════════════════════════════════ -->
+  <div id="view-auth" class="view auth-view" style="display:none;">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <svg class="auth-logo-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="aStemGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#6366f1"/></linearGradient></defs>
+          <rect width="100" height="100" rx="22" fill="#1a1a2e"/>
+          <rect x="22" y="20" width="11" height="60" rx="5.5" fill="url(#aStemGrad)"/>
+          <line x1="33" y1="50" x2="68" y2="20" stroke="#10b981" stroke-width="11" stroke-linecap="round"/>
+          <line x1="33" y1="50" x2="68" y2="80" stroke="#6366f1" stroke-width="11" stroke-linecap="round"/>
+        </svg>
+        <h1 class="auth-title">Welcome back</h1>
+        <p class="auth-subtitle">Sign in to your Kyriq account</p>
+      </div>
+
+      <!-- Auth tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth="login">Sign In</button>
+        <button class="auth-tab" data-auth="signup">Create Account</button>
+      </div>
+
+      <!-- Login form -->
+      <div id="form-login">
+        <div class="form-group">
+          <label>Email address</label>
+          <input type="email" id="login-email" placeholder="you@yourfirm.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <div class="form-label-row">
+            <label>Password</label>
+            <a href="https://kyriq.com/forgot-password" target="_blank" class="form-forgot">Forgot password?</a>
+          </div>
+          <input type="password" id="login-password" placeholder="••••••••••••" autocomplete="current-password">
+        </div>
+        <div id="login-error" class="alert alert-error" style="display:none;"></div>
+        <button id="btn-login" class="btn-primary full">Sign In</button>
+      </div>
+
+      <!-- Signup form -->
+      <div id="form-signup" style="display:none;">
+        <div class="form-group">
+          <label>Firm / Company name</label>
+          <input type="text" id="signup-company" placeholder="Acme Accounting LLC" autocomplete="organization">
+        </div>
+        <div class="form-group">
+          <label>Email address</label>
+          <input type="email" id="signup-email" placeholder="you@yourfirm.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password <span class="label-hint">min 8 characters</span></label>
+          <input type="password" id="signup-password" placeholder="Create a strong password" autocomplete="new-password">
+        </div>
+        <div id="signup-error" class="alert alert-error" style="display:none;"></div>
+        <div id="signup-success" class="alert alert-success" style="display:none;"></div>
+        <button id="btn-signup" class="btn-primary full">Create Account &amp; Sign In</button>
+      </div>
+
+      <p class="auth-footer">$300/year · <a href="https://kyriq.com" target="_blank">Learn more</a></p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       VIEW: QB CONNECT (no QB companies yet)
+  ═══════════════════════════════════════════ -->
+  <div id="view-qb-connect" class="view" style="display:none;">
+    <div class="connect-card">
+      <div class="connect-icon">🔗</div>
+      <h2>Connect QuickBooks</h2>
+      <p class="connect-desc">Link your QuickBooks Online account to start matching checks against your transactions.</p>
+      <div class="connect-steps">
+        <div class="connect-step">
+          <span class="step-num">1</span>
+          <span>Click the button below</span>
+        </div>
+        <div class="connect-step">
+          <span class="step-num">2</span>
+          <span>Authorize Kyriq in QuickBooks</span>
+        </div>
+        <div class="connect-step">
+          <span class="step-num">3</span>
+          <span>Return here and click "I've Connected"</span>
+        </div>
+      </div>
+      <button id="btn-qb-connect" class="btn-qb full">
+        <svg width="18" height="18" viewBox="0 0 32 32" fill="none" style="flex-shrink:0"><circle cx="16" cy="16" r="16" fill="#2CA01C"/><text x="16" y="21" text-anchor="middle" font-family="Arial" font-weight="900" font-size="17" fill="white">QB</text></svg>
+        Connect QuickBooks Online
+      </button>
+      <div id="qb-connect-info" class="alert alert-success" style="display:none;margin-top:10px;"></div>
+      <button id="btn-qb-connected" class="btn-outline full" style="margin-top:8px;">✅ I've Connected — Refresh</button>
+      <button id="btn-qb-skip" class="btn-ghost-link">Skip for now (matches only)</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN SHELL (after login + QB connected)
+  ═══════════════════════════════════════════ -->
+
+  <!-- Company bar -->
+  <div id="company-bar" style="display:none;">
+    <div class="company-select-wrap">
+      <select id="company-select"></select>
+    </div>
+    <button id="btn-sync" class="btn-sync" title="Sync QB transactions">
+      <span id="sync-icon">↻</span> Sync
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div id="tabs" style="display:none;">
+    <button class="tab active" data-tab="matches">Matches</button>
+    <button class="tab" data-tab="upload">Upload</button>
+    <button class="tab" data-tab="documents">Documents</button>
+    <button class="tab" data-tab="history">History</button>
+  </div>
+
+  <!-- ── TAB: Matches ── -->
+  <div id="view-matches" class="view tab-view" style="display:none;">
+    <div id="match-banner" class="match-banner" style="display:none;"></div>
+    <div class="filter-row">
+      <button class="pill active" data-status="all">All <span class="cnt" id="cnt-all">0</span></button>
+      <button class="pill" data-status="pending">Pending <span class="cnt" id="cnt-pending">0</span></button>
+      <button class="pill" data-status="matched">Matched <span class="cnt" id="cnt-matched">0</span></button>
+      <button class="pill" data-status="discrepancy">Disc. <span class="cnt" id="cnt-discrepancy">0</span></button>
+      <button class="pill" data-status="unmatched">No Match <span class="cnt" id="cnt-unmatched">0</span></button>
+      <button class="pill" data-status="approved">Done <span class="cnt" id="cnt-approved">0</span></button>
+    </div>
+    <div class="bulk-bar">
+      <button id="btn-bulk-approve" class="btn-sm btn-green">✅ Auto-Approve ≥95%</button>
+      <button id="btn-match-filter-toggle" class="btn-sm btn-ghost" title="Search &amp; filter">🔍 Filter</button>
+    </div>
+    <!-- Sort controls -->
+    <div class="sort-bar">
+      <span class="sort-label">Sort:</span>
+      <button class="sort-btn active" data-sort="date">Date</button>
+      <button class="sort-btn" data-sort="amount">Amount</button>
+      <button class="sort-btn" data-sort="checknum">Check #</button>
+      <button class="sort-btn" data-sort="score">Score</button>
+      <button id="btn-sort-dir" class="sort-dir-btn" title="Toggle sort direction">↓</button>
+    </div>
+    <!-- Matches search + date filter (hidden by default) -->
+    <div id="matches-filter-bar" class="checks-filter-bar" style="display:none;">
+      <div class="checks-search-wrap">
+        <span class="checks-search-icon">🔍</span>
+        <input id="match-search" type="text" class="checks-search" placeholder="Search payee, check #, bank…" autocomplete="off">
+        <button id="match-search-clear" class="checks-search-clear" style="display:none;">&amp;#x2715;</button>
+      </div>
+      <div class="checks-date-row">
+        <label class="checks-date-label">From</label>
+        <input id="match-date-from" type="date" class="checks-date-input">
+        <label class="checks-date-label">To</label>
+        <input id="match-date-to" type="date" class="checks-date-input">
+        <button id="match-date-clear" class="btn-xs btn-ghost">× Clear</button>
+      </div>
+    </div>
+    <div id="match-list" class="match-list">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>No matches yet</p>
+        <p class="sub">Checks are loaded automatically on login.<br>Use Sync to match against QuickBooks.</p>
+        <button id="btn-load-match" class="btn-primary" style="margin-top:14px;padding:8px 20px;font-size:12px;">↻ Load &amp; Match Cheques</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Upload (3-step workflow) ── -->
+  <div id="view-upload" class="view tab-view" style="display:none;">
+
+    <!-- Step indicator -->
+    <div class="step-indicator" id="upload-steps">
+      <div class="step-item active" data-step="1">
+        <div class="step-circle">1</div>
+        <span>Upload PDF</span>
+      </div>
+      <div class="step-divider"></div>
+      <div class="step-item" data-step="2">
+        <div class="step-circle">2</div>
+        <span>Configure</span>
+      </div>
+      <div class="step-divider"></div>
+      <div class="step-item" data-step="3">
+        <div class="step-circle">3</div>
+        <span>Processing</span>
+      </div>
+    </div>
+
+    <!-- Step 1: Drop -->
+    <div id="upload-step-1">
+      <div class="upload-zone" id="upload-zone">
+        <div class="upload-zone-icon">📎</div>
+        <p class="upload-zone-title">Drop check PDF here</p>
+        <p class="upload-zone-sub">PDF files supported · Multi-page PDFs OK</p>
+        <button class="btn-outline btn-browse" id="btn-browse">Browse files</button>
+        <input type="file" id="file-input" accept=".pdf,application/pdf" style="display:none;">
+      </div>
+      <div id="file-queue" style="display:none;" class="file-queue"></div>
+      <button id="btn-next-configure" class="btn-primary full" style="display:none;margin-top:12px;">
+        Next: Configure →
+      </button>
+    </div>
+
+    <!-- Step 2: Configure -->
+    <div id="upload-step-2" style="display:none;">
+      <p class="step-label">Choose extraction method</p>
+      <div class="method-grid" id="method-grid">
+        <button class="method-card active" data-method="ai">
+          <div class="method-icon">🤖</div>
+          <div class="method-name">Gemini AI</div>
+          <div class="method-desc">Best for handwritten checks</div>
+        </button>
+        <button class="method-card" data-method="tesseract">
+          <div class="method-icon">🔍</div>
+          <div class="method-name">Tesseract</div>
+          <div class="method-desc">Fast offline OCR</div>
+        </button>
+        <button class="method-card" data-method="hybrid">
+          <div class="method-icon">⚡</div>
+          <div class="method-name">Hybrid</div>
+          <div class="method-desc">All engines, best accuracy</div>
+        </button>
+      </div>
+      <div class="config-actions">
+        <button id="btn-back-upload" class="btn-outline">← Back</button>
+        <button id="btn-start-extract" class="btn-primary">Start Extraction →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Extract progress -->
+    <div id="upload-step-3" style="display:none;">
+      <div class="progress-header">
+        <div class="progress-spinner" id="progress-spinner"></div>
+        <span id="progress-summary">Extracting checks...</span>
+      </div>
+      <div id="progress-log" class="progress-log"></div>
+      <div id="extraction-results" style="display:none;">
+        <div class="results-header">
+          <span id="results-title">Extracted Checks</span>
+          <span id="results-count" class="badge-count"></span>
+        </div>
+        <div id="extracted-list" class="extracted-list"></div>
+        <div class="results-actions">
+          <button id="btn-match-extracted" class="btn-primary full">🔍 Match Against QB Transactions</button>
+          <button id="btn-upload-more" class="btn-outline full" style="margin-top:6px;">Upload More Checks</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Documents (from main app / Supabase) ── -->
+  <div id="view-documents" class="view tab-view" style="display:none;">
+    <!-- Jobs section -->
+    <div class="tab-toolbar">
+      <span class="tab-toolbar-title">Uploaded Documents</span>
+      <button id="btn-refresh-docs" class="btn-xs btn-ghost">↻ Refresh</button>
+    </div>
+    <div id="documents-list" class="documents-list">
+      <div class="empty-state">
+        <div class="empty-icon">📁</div>
+        <p>No documents yet</p>
+        <p class="sub">Upload check PDFs in the Upload tab or in the web app</p>
+      </div>
+    </div>
+    <!-- Extracted checks section -->
+    <div class="section-divider">
+      <span class="section-label">Extracted Cheques <span id="checks-count-badge" class="checks-count-badge"></span></span>
+      <button id="btn-refresh-checks" class="btn-xs btn-ghost">↻ Refresh</button>
+    </div>
+    <!-- Search + date filter bar -->
+    <div class="checks-filter-bar">
+      <div class="checks-search-wrap">
+        <span class="checks-search-icon">🔍</span>
+        <input id="checks-search" type="text" class="checks-search" placeholder="Search payee, check #, bank…" autocomplete="off">
+        <button id="checks-search-clear" class="checks-search-clear" style="display:none;">&#x2715;</button>
+      </div>
+      <div class="checks-date-row">
+        <label class="checks-date-label">From</label>
+        <input id="checks-date-from" type="date" class="checks-date-input">
+        <label class="checks-date-label">To</label>
+        <input id="checks-date-to" type="date" class="checks-date-input">
+        <button id="checks-date-clear" class="btn-xs btn-ghost">× Clear</button>
+      </div>
+    </div>
+    <div id="checks-list" class="checks-list">
+      <div class="empty-state">
+        <div class="empty-icon">💸</div>
+        <p>No extracted cheques yet</p>
+        <p class="sub">Cheques extracted in the web app will appear here</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: History ── -->
+  <div id="view-history" class="view tab-view" style="display:none;">
+    <div class="tab-toolbar">
+      <span class="tab-toolbar-title">Approval History</span>
+      <button id="btn-refresh-history" class="btn-xs btn-ghost">↻ Refresh</button>
+    </div>
+    <div id="history-list" class="history-list">
+      <div class="empty-state">
+        <div class="empty-icon">✅</div>
+        <p>No approvals yet</p>
+        <p class="sub">Approved matches will appear here</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       REVIEW MODAL
+  ═══════════════════════════════════════════ -->
+  <div id="review-modal" class="rm-overlay" style="display:none;">
+    <div class="rm-sheet">
+
+      <!-- Header -->
+      <div class="rm-header">
+        <div>
+          <div class="rm-title" id="rm-check-num">#—</div>
+          <div class="rm-subtitle" id="rm-status">pending review</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span id="rm-score-badge" class="rm-score-badge" style="display:none;"></span>
+          <button id="rm-close" class="rm-close">✕</button>
+        </div>
+      </div>
+
+      <!-- Cheque image -->
+      <div class="rm-image-wrap" id="rm-image-wrap">
+        <img id="rm-image" class="rm-image" src="" alt="Cheque image" style="display:none;">
+        <div id="rm-no-image" class="rm-no-image">
+          <span style="font-size:32px;">�</span>
+          <p>No image available</p>
+        </div>
+      </div>
+
+      <!-- 3-column comparison table -->
+      <div class="rm-compare-wrap">
+        <table class="rm-compare">
+          <thead>
+            <tr>
+              <th class="rm-th-field">Field</th>
+              <th class="rm-th-extracted">📄 Extracted <span class="rm-edit-hint">(editable)</span></th>
+              <th class="rm-th-qb" id="rm-qb-head">🏦 QuickBooks <span class="rm-edit-hint">(editable)</span></th>
+              <th class="rm-th-diff" id="rm-diff-head">Δ Diff</th>
+            </tr>
+          </thead>
+          <tbody id="rm-compare-body">
+            <tr>
+              <td class="rm-td-field">Amount</td>
+              <td class="rm-td-ext"><input class="rm-input" id="rmi-amount" type="text" placeholder="0.00"></td>
+              <td class="rm-td-qb"><input class="rm-input rm-input-qb" id="rmq-amount" type="text" placeholder="QB amount"></td>
+              <td class="rm-diff-col" id="rmd-amount">—</td>
+            </tr>
+            <tr>
+              <td class="rm-td-field">Date</td>
+              <td class="rm-td-ext"><input class="rm-input" id="rmi-date" type="text" placeholder="YYYY-MM-DD"></td>
+              <td class="rm-td-qb"><input class="rm-input rm-input-qb" id="rmq-date" type="text" placeholder="QB date"></td>
+              <td class="rm-diff-col" id="rmd-date">—</td>
+            </tr>
+            <tr>
+              <td class="rm-td-field">Payee</td>
+              <td class="rm-td-ext"><input class="rm-input" id="rmi-payee" type="text" placeholder="Payee name"></td>
+              <td class="rm-td-qb"><input class="rm-input rm-input-qb" id="rmq-payee" type="text" placeholder="QB payee"></td>
+              <td class="rm-diff-col" id="rmd-payee">—</td>
+            </tr>
+            <tr>
+              <td class="rm-td-field">Check #</td>
+              <td class="rm-td-ext"><input class="rm-input" id="rmi-checknum" type="text" placeholder="Check number"></td>
+              <td class="rm-td-qb"><input class="rm-input rm-input-qb" id="rmq-checknum" type="text" placeholder="QB check #"></td>
+              <td class="rm-diff-col" id="rmd-checknum">—</td>
+            </tr>
+          </tbody>
+        </table>
+        <div id="rm-save-feedback" class="rm-save-feedback" style="display:none;"></div>
+      </div>
+
+      <!-- Extra fields (extracted only) -->
+      <div class="rm-extras" id="rm-extras">
+        <div class="rm-field"><span class="rm-label">Bank</span><span class="rm-value" id="rm-bank">—</span></div>
+        <div class="rm-field"><span class="rm-label">Account #</span><span class="rm-value" id="rm-acct">—</span></div>
+        <div class="rm-field"><span class="rm-label">Routing #</span><span class="rm-value" id="rm-routing">—</span></div>
+        <div class="rm-field"><span class="rm-label">Memo</span><span class="rm-value" id="rm-memo">—</span></div>
+        <div class="rm-field"><span class="rm-label">Source</span><span class="rm-value" id="rm-source">—</span></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="rm-actions">
+        <button id="rm-save"    class="btn-sm btn-primary full">💾 Save Changes</button>
+        <button id="rm-reject"  class="btn-sm btn-red  full">❌ Reject</button>
+        <button id="rm-approve" class="btn-sm btn-green full">✅ Approve</button>
+        <button id="rm-undo"    class="btn-xs btn-ghost full" style="display:none;">↩ Undo decision</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       LOADING OVERLAY
+  ═══════════════════════════════════════════ -->
+  <div id="loading" class="loading-overlay" style="display:none;">
+    <div class="loading-spinner"></div>
+    <p id="loading-text">Loading...</p>
+  </div>
+
+</div><!-- #app -->
+<script src="sidepanel.js"></script>
+</body>
+</html>

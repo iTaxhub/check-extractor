@@ -3,23 +3,134 @@
  * Handles: Supabase auth, QB API calls, token refresh, matching, clearing transactions
  */
 
-// ── Config (loaded from chrome.storage) ──────────────────────
-const DEFAULTS = {
-  supabaseUrl: '',
-  supabaseAnonKey: '',
-  qbClientId: '',
-  qbClientSecret: '',
-  geminiApiKey: '',
+const CONFIG_CACHE_TTL = 3600000; // 1 hour in ms
+
+// ── Structured logging ───────────────────────────────────────
+function log(msg, data) {
+  const ts = new Date().toISOString().slice(11, 23);
+  if (data !== undefined) {
+    console.log(`[Kyriq SW ${ts}] ${msg}`, data);
+  } else {
+    console.log(`[Kyriq SW ${ts}] ${msg}`);
+  }
+}
+function logErr(msg, err) {
+  const ts = new Date().toISOString().slice(11, 23);
+  console.error(`[Kyriq SW ${ts}] ❌ ${msg}`, err?.message || err);
+}
+
+// #region agent log
+/** NDJSON debug ingest (session 76c285) — no secrets / no PII */
+function debugAgentLog(payload) {
+  const body = {
+    sessionId: '76c285',
+    runId: 'ext-audit',
+    timestamp: Date.now(),
+    ...payload,
+  };
+  // Mirror to SW console when NDJSON ingest is unavailable (copy from DevTools → Service worker)
+  try {
+    log('[AGENT_DEBUG]', body);
+  } catch (_) {}
+  fetch('http://127.0.0.1:7415/ingest/f682ae64-23f5-470b-ad66-bf3be254098b', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '76c285' },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+// #endregion
+
+// ── Hardcoded Bootstrap Config (Update these for your deployment) ─
+const BOOTSTRAP_CONFIG = {
+  supabaseUrl: 'https://yqbmzerdagqevjdwhlwh.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYm16ZXJkYWdxZXZqZHdobHdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MjA2NjEsImV4cCI6MjA4NTE5NjY2MX0.0m_AeHUTQX1s-h5wbZfcdmS-uePpgd-9cI1m3CIeXi4',
+  backendUrl: 'https://check-extractor-production-2026.up.railway.app/',
+  frontendUrl: 'https://kyriq.com',
 };
 
+function getBootstrapConfig() {
+  log('getBootstrapConfig', { url: BOOTSTRAP_CONFIG.supabaseUrl, hasKey: !!BOOTSTRAP_CONFIG.supabaseAnonKey, hasBackend: !!BOOTSTRAP_CONFIG.backendUrl, hasFrontend: !!BOOTSTRAP_CONFIG.frontendUrl });
+  return BOOTSTRAP_CONFIG;
+}
+
+// ── App config (fetched from backend post-login, cached 1 hr) ─
+// Contains: geminiApiKey, qbClientId (and mirrors supabase creds)
+// NOTE: /api/extension/* routes live in Next.js (frontendUrl), NOT in the Python backend.
 async function getConfig() {
-  const { config } = await chrome.storage.local.get('config');
-  return { ...DEFAULTS, ...config };
+  const bootstrap = getBootstrapConfig();
+
+  const { configCache } = await chrome.storage.local.get('configCache');
+  if (configCache && Date.now() < configCache.expiresAt) {
+    return { ...configCache.data, ...bootstrap };
+  }
+
+  // Use frontendUrl (kyriq.com) — that's where Next.js API routes live
+  const apiHost = (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, '');
+  if (!apiHost) {
+    return { ...bootstrap, geminiApiKey: '', qbClientId: '' };
+  }
+
+  const session = await getSession();
+  const headers = { 'Content-Type': 'application/json' };
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+
+  try {
+    log(`Fetching app config from ${apiHost}/api/extension/config`);
+    const res = await fetch(`${apiHost}/api/extension/config`, { headers });
+    if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`);
+    const remote = await res.json();
+    const merged = { ...remote, ...bootstrap };
+    await chrome.storage.local.set({
+      configCache: { data: remote, expiresAt: Date.now() + CONFIG_CACHE_TTL },
+    });
+    log('App config fetched and cached', { hasGemini: !!remote.geminiApiKey, hasQbClientId: !!remote.qbClientId });
+    // #region agent log
+    debugAgentLog({
+      hypothesisId: 'E',
+      location: 'service-worker.js:getConfig',
+      message: 'extension config fetch ok',
+      data: { apiHost, status: res.status, hasGemini: !!remote.geminiApiKey, hasQbClientId: !!remote.qbClientId },
+    });
+    // #endregion
+    return merged;
+  } catch (e) {
+    logErr('Config fetch failed, using fallback', e);
+    // #region agent log
+    debugAgentLog({
+      hypothesisId: 'E',
+      location: 'service-worker.js:getConfig',
+      message: 'extension config fetch failed',
+      data: { apiHost: (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, ''), err: String(e?.message || e) },
+    });
+    // #endregion
+    if (configCache?.data) return { ...configCache.data, ...bootstrap };
+    return { ...bootstrap, geminiApiKey: '', qbClientId: '' };
+  }
 }
 
 async function getSession() {
   const { session } = await chrome.storage.local.get('session');
-  return session || null;
+  if (!session) return null;
+  // Auto-refresh if access_token expires within 5 minutes
+  const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+  if (expiresAt && Date.now() > expiresAt - 5 * 60 * 1000) {
+    if (session.refresh_token) {
+      try {
+        log('getSession: access_token expiring, refreshing…');
+        const refreshed = await supabaseAuth('token?grant_type=refresh_token', {
+          refresh_token: session.refresh_token,
+        });
+        await saveSession(refreshed);
+        log('getSession: token refreshed OK');
+        return refreshed;
+      } catch (e) {
+        logErr('getSession: token refresh failed', e);
+      }
+    }
+  }
+  return session;
 }
 
 async function saveSession(session) {
@@ -28,8 +139,7 @@ async function saveSession(session) {
 
 // ── Supabase helpers ─────────────────────────────────────────
 async function supabaseRequest(path, options = {}) {
-  const cfg = await getConfig();
-  if (!cfg.supabaseUrl) throw new Error('Supabase URL not configured');
+  const cfg = getBootstrapConfig();
   const session = await getSession();
 
   const headers = {
@@ -52,15 +162,31 @@ async function supabaseRequest(path, options = {}) {
 }
 
 async function supabaseAuth(endpoint, body) {
-  const cfg = await getConfig();
+  const cfg = getBootstrapConfig();
+  log(`supabaseAuth → ${endpoint}`);
   const res = await fetch(`${cfg.supabaseUrl}/auth/v1/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseAnonKey },
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error_description || data.msg || 'Auth failed');
+  if (!res.ok) {
+    logErr(`supabaseAuth failed (${endpoint})`, data.error_description || data.msg);
+    throw new Error(data.error_description || data.msg || 'Auth failed');
+  }
+  log(`supabaseAuth success (${endpoint})`);
   return data;
+}
+
+// ── Tenant lookup (handles both 'user_profiles' and 'profiles' table names) ──
+async function getTenantId(userId) {
+  let rows = await supabaseRequest(`user_profiles?id=eq.${userId}&select=tenant_id`).catch(() => []);
+  if (!rows?.length) {
+    log('getTenantId: user_profiles empty, trying profiles table');
+    rows = await supabaseRequest(`profiles?id=eq.${userId}&select=tenant_id`).catch(() => []);
+  }
+  if (!rows?.length) throw new Error('No user profile found — ensure user_profiles or profiles table exists');
+  return rows[0].tenant_id;
 }
 
 // ── QB API helpers ───────────────────────────────────────────
@@ -68,12 +194,7 @@ async function getActiveConnection() {
   const session = await getSession();
   if (!session) throw new Error('Not logged in');
 
-  const profiles = await supabaseRequest(
-    `user_profiles?id=eq.${session.user.id}&select=tenant_id`,
-    { method: 'GET' }
-  );
-  if (!profiles?.length) throw new Error('No profile found');
-  const tenantId = profiles[0].tenant_id;
+  const tenantId = await getTenantId(session.user.id);
 
   const conns = await supabaseRequest(
     `qb_connections?tenant_id=eq.${tenantId}&is_active=eq.true&select=*`,
@@ -93,39 +214,38 @@ async function getValidQBToken() {
     return { token: conn.access_token, realmId: conn.realm_id, tenantId: conn.tenantId, connId: conn.id };
   }
 
-  // Refresh token
-  const cfg = await getConfig();
-  const clientId = cfg.qbClientId;
-  const clientSecret = cfg.qbClientSecret;
-  if (!clientId || !clientSecret) throw new Error('QB credentials not configured');
-
-  const res = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+  // Proxy token refresh through Next.js (frontendUrl) — QB client secret stays server-side.
+  // /api/extension/qb/refresh-token is a Next.js route, not the Python backend.
+  const bootstrap = getBootstrapConfig();
+  const apiHost = (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, '');
+  if (!apiHost) throw new Error('Frontend URL not configured — check extension settings');
+  const session = await getSession();
+  const res = await fetch(`${apiHost}/api/extension/qb/refresh-token`, {
     method: 'POST',
     headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
     },
-    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: conn.refresh_token }),
+    body: JSON.stringify({ connectionId: conn.id, refreshToken: conn.refresh_token }),
   });
 
   if (!res.ok) throw new Error('Token refresh failed');
   const newTokens = await res.json();
 
-  // Save refreshed tokens
+  // Save refreshed tokens back to qb_connections
   await supabaseRequest(
     `qb_connections?id=eq.${conn.id}`,
     {
       method: 'PATCH',
       body: JSON.stringify({
-        access_token: newTokens.access_token,
-        refresh_token: newTokens.refresh_token,
-        token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+        access_token: newTokens.accessToken,
+        refresh_token: newTokens.refreshToken,
+        token_expires_at: new Date(Date.now() + newTokens.expiresIn * 1000).toISOString(),
       }),
     }
   );
 
-  return { token: newTokens.access_token, realmId: conn.realm_id, tenantId: conn.tenantId, connId: conn.id };
+  return { token: newTokens.accessToken, realmId: conn.realm_id, tenantId: conn.tenantId, connId: conn.id };
 }
 
 async function qbApiRequest(endpoint, method = 'GET', body = null) {
@@ -260,14 +380,27 @@ function scoreMatch(check, qbTxn) {
   if (cn1 && cn2 && cn1 === cn2) reasons.checkNumber = 30;
   else if (cn1 && cn2 && (cn1.endsWith(cn2) || cn2.endsWith(cn1))) reasons.checkNumber = 10;
 
-  // Date (15pts)
+  // Date (15pts) — use UTC-safe parsing to avoid timezone-shifted day counts
   if (check.check_date && qbTxn.txn_date) {
-    const days = Math.abs(new Date(check.check_date) - new Date(qbTxn.txn_date)) / 86400000;
-    if (days === 0) reasons.date = 15;
-    else if (days <= 1) reasons.date = 12;
-    else if (days <= 3) reasons.date = 8;
-    else if (days <= 7) reasons.date = 4;
-    else if (days <= 14) reasons.date = 1;
+    const parseUTCDay = (s) => {
+      const t = String(s).trim();
+      const ymd = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (ymd) return Date.UTC(+ymd[1], +ymd[2] - 1, +ymd[3]);
+      const mdy = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mdy) return Date.UTC(+mdy[3], +mdy[1] - 1, +mdy[2]);
+      const d = new Date(t);
+      return isNaN(d.getTime()) ? null : Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    };
+    const t1 = parseUTCDay(check.check_date);
+    const t2 = parseUTCDay(qbTxn.txn_date);
+    if (t1 !== null && t2 !== null) {
+      const days = Math.abs(t1 - t2) / 86400000;
+      if (days === 0) reasons.date = 15;
+      else if (days <= 1) reasons.date = 12;
+      else if (days <= 3) reasons.date = 8;
+      else if (days <= 7) reasons.date = 4;
+      else if (days <= 14) reasons.date = 1;
+    }
   }
 
   // Payee (15pts)
@@ -292,17 +425,19 @@ function statusFromScore(score, flags) {
 // ── Pull QB transactions ─────────────────────────────────────
 async function pullQBTransactions() {
   const { token, realmId, tenantId } = await getValidQBToken();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+  // Wider window so older cheques still match (30d was too small for typical reconciliation).
+  const pullLookbackDays = 365;
+  const windowStart = new Date(Date.now() - pullLookbackDays * 86400000).toISOString().split('T')[0];
 
   const queries = [
-    { q: `SELECT * FROM Purchase WHERE PaymentType = 'Check' AND TxnDate >= '${thirtyDaysAgo}'`, key: 'Purchase', type: 'Purchase' },
-    { q: `SELECT * FROM BillPayment WHERE TxnDate >= '${thirtyDaysAgo}'`, key: 'BillPayment', type: 'BillPayment' },
-    { q: `SELECT * FROM Check WHERE TxnDate >= '${thirtyDaysAgo}'`, key: 'Check', type: 'Check' },
+    { q: `SELECT * FROM Purchase WHERE PaymentType = 'Check' AND TxnDate >= '${windowStart}'`, key: 'Purchase', type: 'Purchase', source: 'cheque_written' },
+    { q: `SELECT * FROM BillPayment WHERE TxnDate >= '${windowStart}'`, key: 'BillPayment', type: 'BillPayment', source: 'bill_paid_by_cheque' },
+    { q: `SELECT * FROM Check WHERE TxnDate >= '${windowStart}'`, key: 'Check', type: 'Check', source: 'payroll_check' },
   ];
 
   // Fetch all transaction types in parallel for 3x faster sync
   const allTxns = [];
-  const fetchPromises = queries.map(async ({ q, key, type }) => {
+  const fetchPromises = queries.map(async ({ q, key, type, source }) => {
     try {
       const res = await fetch(
         `https://quickbooks.api.intuit.com/v3/company/${realmId}/query?query=${encodeURIComponent(q)}&minorversion=65`,
@@ -310,19 +445,24 @@ async function pullQBTransactions() {
       );
       if (res.ok) {
         const data = await res.json();
-        const txns = data?.QueryResponse?.[key] || [];
+        let txns = data?.QueryResponse?.[key] || [];
+        // BillPayment: QB IDS does not support PayType in WHERE clause — filter client-side
+        if (type === 'BillPayment') txns = txns.filter(t => (t.PayType || '').toLowerCase() === 'check');
         return txns.map(t => ({
           tenant_id: tenantId,
           realm_id: realmId,
+          // txn_id encodes both type and Intuit Id: "purchase-123", "billpayment-456"
           txn_id: `${type.toLowerCase()}-${t.Id}`,
           txn_type: type,
           txn_date: t.TxnDate,
-          payee: t.EntityRef?.name || t.VendorRef?.name || t.CustomerRef?.name || null,
+          // PayeeRef is the primary field for Check entities; fall through to EntityRef/VendorRef for others
+          payee: t.PayeeRef?.name || t.EntityRef?.name || t.VendorRef?.name || t.CustomerRef?.name || null,
           amount: t.TotalAmt,
           memo: t.PrivateNote || null,
           doc_number: t.DocNumber || null,
-          account: t.AccountRef?.name || t.BankAccountRef?.name || null,
-          qb_id: t.Id,
+          account: t.BankAccountRef?.name || t.AccountRef?.name || null,
+          // qb_id NOT stored — column doesn't exist in qb_transactions schema.
+          // Extract Intuit Id from txn_id when needed: txn_id.split('-').slice(1).join('-')
         }));
       }
       return [];
@@ -335,15 +475,50 @@ async function pullQBTransactions() {
   const results = await Promise.all(fetchPromises);
   results.forEach(txns => allTxns.push(...txns));
 
+  // #region agent log
+  debugAgentLog({
+    hypothesisId: 'H1',
+    location: 'service-worker.js:pullQBTransactions',
+    message: 'intuit query window + per-type counts',
+    data: {
+      realmId,
+      windowStart,
+      pullLookbackDays,
+      counts: queries.map((q, i) => ({ type: q.type, n: (results[i] || []).length })),
+      totalFetched: allTxns.length,
+    },
+  });
+  // #endregion
+
   // Upsert to Supabase
   if (allTxns.length > 0) {
     const session = await getSession();
     allTxns.forEach(t => { t.user_id = session.user.id; });
-    await supabaseRequest('qb_transactions', {
-      method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify(allTxns),
-    });
+    try {
+      await supabaseRequest('qb_transactions', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify(allTxns),
+      });
+      // #region agent log
+      debugAgentLog({
+        hypothesisId: 'H2',
+        location: 'service-worker.js:pullQBTransactions',
+        message: 'supabase qb_transactions upsert ok',
+        data: { rowCount: allTxns.length },
+      });
+      // #endregion
+    } catch (e) {
+      // #region agent log
+      debugAgentLog({
+        hypothesisId: 'H2',
+        location: 'service-worker.js:pullQBTransactions',
+        message: 'supabase qb_transactions upsert failed',
+        data: { err: String(e?.message || e), rowCount: allTxns.length },
+      });
+      // #endregion
+      throw e;
+    }
   }
 
   return allTxns;
@@ -359,6 +534,15 @@ async function runFullMatch(extractedChecks) {
     `qb_transactions?tenant_id=eq.${tenantId}&realm_id=eq.${realmId}&order=txn_date.desc&limit=500`,
     { method: 'GET' }
   );
+
+  // #region agent log
+  debugAgentLog({
+    hypothesisId: 'H3',
+    location: 'service-worker.js:runFullMatch',
+    message: 'supabase qb_transactions for matching',
+    data: { realmId, qbRowCount: Array.isArray(qbTxns) ? qbTxns.length : -1, checkCount: extractedChecks?.length ?? 0 },
+  });
+  // #endregion
 
   const results = [];
   for (const check of extractedChecks) {
@@ -395,71 +579,494 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const handler = async () => {
     try {
       switch (msg.type) {
+        case 'SIGNUP': {
+          log('SIGNUP', { email: msg.email, company: msg.companyName });
+          const data = await supabaseAuth('signup', {
+            email: msg.email,
+            password: msg.password,
+            data: { company_name: msg.companyName || '' },
+          });
+          if (data.user) {
+            log('SIGNUP success, auto-logging in');
+            const loginData = await supabaseAuth('token?grant_type=password', {
+              email: msg.email, password: msg.password,
+            });
+            await saveSession(loginData);
+            await chrome.storage.local.remove('configCache');
+            return { success: true, user: loginData.user, session: loginData };
+          }
+          return { success: true, needsConfirmation: true };
+        }
         case 'LOGIN': {
+          log('LOGIN', { email: msg.email });
           const data = await supabaseAuth('token?grant_type=password', {
             email: msg.email, password: msg.password,
           });
           await saveSession(data);
-          return { success: true, user: data.user };
+          await chrome.storage.local.remove('configCache');
+          log('LOGIN success', { userId: data.user?.id });
+          return { success: true, user: data.user, session: data };
         }
         case 'LOGOUT': {
+          log('LOGOUT');
           await chrome.storage.local.remove('session');
           return { success: true };
         }
         case 'GET_SESSION': {
           const s = await getSession();
+          log('GET_SESSION', { hasSession: !!s, userId: s?.user?.id });
           return { session: s };
         }
         case 'GET_CONFIG': {
           return await getConfig();
         }
-        case 'SAVE_CONFIG': {
-          await chrome.storage.local.set({ config: msg.config });
-          return { success: true };
+        case 'REFRESH_CONFIG': {
+          await chrome.storage.local.remove('configCache');
+          const cfg = await getConfig();
+          return { success: true, config: cfg };
+        }
+        case 'GET_QB_AUTH_URL': {
+          const bootstrap = getBootstrapConfig();
+          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          if (!backendUrl) return { error: 'Backend URL not set' };
+          const url = `${backendUrl}/api/qbo/auth?source=extension`;
+          log('GET_QB_AUTH_URL', url);
+          return { url };
+        }
+        case 'OPEN_QB_AUTH': {
+          const s = await getSession();
+          if (!s?.access_token) return { error: 'Not logged in. Please sign in first.' };
+          const bootstrap = getBootstrapConfig();
+          // Use frontendUrl (kyriq.com) first — it has the correct registered redirect_uri.
+          // Fall back to backendUrl if frontendUrl is not set.
+          const qbAuthHost = (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, '');
+          if (!qbAuthHost) return { error: 'No frontend or backend URL configured' };
+          log('OPEN_QB_AUTH: fetching Intuit auth URL from', qbAuthHost);
+          try {
+            const apiRes = await fetch(`${qbAuthHost}/api/qbo/auth?source=extension`, {
+              headers: { 'Authorization': `Bearer ${s.access_token}`, 'Content-Type': 'application/json' }
+            });
+            const data = await apiRes.json();
+            if (!apiRes.ok || !data.authUrl) {
+              logErr('OPEN_QB_AUTH: error from ' + qbAuthHost, data.error || data.detail || data.message);
+              return { error: data.detail || data.error || data.message || `Server returned ${apiRes.status}` };
+            }
+            log('OPEN_QB_AUTH: opening Intuit OAuth page', data.authUrl);
+            await chrome.tabs.create({ url: data.authUrl });
+            return { success: true, url: data.authUrl };
+          } catch (e) {
+            logErr('OPEN_QB_AUTH fetch failed', e);
+            return { error: `Network error: ${e.message}` };
+          }
         }
         case 'GET_CONNECTIONS': {
+          log('GET_CONNECTIONS');
           const s = await getSession();
           if (!s) return { connections: [] };
-          const profiles = await supabaseRequest(`user_profiles?id=eq.${s.user.id}&select=tenant_id`);
-          if (!profiles?.length) return { connections: [] };
+          const tenantId = await getTenantId(s.user.id).catch(() => null);
+          if (!tenantId) { log('GET_CONNECTIONS: no profile found'); return { connections: [] }; }
           const conns = await supabaseRequest(
-            `qb_connections?tenant_id=eq.${profiles[0].tenant_id}&select=id,realm_id,company_name,is_active,connected_at&order=connected_at.asc`
+            `qb_connections?tenant_id=eq.${tenantId}&select=id,realm_id,company_name,is_active,connected_at&order=connected_at.asc`
           );
+          log('GET_CONNECTIONS result', { count: conns?.length || 0 });
           return { connections: conns || [] };
         }
         case 'SWITCH_COMPANY': {
           const s = await getSession();
-          const profiles = await supabaseRequest(`user_profiles?id=eq.${s.user.id}&select=tenant_id`);
-          const tid = profiles[0].tenant_id;
-          // Deactivate all
-          await supabaseRequest(`qb_connections?tenant_id=eq.${tid}`, {
-            method: 'PATCH', body: JSON.stringify({ is_active: false }),
-          });
-          // Activate requested
-          await supabaseRequest(`qb_connections?tenant_id=eq.${tid}&realm_id=eq.${msg.realmId}`, {
-            method: 'PATCH', body: JSON.stringify({ is_active: true }),
-          });
-          return { success: true };
+          if (!s) return { error: 'Not logged in' };
+          if (!msg.realmId) return { error: 'realmId is required' };
+          const tid = await getTenantId(s.user.id);
+          log('SWITCH_COMPANY', { realmId: msg.realmId, tenantId: tid });
+          try {
+            // Deactivate all connections for this tenant
+            await supabaseRequest(`qb_connections?tenant_id=eq.${tid}`, {
+              method: 'PATCH', body: JSON.stringify({ is_active: false }),
+            });
+            // Activate only the selected company
+            await supabaseRequest(`qb_connections?tenant_id=eq.${tid}&realm_id=eq.${msg.realmId}`, {
+              method: 'PATCH', body: JSON.stringify({ is_active: true }),
+            });
+            // Read back the active connection to confirm and return details
+            const activeConns = await supabaseRequest(
+              `qb_connections?tenant_id=eq.${tid}&realm_id=eq.${msg.realmId}&select=id,realm_id,company_name,is_active`
+            ).catch(() => []);
+            const activeConnection = activeConns?.[0] || null;
+            log(`SWITCH_COMPANY: switched to realm ${msg.realmId}`, { confirmed: !!activeConnection });
+            return { success: true, activeConnection };
+          } catch (e) {
+            logErr('SWITCH_COMPANY failed', e);
+            return { error: e.message };
+          }
+        }
+        case 'GET_DOCUMENTS': {
+          log('GET_DOCUMENTS');
+          const s = await getSession();
+          if (!s?.access_token) return { documents: [] };
+          const bootstrap = getBootstrapConfig();
+          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          if (!backendUrl) return { documents: [] };
+          try {
+            const res = await fetch(`${backendUrl}/api/jobs?limit=200&source=db`, {
+              headers: { Authorization: `Bearer ${s.access_token}` },
+            });
+            if (!res.ok) throw new Error(`Backend /api/jobs returned ${res.status}`);
+            const data = await res.json();
+            const docs = (data.jobs || []).map(j => ({
+              id: j.id,
+              job_id: j.job_id,
+              pdf_name: j.pdf_name || 'Untitled',
+              status: j.status,
+              total_checks: j.total_checks || 0,
+              total_pages: j.total_pages || 0,
+              created_at: j.created_at,
+            }));
+            log('GET_DOCUMENTS result', { count: docs.length });
+            return { documents: docs };
+          } catch (e) {
+            logErr('GET_DOCUMENTS failed', e);
+            return { documents: [], error: e.message };
+          }
+        }
+        case 'GET_CHECKS': {
+          log('GET_CHECKS');
+          const s = await getSession();
+          if (!s?.access_token) return { checks: [] };
+          const bootstrap = getBootstrapConfig();
+          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          if (!backendUrl) return { checks: [] };
+          try {
+            // Fetch all jobs then extract checks from job.checks array
+            const res = await fetch(`${backendUrl}/api/jobs?limit=200&source=db`, {
+              headers: { Authorization: `Bearer ${s.access_token}` },
+            });
+            if (!res.ok) throw new Error(`Backend /api/jobs returned ${res.status}`);
+            const data = await res.json();
+            const checks = [];
+            for (const job of (data.jobs || [])) {
+              // Backend returns 'checks' (parsed array), not 'checks_data' (raw JSON string)
+              const checksData = Array.isArray(job.checks)
+                ? job.checks
+                : (typeof job.checks_data === 'string'
+                  ? JSON.parse(job.checks_data || '[]')
+                  : (job.checks_data || []));
+              for (const c of checksData) {
+                const ext = c.extraction || {};
+                checks.push({
+                  id: c.check_id,
+                  job_id: job.job_id,
+                  check_number: ext.checkNumber?.value || ext.checkNumber || null,
+                  amount: parseFloat((ext.amount?.value || ext.amount || '0').toString().replace(/[^0-9.]/g, '')) || null,
+                  payee: ext.payee?.value || ext.payee || null,
+                  check_date: ext.checkDate?.value || ext.checkDate || null,
+                  bank_name: ext.bankName?.value || ext.bankName || null,
+                  memo: ext.memo?.value || ext.memo || null,
+                  account_number: ext.accountNumber?.value || ext.accountNumber || null,
+                  routing_number: ext.routingNumber?.value || ext.routingNumber || null,
+                  image_url: c.image_url || null,
+                  status: c.status || 'pending_review',
+                  source_file: job.pdf_name,
+                  page_number: c.page_number || null,
+                });
+              }
+            }
+            log('GET_CHECKS result', { count: checks.length });
+            return { checks };
+          } catch (e) {
+            logErr('GET_CHECKS failed', e);
+            return { checks: [], error: e.message };
+          }
+        }
+        case 'GET_HISTORY': {
+          log('GET_HISTORY');
+          const s = await getSession();
+          if (!s) return { history: [] };
+          const tenantId = await getTenantId(s.user.id).catch(() => null);
+          if (!tenantId) return { history: [] };
+          const hist = await supabaseRequest(
+            `checks?tenant_id=eq.${tenantId}&status=eq.approved&select=id,job_id,check_number,amount,payee,check_date,status,source_file&order=updated_at.desc&limit=50`
+          ).catch(() => []);
+          log('GET_HISTORY result', { count: hist?.length || 0 });
+          return { history: hist || [] };
+        }
+        case 'SAVE_QB_TXN': {
+          log('SAVE_QB_TXN', { txnId: msg.txnId, txnType: msg.txnType, fields: msg.fields });
+          const s = await getSession();
+          if (!s?.access_token) return { error: 'Not logged in' };
+          try {
+            const tenantId = await getTenantId(s.user.id).catch(() => null);
+            if (!tenantId) return { error: 'No tenant_id' };
+
+            // 1. Update local Supabase cache
+            await supabaseRequest(
+              `qb_transactions?id=eq.${encodeURIComponent(msg.txnId)}&tenant_id=eq.${tenantId}`,
+              { method: 'PATCH', body: JSON.stringify({ ...msg.fields, synced_at: new Date().toISOString() }) }
+            );
+
+            // 2. Also push edits to QuickBooks if we have type + Intuit ID
+            const txnType = msg.txnType;
+            const qbIntuitId = msg.qbIntuitId; // caller must pass the raw Intuit Id
+            if (txnType && qbIntuitId) {
+              try {
+                const readData = await qbApiRequest(`${txnType.toLowerCase()}/${qbIntuitId}?minorversion=65`);
+                const entity = readData[txnType] || readData[Object.keys(readData)[0]];
+                if (entity) {
+                  const updates = {};
+                  if (msg.fields.txn_date) updates.TxnDate = msg.fields.txn_date;
+                  if (msg.fields.amount != null) updates.TotalAmt = msg.fields.amount;
+                  if (msg.fields.payee) updates.PrivateNote = `[Kyriq edit] Payee: ${msg.fields.payee}\n${entity.PrivateNote || ''}`.trim();
+                  if (msg.fields.doc_number) updates.DocNumber = msg.fields.doc_number;
+                  if (Object.keys(updates).length > 0) {
+                    await qbApiRequest(`${txnType.toLowerCase()}?minorversion=65`, 'POST', { ...entity, ...updates });
+                    log('SAVE_QB_TXN: QB entity updated', { txnType, qbIntuitId });
+                  }
+                }
+              } catch (qbErr) {
+                logErr('SAVE_QB_TXN: QB update failed (Supabase still saved)', qbErr);
+                return { success: true, qbWarning: qbErr.message };
+              }
+            }
+
+            return { success: true };
+          } catch (e) {
+            logErr('SAVE_QB_TXN failed', e);
+            return { error: e.message };
+          }
+        }
+        case 'UPDATE_CHECK_FIELDS': {
+          log('UPDATE_CHECK_FIELDS', { checkId: msg.checkId, fields: msg.fields });
+          const s = await getSession();
+          if (!s?.access_token) return { error: 'Not logged in' };
+          const bootstrap = getBootstrapConfig();
+          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          try {
+            if (backendUrl && msg.jobId) {
+              const res = await fetch(`${backendUrl}/api/jobs/${msg.jobId}/checks/${msg.checkId}/fields`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+                body: JSON.stringify(msg.fields),
+              });
+              if (res.ok) return { success: true };
+            }
+            // Fallback: direct Supabase PATCH on checks table
+            const tenantId = await getTenantId(s.user.id).catch(() => null);
+            if (tenantId) {
+              await supabaseRequest(
+                `checks?id=eq.${encodeURIComponent(msg.checkId)}&tenant_id=eq.${tenantId}`,
+                { method: 'PATCH', body: JSON.stringify({ ...msg.fields, updated_at: new Date().toISOString() }) }
+              );
+              return { success: true };
+            }
+            return { error: 'Could not update: no tenant_id' };
+          } catch (e) {
+            logErr('UPDATE_CHECK_FIELDS failed', e);
+            return { error: e.message };
+          }
+        }
+        case 'UPDATE_CHECK_STATUS': {
+          // Updates a check's status (approve/reject) via the Python backend job endpoint
+          // Falls back to direct Supabase PATCH if backend not available
+          log('UPDATE_CHECK_STATUS', { checkId: msg.checkId, status: msg.status });
+          const s = await getSession();
+          if (!s?.access_token) return { error: 'Not logged in' };
+          const bootstrap = getBootstrapConfig();
+          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          try {
+            // Try backend first (sets status on check record)
+            if (backendUrl && msg.jobId) {
+              const res = await fetch(`${backendUrl}/api/jobs/${msg.jobId}/checks/${msg.checkId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+                body: JSON.stringify({ status: msg.status }),
+              });
+              if (res.ok) return { success: true };
+            }
+            // Fallback: direct Supabase PATCH on checks table
+            const tenantId = await getTenantId(s.user.id).catch(() => null);
+            if (tenantId) {
+              await supabaseRequest(
+                `checks?id=eq.${encodeURIComponent(msg.checkId)}&tenant_id=eq.${tenantId}`,
+                { method: 'PATCH', body: JSON.stringify({ status: msg.status, updated_at: new Date().toISOString() }) }
+              );
+              return { success: true };
+            }
+            return { error: 'Could not update: no tenant_id' };
+          } catch (e) {
+            logErr('UPDATE_CHECK_STATUS failed', e);
+            return { error: e.message };
+          }
+        }
+        case 'UPLOAD_DOCUMENT': {
+          log('UPLOAD_DOCUMENT', { name: msg.fileName, size: msg.fileSize });
+          const s = await getSession();
+          if (!s?.access_token) return { error: 'Not logged in' };
+          const bootstrap = getBootstrapConfig();
+          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          if (!backendUrl) return { error: 'Backend URL not configured' };
+          try {
+            // Reconstruct file from base64
+            const bytes = Uint8Array.from(atob(msg.fileBase64), c => c.charCodeAt(0));
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const form = new FormData();
+            form.append('file', blob, msg.fileName || 'document.pdf');
+            const res = await fetch(`${backendUrl}/api/upload-analyze`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${s.access_token}` },
+              body: form,
+            });
+            const data = await res.json();
+            if (!res.ok) return { error: data.detail || data.error || `Upload failed (${res.status})` };
+            log('UPLOAD_DOCUMENT success', { job_id: data.job_id });
+            return { success: true, job_id: data.job_id, job: data };
+          } catch (e) {
+            logErr('UPLOAD_DOCUMENT failed', e);
+            return { error: e.message };
+          }
+        }
+        case 'POLL_JOB': {
+          const bootstrap = getBootstrapConfig();
+          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          if (!backendUrl || !msg.jobId) return { error: 'Missing backendUrl or jobId' };
+          try {
+            const pollSession = await getSession();
+            const pollHeaders = pollSession?.access_token ? { Authorization: `Bearer ${pollSession.access_token}` } : {};
+            const res = await fetch(`${backendUrl}/api/jobs/${msg.jobId}?source=auto`, { headers: pollHeaders });
+            const data = await res.json();
+            return { success: true, job: data };
+          } catch (e) {
+            logErr('POLL_JOB failed', e);
+            return { error: e.message };
+          }
+        }
+        case 'START_EXTRACTION': {
+          log('START_EXTRACTION', { jobId: msg.jobId, methods: msg.methods });
+          const bootstrap = getBootstrapConfig();
+          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          if (!backendUrl) return { error: 'Backend URL not configured' };
+          try {
+            const extSession = await getSession();
+            const extHeaders = { 'Content-Type': 'application/json' };
+            if (extSession?.access_token) extHeaders['Authorization'] = `Bearer ${extSession.access_token}`;
+            const res = await fetch(`${backendUrl}/api/start-extraction`, {
+              method: 'POST',
+              headers: extHeaders,
+              body: JSON.stringify({
+                job_id: msg.jobId,
+                methods: msg.methods || ['hybrid'],
+                force: true,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) return { error: data.detail || data.error || `Extraction failed (${res.status})` };
+            log('START_EXTRACTION success', { job_id: msg.jobId });
+            return { success: true, job: data };
+          } catch (e) {
+            logErr('START_EXTRACTION failed', e);
+            return { error: e.message };
+          }
         }
         case 'PULL_QB_TXNS': {
+          log('PULL_QB_TXNS start');
           const txns = await pullQBTransactions();
+          log('PULL_QB_TXNS done', { count: txns.length });
           return { success: true, count: txns.length };
         }
         case 'EXTRACT_CHECK': {
+          log('EXTRACT_CHECK', { mimeType: msg.mimeType });
           const result = await extractCheckData(msg.imageBase64, msg.mimeType);
+          log('EXTRACT_CHECK done', result);
           return { success: true, data: result };
         }
         case 'RUN_MATCHING': {
+          log('RUN_MATCHING', { checksCount: msg.checks?.length });
           const matches = await runFullMatch(msg.checks);
+          log('RUN_MATCHING done', { matchCount: matches?.length });
+          // #region agent log
+          const withQb = (matches || []).filter((m) => m.qbTxn).length;
+          debugAgentLog({
+            hypothesisId: 'H3',
+            location: 'service-worker.js:RUN_MATCHING',
+            message: 'match result summary',
+            data: {
+              checks: msg.checks?.length ?? 0,
+              results: matches?.length ?? 0,
+              withQbTxn: withQb,
+              topScores: (matches || []).slice(0, 5).map((m) => m.score),
+            },
+          });
+          // #endregion
           return { success: true, matches };
         }
         case 'APPROVE_AND_CLEAR': {
-          // Approve the match and clear in QB
           const { qbTxn } = msg;
-          if (qbTxn?.qb_id && qbTxn?.txn_type) {
-            await clearQBTransaction(qbTxn.txn_type, qbTxn.qb_id);
+          if (!qbTxn) return { success: false, error: 'No QB transaction provided' };
+
+          // Extract the Intuit entity ID from txn_id (format: "purchase-123", "billpayment-456")
+          // txn_id is always stored as `${type.toLowerCase()}-${intuitId}`
+          const txnType = qbTxn.txn_type;
+          let qbIntuitId = null;
+          if (qbTxn.txn_id) {
+            const parts = String(qbTxn.txn_id).split('-');
+            // Everything after the first segment is the Intuit ID (may contain dashes)
+            qbIntuitId = parts.slice(1).join('-') || null;
           }
-          return { success: true, cleared: true };
+
+          if (!txnType || !qbIntuitId) {
+            log('APPROVE_AND_CLEAR: missing QB identifiers — marking approved locally only');
+            // #region agent log
+            debugAgentLog({
+              hypothesisId: 'H4',
+              location: 'service-worker.js:APPROVE_AND_CLEAR',
+              message: 'missing txn identifiers',
+              data: { hasType: !!txnType, hasIntuitId: !!qbIntuitId, txn_id_prefix: qbTxn.txn_id ? String(qbTxn.txn_id).slice(0, 24) : null },
+            });
+            // #endregion
+            return { success: true, cleared: false, warning: 'QB transaction not linked — approved in Kyriq only' };
+          }
+
+          // Save approval status to Supabase regardless of QB clear outcome
+          const saveCheckApproval = async (checkId, jobId) => {
+            if (!checkId) return;
+            const s2 = await getSession();
+            if (!s2?.access_token) return;
+            const tenantId = await getTenantId(s2.user.id).catch(() => null);
+            if (!tenantId) return;
+            try {
+              await supabaseRequest(
+                `checks?id=eq.${encodeURIComponent(checkId)}&tenant_id=eq.${tenantId}`,
+                { method: 'PATCH', body: JSON.stringify({ status: 'approved', updated_at: new Date().toISOString() }) }
+              );
+            } catch (dbErr) {
+              logErr('APPROVE_AND_CLEAR: DB status save failed (non-critical)', dbErr);
+            }
+          };
+
+          try {
+            await clearQBTransaction(txnType, qbIntuitId);
+            log(`APPROVE_AND_CLEAR: cleared ${txnType} #${qbIntuitId} in QB`);
+            // #region agent log
+            debugAgentLog({
+              hypothesisId: 'H4',
+              location: 'service-worker.js:APPROVE_AND_CLEAR',
+              message: 'qb clear ok',
+              data: { txnType, intuitIdLen: String(qbIntuitId).length },
+            });
+            // #endregion
+            await saveCheckApproval(msg.checkId, msg.jobId);
+            return { success: true, cleared: true };
+          } catch (e) {
+            logErr('APPROVE_AND_CLEAR QB clear failed — approving locally only', e);
+            // #region agent log
+            debugAgentLog({
+              hypothesisId: 'H4',
+              location: 'service-worker.js:APPROVE_AND_CLEAR',
+              message: 'qb clear error — local-only approve',
+              data: { txnType, err: String(e?.message || e) },
+            });
+            // #endregion
+            // Local-only approve: record status in DB but warn user that QB was not cleared
+            await saveCheckApproval(msg.checkId, msg.jobId);
+            return { success: true, cleared: false, warning: `QB not cleared: ${e.message}` };
+          }
         }
         case 'SEARCH_QB': {
           const { tenantId: tid2, realmId: rid } = await getActiveConnection();
@@ -472,13 +1079,37 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return { error: 'Unknown message type' };
       }
     } catch (err) {
-      console.error('Background error:', err);
+      logErr(`Message handler error [${msg.type}]`, err);
       return { error: err.message };
     }
   };
 
   handler().then(sendResponse);
   return true; // keep message channel open for async
+});
+
+// ── Detect QB OAuth completion from extension tab ────────────
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'complete') return;
+  const url = tab.url || '';
+  if (!url.includes('/qb-oauth-complete')) return;
+
+  log('QB OAuth complete tab detected — closing and notifying sidepanel', { tabId, url });
+
+  // Extract company name from URL if present
+  let company = '';
+  try {
+    const urlObj = new URL(url);
+    company = urlObj.searchParams.get('company') || '';
+  } catch (_) {}
+
+  // Close the OAuth tab after a brief delay so the page renders first
+  setTimeout(() => {
+    chrome.tabs.remove(tabId).catch(() => {});
+  }, 1500);
+
+  // Notify all extension views (sidepanel, popup) about the completion
+  chrome.runtime.sendMessage({ type: 'QB_OAUTH_COMPLETE', company }).catch(() => {});
 });
 
 // ── Badge update ─────────────────────────────────────────────
@@ -491,8 +1122,7 @@ async function updateBadge() {
     }
     const { tenantId } = await getActiveConnection();
     const pending = await supabaseRequest(
-      `matches?tenant_id=eq.${tenantId}&status=in.(pending,unmatched,discrepancy)&select=id`,
-      { method: 'GET', headers: { Prefer: 'count=exact' } }
+      `checks?tenant_id=eq.${tenantId}&status=eq.pending_review&select=id&limit=99`
     );
     const count = pending?.length || 0;
     chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' });
@@ -512,4 +1142,9 @@ chrome.alarms.onAlarm.addListener(alarm => {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Kyriq installed');
   updateBadge();
+  
+  // Enable side panel to open when clicking extension icon
+  chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.error('Side panel setup error:', error));
 });

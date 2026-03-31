@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Trash2 } from 'lucide-react';
+import { QBCompanySwitcher } from '@/components/QBCompanySwitcher';
 import Link from 'next/link';
 import { useComparisonData } from './hooks/useComparisonData';
 import { useComparisonState } from './hooks/useComparisonState';
@@ -634,6 +635,8 @@ export default function QBComparisonsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Company switcher — dark-mode variant */}
+          <QBCompanySwitcher className="[&>*]:!bg-slate-700 [&>*]:!border-slate-600 [&>*]:!text-slate-200" />
           {/* QB Data Source Toggle */}
           <div className="flex items-center gap-1 bg-slate-700 rounded-lg p-1">
             <button

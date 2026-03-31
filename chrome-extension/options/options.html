@@ -39,69 +39,75 @@
       AI-powered check reconciliation for QuickBooks. Upload checks, auto-match, and mark transactions as Cleared.
     </div>
 
-    <div id="success-msg" class="success">Settings saved successfully!</div>
+    <div id="success-msg" class="success">Settings saved!</div>
+    <div id="error-msg" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;"></div>
 
     <div class="card">
-      <h2>Supabase Connection</h2>
-      <p class="desc">Connect to your Kyriq backend</p>
+      <h2>Connection Setup <span style="color:#ef4444;font-size:12px;">* required</span></h2>
+      <p class="desc">Enter your Supabase credentials once. Find these in your Supabase Dashboard → Settings → API.</p>
       <div class="form-group">
-        <label>Supabase URL</label>
+        <label>Supabase URL *</label>
         <input type="text" id="cfg-supabase-url" placeholder="https://xxxx.supabase.co">
-        <div class="hint">Your Supabase project URL</div>
+        <div class="hint">Settings → API → Project URL</div>
       </div>
       <div class="form-group">
-        <label>Supabase Anon Key</label>
+        <label>Supabase Anon Key *</label>
         <input type="text" id="cfg-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIs...">
-        <div class="hint">Found in Supabase → Settings → API</div>
+        <div class="hint">Settings → API → anon public key</div>
       </div>
     </div>
 
     <div class="card">
-      <h2>QuickBooks API</h2>
-      <p class="desc">Your Intuit developer credentials</p>
+      <h2>Backend URL (Railway)</h2>
+      <p class="desc">Your deployed Kyriq web app URL on Railway. Used for OCR and QuickBooks token refresh. Leave blank to use OCR without backend.</p>
       <div class="form-group">
-        <label>Client ID</label>
-        <input type="text" id="cfg-qb-client-id" placeholder="ABc...">
-      </div>
-      <div class="form-group">
-        <label>Client Secret</label>
-        <input type="password" id="cfg-qb-secret" placeholder="xxxxxxxx">
+        <label>Railway App URL</label>
+        <input type="text" id="cfg-backend-url" placeholder="https://your-app.up.railway.app">
+        <div class="hint">Railway Dashboard → your frontend service → domain</div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>AI / OCR</h2>
-      <p class="desc">For extracting check data from images</p>
-      <div class="form-group">
-        <label>Gemini API Key</label>
-        <input type="text" id="cfg-gemini-key" placeholder="AIzaSy...">
-        <div class="hint">Get from Google AI Studio → API Keys</div>
-      </div>
+    <div class="card" id="account-card" style="display:none;">
+      <h2>Account</h2>
+      <p class="desc" id="user-email" style="font-weight:600; color:#374151;"></p>
     </div>
 
-    <button class="btn-primary" id="btn-save">Save Settings</button>
+    <button class="btn-primary" id="btn-save">💾 Save Settings</button>
   </div>
 
   <script>
     async function load() {
-      const { config } = await chrome.storage.local.get('config');
-      if (!config) return;
-      document.getElementById('cfg-supabase-url').value = config.supabaseUrl || '';
-      document.getElementById('cfg-supabase-key').value = config.supabaseAnonKey || '';
-      document.getElementById('cfg-qb-client-id').value = config.qbClientId || '';
-      document.getElementById('cfg-qb-secret').value = config.qbClientSecret || '';
-      document.getElementById('cfg-gemini-key').value = config.geminiApiKey || '';
+      const { bootstrapConfig, session } = await chrome.storage.local.get(['bootstrapConfig', 'session']);
+
+      if (bootstrapConfig) {
+        document.getElementById('cfg-supabase-url').value = bootstrapConfig.supabaseUrl || '';
+        document.getElementById('cfg-supabase-key').value = bootstrapConfig.supabaseAnonKey || '';
+        document.getElementById('cfg-backend-url').value = bootstrapConfig.backendUrl || '';
+      }
+
+      if (session?.user?.email) {
+        document.getElementById('account-card').style.display = 'block';
+        document.getElementById('user-email').textContent = session.user.email;
+      }
     }
 
     document.getElementById('btn-save').addEventListener('click', async () => {
-      const config = {
-        supabaseUrl: document.getElementById('cfg-supabase-url').value.trim().replace(/\/$/, ''),
-        supabaseAnonKey: document.getElementById('cfg-supabase-key').value.trim(),
-        qbClientId: document.getElementById('cfg-qb-client-id').value.trim(),
-        qbClientSecret: document.getElementById('cfg-qb-secret').value.trim(),
-        geminiApiKey: document.getElementById('cfg-gemini-key').value.trim(),
-      };
-      await chrome.storage.local.set({ config });
+      const supabaseUrl = document.getElementById('cfg-supabase-url').value.trim().replace(/\/$/, '');
+      const supabaseAnonKey = document.getElementById('cfg-supabase-key').value.trim();
+      const backendUrl = document.getElementById('cfg-backend-url').value.trim().replace(/\/$/, '');
+
+      const errEl = document.getElementById('error-msg');
+      errEl.style.display = 'none';
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        errEl.textContent = 'Supabase URL and Anon Key are required.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      await chrome.storage.local.set({ bootstrapConfig: { supabaseUrl, supabaseAnonKey, backendUrl } });
+      await chrome.storage.local.remove('configCache');
+
       const msg = document.getElementById('success-msg');
       msg.style.display = 'block';
       setTimeout(() => { msg.style.display = 'none'; }, 3000);

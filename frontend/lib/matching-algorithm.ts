@@ -53,11 +53,49 @@ function normalizeAmount(val: number | string | null | undefined): number | null
   return parseFloat(String(val).replace(/[^0-9.-]/g, ''));
 }
 
+/**
+ * Parse a date string to { y, m, d } components without relying on Date object
+ * timezone interpretation. Supports YYYY-MM-DD, M/D/YYYY, ISO with time part,
+ * and locale strings like "Jan 15, 2026".
+ */
+function parseDateComponents(s: string): { y: number; m: number; d: number } | null {
+  const t = s.trim();
+  let match: RegExpMatchArray | null;
+
+  // YYYY-MM-DD (with optional time part)
+  match = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return { y: +match[1], m: +match[2], d: +match[3] };
+
+  // M/D/YYYY or MM/DD/YYYY
+  match = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) return { y: +match[3], m: +match[1], d: +match[2] };
+
+  // Fallback: use UTC date parts from Date object
+  const dt = new Date(t);
+  if (!isNaN(dt.getTime())) {
+    return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+  }
+  return null;
+}
+
+/** Convert parsed components to a comparable integer YYYYMMDD */
+function toDateInt(c: { y: number; m: number; d: number }): number {
+  return c.y * 10000 + c.m * 100 + c.d;
+}
+
 // ── Date difference in days ──────────────────────────────────
 function dateDiffDays(d1: string | null, d2: string | null): number {
   if (!d1 || !d2) return 999;
-  const ms = Math.abs(new Date(d1).getTime() - new Date(d2).getTime());
-  return Math.round(ms / (1000 * 60 * 60 * 24));
+  const c1 = parseDateComponents(d1);
+  const c2 = parseDateComponents(d2);
+  if (!c1 || !c2) return 999;
+  // Quick exact-day check (avoids float math entirely)
+  if (toDateInt(c1) === toDateInt(c2)) return 0;
+  // Fall back to ms difference for approximate multi-day diff
+  const ms = Math.abs(
+    Date.UTC(c1.y, c1.m - 1, c1.d) - Date.UTC(c2.y, c2.m - 1, c2.d)
+  );
+  return Math.round(ms / 86400000);
 }
 
 // ── Types ────────────────────────────────────────────────────

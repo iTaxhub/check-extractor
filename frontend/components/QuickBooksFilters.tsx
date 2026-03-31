@@ -25,7 +25,7 @@ export interface FilterParams {
   maxAmount?: number
   vendor?: string
   account?: string
-  type?: 'all' | 'cheque_written' | 'bill_paid_by_cheque' | 'cheque_received'
+  type?: 'all' | 'cheque_written' | 'bill_paid_by_cheque' | 'cheque_received' | 'payroll_check'
 }
 
 export default function QuickBooksFilters({ onApplyFilters, isLoading, qbConnected }: QuickBooksFiltersProps) {
@@ -334,6 +334,7 @@ export default function QuickBooksFilters({ onApplyFilters, isLoading, qbConnect
               <option value="cheque_written">Cheques Written (to vendors)</option>
               <option value="bill_paid_by_cheque">Bills Paid by Cheque</option>
               <option value="cheque_received">Cheques Received (from customers)</option>
+              <option value="payroll_check">Payroll Checks</option>
             </select>
           </div>
 

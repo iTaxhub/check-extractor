@@ -111,7 +111,8 @@ function parseDateParts(dateStr: string): { y: number; m: number; d: number } | 
 
   const dt = new Date(s);
   if (!isNaN(dt.getTime())) {
-    return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+    // Local calendar day — UTC getters shift "Feb 2, 2026" style strings vs ISO YYYY-MM-DD
+    return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
   }
   return null;
 }
@@ -145,13 +146,21 @@ export function formatDate(dateStr: string, fmt: DateFormat = 'MMM D, YYYY'): st
   }
 }
 
+/**
+ * Normalize a check number for comparison: strip non-digits and leading zeros.
+ */
+export function normalizeCheckNum(val: string | null | undefined): string | null {
+  if (!val) return null;
+  return String(val).trim().replace(/\D/g, '').replace(/^0+/, '') || null;
+}
+
 export function calculateMatchConfidence(ext: CheckExtraction, qb: QuickBooksEntry): number {
   let score = 0;
   const extraction = ext.extraction || {};
   
-  const extCheckNum = extVal(extraction, 'checkNumber');
-  const qbCheckNum = qb.checkNumber;
-  if (extCheckNum === qbCheckNum) score += 40;
+  const extCheckNum = normalizeCheckNum(extVal(extraction, 'checkNumber'));
+  const qbCheckNum = normalizeCheckNum(qb.checkNumber);
+  if (extCheckNum && qbCheckNum && extCheckNum === qbCheckNum) score += 40;
   
   const extAmount = parseAmount(extVal(extraction, 'amount'));
   const qbAmount = parseAmount(qb.amount);
@@ -161,7 +170,10 @@ export function calculateMatchConfidence(ext: CheckExtraction, qb: QuickBooksEnt
   const qbPayee = normalizeString(qb.payee);
   if (extPayee && qbPayee && extPayee.includes(qbPayee.substring(0, 5))) score += 20;
   
-  if (extVal(extraction, 'checkDate') === qb.date) score += 10;
+  // Normalize dates before comparing to avoid format mismatch ("2026-02-02" vs "Feb 2, 2026")
+  const extDateNorm = toYMD(extVal(extraction, 'checkDate') || '');
+  const qbDateNorm = toYMD(qb.date || '');
+  if (extDateNorm && qbDateNorm && extDateNorm === qbDateNorm) score += 10;
   
   return score;
 }
@@ -179,10 +191,14 @@ export function intelligentMatch(extractions: CheckExtraction[], qbEntries: Quic
     if (seenExtCompositeIds.has(compositeId)) return;
     seenExtCompositeIds.add(compositeId);
     
-    const extCheckNum = extVal(ext.extraction, 'checkNumber');
+    const extCheckNumRaw = extVal(ext.extraction, 'checkNumber');
+    const extCheckNum = normalizeCheckNum(extCheckNumRaw) || extCheckNumRaw;
     
     if (extCheckNum) {
-      const qbMatch = qbEntries.find(qb => qb.checkNumber === extCheckNum && !matchedQbIds.has(qb.id));
+      const qbMatch = qbEntries.find(qb =>
+        (normalizeCheckNum(qb.checkNumber) || qb.checkNumber) === extCheckNum &&
+        !matchedQbIds.has(qb.id)
+      );
       if (qbMatch) {
         const confidence = calculateMatchConfidence(ext, qbMatch);
         const discrepancies: string[] = [];
@@ -193,7 +209,10 @@ export function intelligentMatch(extractions: CheckExtraction[], qbEntries: Quic
           discrepancies.push(`Amount: $${extAmount.toFixed(2)} vs $${qbAmount.toFixed(2)}`);
         }
         
-        if (extVal(ext.extraction, 'checkDate') !== qbMatch.date) {
+        // Normalize dates to YYYY-MM-DD before comparing to avoid format mismatch
+        const extDateNorm = toYMD(extVal(ext.extraction, 'checkDate') || '');
+        const qbDateNorm = toYMD(qbMatch.date || '');
+        if (extDateNorm && qbDateNorm && extDateNorm !== qbDateNorm) {
           discrepancies.push(`Date: ${extVal(ext.extraction, 'checkDate')} vs ${qbMatch.date}`);
         }
         
@@ -282,23 +301,55 @@ export function intelligentMatch(extractions: CheckExtraction[], qbEntries: Quic
  * Mutates the rows in-place for performance.
  */
 export function detectIssues(rows: ComparisonRow[]): void {
-  // Build check number frequency map (only non-empty check numbers)
-  const checkNumCounts: Record<string, number> = {};
+  // Build canonical check-number frequency map.
+  // Canonical = digits only, leading zeros stripped (so "01042" == "1042").
+  // Track canonical -> count and canonical -> display string (first seen).
+  const canonicalCounts: Record<string, number> = {};
+  const canonicalDisplay: Record<string, string> = {};
   rows.forEach(row => {
-    const num = row.checkNumber?.trim();
-    if (num) {
-      checkNumCounts[num] = (checkNumCounts[num] || 0) + 1;
+    const canonical = normalizeCheckNum(row.checkNumber);
+    if (canonical) {
+      canonicalCounts[canonical] = (canonicalCounts[canonical] || 0) + 1;
+      if (!canonicalDisplay[canonical]) canonicalDisplay[canonical] = row.checkNumber?.trim() || canonical;
+    }
+  });
+
+  // Build amount+date+payee signature map for detecting duplicates when check#
+  // is missing or inconsistent (same amount on same date to same payee).
+  const txnSigCounts: Record<string, number> = {};
+  rows.forEach(row => {
+    const sigDate = toYMD(row.date || '') || '';
+    const sigAmt = parseAmount(row.amount).toFixed(2);
+    const sigPayee = normalizeString(row.payee || '').slice(0, 20);
+    if (sigDate && sigAmt !== '0.00' && sigPayee) {
+      const sig = `${sigDate}|${sigAmt}|${sigPayee}`;
+      txnSigCounts[sig] = (txnSigCounts[sig] || 0) + 1;
     }
   });
 
   rows.forEach(row => {
     const issues: string[] = [];
-    const num = row.checkNumber?.trim();
+    const canonical = normalizeCheckNum(row.checkNumber);
+    const displayNum = row.checkNumber?.trim();
 
-    // Duplicate check number
-    if (num && checkNumCounts[num] > 1) {
-      issues.push(`Duplicate check #${num} (${checkNumCounts[num]} occurrences)`);
+    // Duplicate check number (by canonical form)
+    if (canonical && canonicalCounts[canonical] > 1) {
+      issues.push(`Duplicate check #${canonicalDisplay[canonical]} (${canonicalCounts[canonical]} occurrences)`);
       row.isDuplicate = true;
+    }
+
+    // Fallback duplicate: same amount+date+payee when no check number
+    if (!canonical) {
+      const sigDate = toYMD(row.date || '') || '';
+      const sigAmt = parseAmount(row.amount).toFixed(2);
+      const sigPayee = normalizeString(row.payee || '').slice(0, 20);
+      if (sigDate && sigAmt !== '0.00' && sigPayee) {
+        const sig = `${sigDate}|${sigAmt}|${sigPayee}`;
+        if (txnSigCounts[sig] > 1) {
+          issues.push(`Possible duplicate transaction — same amount, date & payee (${txnSigCounts[sig]} occurrences)`);
+          row.isDuplicate = true;
+        }
+      }
     }
 
     // Discrepancies from matching
@@ -317,7 +368,7 @@ export function detectIssues(rows: ComparisonRow[]): void {
     }
 
     // Missing critical data
-    if (!num) {
+    if (!displayNum) {
       issues.push('Missing check number');
     }
     if (!row.amount || parseAmount(row.amount) === 0) {
@@ -360,13 +411,24 @@ function toYMD(raw: string): string | null {
   const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})[T ]/);
   if (isoMatch) return isoMatch[1];
 
-  // Fallback: extract UTC date parts
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) {
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  // Fallback: same rules as parseDateParts (local day for locale strings)
+  const parts = parseDateParts(s);
+  if (parts) {
+    return `${parts.y}-${String(parts.m).padStart(2, '0')}-${String(parts.d).padStart(2, '0')}`;
   }
 
   return null;
+}
+
+/** True when two date strings refer to the same calendar day (ignores format). */
+export function areDatesSameCalendarDay(
+  a: string | null | undefined,
+  b: string | null | undefined
+): boolean {
+  const ya = toYMD(String(a || '').trim());
+  const yb = toYMD(String(b || '').trim());
+  if (ya && yb) return ya === yb;
+  return String(a || '').trim() === String(b || '').trim();
 }
 
 export function filterByDateRange(

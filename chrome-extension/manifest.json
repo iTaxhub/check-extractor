@@ -5,16 +5,20 @@
   "description": "AI-powered check reconciliation for QuickBooks. Upload checks, auto-match, and mark transactions as Cleared — right from your browser.",
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
       "48": "icons/icon48.png"
     },
     "default_title": "Kyriq"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
   },
   "background": {
     "service_worker": "background/service-worker.js",
@@ -23,10 +27,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*.intuit.com/*",
-        "https://app.qbo.intuit.com/*",
-        "https://qbo.intuit.com/*",
-        "https://c*.qbo.intuit.com/*"
+        "https://*.intuit.com/*"
       ],
       "js": ["content/qbo-overlay.js"],
       "css": ["content/qbo-overlay.css"],
@@ -36,20 +37,26 @@
   "permissions": [
     "storage",
     "identity",
-    "activeTab",
-    "notifications"
+    "tabs",
+    "notifications",
+    "alarms",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://*.supabase.co/*",
     "https://quickbooks.api.intuit.com/*",
     "https://oauth.platform.intuit.com/*",
-    "https://generativelanguage.googleapis.com/*"
+    "https://generativelanguage.googleapis.com/*",
+    "https://*.railway.app/*",
+    "https://*.up.railway.app/*",
+    "https://kyriq.com/*",
+    "http://localhost:3080/*",
+    "http://127.0.0.1:7415/*"
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icons/*", "popup/*"],
+      "resources": ["icons/*", "popup/*", "sidepanel/*"],
       "matches": ["<all_urls>"]
     }
-  ],
-  "options_page": "options/options.html"
+  ]
 }

@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, FileCheck, DollarSign, Edit2, Save, XCircle } from 'lucide-react';
-import { ComparisonRow, formatCurrency, formatDate, parseAmount } from '../utils/comparisonUtils';
+import {
+  ComparisonRow,
+  formatCurrency,
+  formatDate,
+  parseAmount,
+  areDatesSameCalendarDay,
+  normalizeCheckNum,
+} from '../utils/comparisonUtils';
 
 interface DetailModalProps {
   row: ComparisonRow | null;
@@ -33,6 +40,32 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }
       });
     }
   }, [row]);
+
+  // #region agent log
+  useEffect(() => {
+    if (!row?.qbData) return;
+    const a = row.date ?? '';
+    const b = row.qbData.date ?? '';
+    fetch('http://127.0.0.1:7415/ingest/f682ae64-23f5-470b-ad66-bf3be254098b', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '76c285' },
+      body: JSON.stringify({
+        sessionId: '76c285',
+        runId: 'ext-audit',
+        hypothesisId: 'H-UI',
+        location: 'DetailModal.tsx:dateCompare',
+        message: 'modal row date vs qb date (strict eq drives ⚠ Different cell)',
+        data: {
+          rowDateRawLen: a.length,
+          qbDateRawLen: b.length,
+          strictEqual: a === b,
+          normalizedEqual: areDatesSameCalendarDay(a, b),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, [row?.id, row?.date, row?.qbData?.date]);
+  // #endregion
 
   if (!row) return null;
 
@@ -224,7 +257,9 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }
                     <td className="px-3 py-2 text-gray-900">{row.extractionData?.checkNumber || row.checkNumber || '—'}</td>
                     <td className="px-3 py-2 text-gray-900">{row.qbData?.checkNumber || '—'}</td>
                     <td className="px-3 py-2 text-center">
-                      {row.extractionData && row.qbData && row.checkNumber === row.qbData.checkNumber ? (
+                      {row.extractionData && row.qbData &&
+                      (normalizeCheckNum(row.checkNumber) || row.checkNumber?.trim()) ===
+                        (normalizeCheckNum(row.qbData.checkNumber) || row.qbData.checkNumber?.trim()) ? (
                         <span className="text-emerald-600 font-semibold">✓ Match</span>
                       ) : (
                         <span className="text-amber-600 font-semibold">⚠ Different</span>
@@ -236,7 +271,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }
                     <td className="px-3 py-2 text-gray-600">{row.extractionData && row.date ? formatDate(row.date) : '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{row.qbData?.date ? formatDate(row.qbData.date) : '—'}</td>
                     <td className="px-3 py-2 text-center">
-                      {row.extractionData && row.qbData && row.date === row.qbData.date ? (
+                      {row.extractionData && row.qbData && areDatesSameCalendarDay(row.date, row.qbData.date) ? (
                         <span className="text-emerald-600 font-semibold">✓ Match</span>
                       ) : (
                         <span className="text-amber-600 font-semibold">⚠ Different</span>

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kyriq — Client & Account Switcher</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --purple:#6366f1;--green:#10b981;--amber:#f59e0b;--red:#ef4444;
+  --navy:#0d0f1a;--border:#e5e7eb;--bg:#f4f6fb;--text:#111827;
+  --text2:#6b7280;--text3:#9ca3af;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;}
+
+/* ── SIDEBAR ──────────────────────────────────── */
+.sidebar{width:220px;background:var(--navy);display:flex;flex-direction:column;height:100vh;flex-shrink:0;}
+.sb-logo{padding:18px 16px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.07);}
+.sb-logo-text{font-size:17px;font-weight:800;color:white;letter-spacing:-.04em;}
+.sb-nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:2px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;}
+.nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);}
+.nav-item.active{background:rgba(99,102,241,.2);color:white;}
+.nav-icon{width:18px;text-align:center;font-size:14px;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--red);color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;}
+.nav-badge.green{background:var(--green);}
+.nav-divider{height:1px;background:rgba(255,255,255,.06);margin:8px 0;}
+.sb-footer{padding:12px 10px;border-top:1px solid rgba(255,255,255,.07);}
+.sb-user{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;}
+.sb-user:hover{background:rgba(255,255,255,.07);}
+.sb-av{width:30px;height:30px;border-radius:50%;background:var(--purple);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.sb-uname{font-size:12px;font-weight:600;color:white;}
+.sb-urole{font-size:10px;color:rgba(255,255,255,.4);}
+
+/* ── MAIN ─────────────────────────────────────── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── TOPBAR ───────────────────────────────────── */
+.topbar{height:56px;background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:8px;flex-shrink:0;position:relative;z-index:100;}
+.topbar-title{font-size:14px;font-weight:700;color:var(--text2);margin-right:4px;}
+.tb-sep{color:var(--border);font-size:18px;margin:0 2px;}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.tb-icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:white;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);font-size:15px;}
+.tb-icon-btn:hover{background:#f9fafb;}
+.tb-av{width:32px;height:32px;border-radius:50%;background:var(--purple);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+
+/* ── SWITCHER BUTTONS ────────────────────────── */
+.switcher-wrap{position:relative;}
+
+/* Company button */
+.cs-btn{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;background:white;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--text);transition:all .15s;white-space:nowrap;}
+.cs-btn:hover{border-color:var(--purple);background:#fafaff;}
+.cs-btn.open{border-color:var(--purple);box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.cs-av{width:22px;height:22px;border-radius:50%;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cs-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;}
+.cs-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cs-caret{color:var(--text3);font-size:10px;flex-shrink:0;transition:transform .15s;}
+.cs-btn.open .cs-caret{transform:rotate(180deg);}
+.cs-badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px;background:#fef2f2;color:var(--red);flex-shrink:0;}
+
+/* Account button */
+.as-btn{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;background:white;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--text);transition:all .15s;white-space:nowrap;}
+.as-btn:hover{border-color:var(--purple);background:#fafaff;}
+.as-btn.open{border-color:var(--purple);box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.as-icon{font-size:15px;}
+.as-name{max-width:155px;overflow:hidden;text-overflow:ellipsis;}
+.as-bal{font-size:11px;font-weight:600;color:#065f46;background:#f0fdf4;border-radius:20px;padding:2px 7px;}
+.as-caret{color:var(--text3);font-size:10px;flex-shrink:0;transition:transform .15s;}
+.as-btn.open .as-caret{transform:rotate(180deg);}
+
+/* ── DROPDOWNS ───────────────────────────────── */
+.dropdown{position:absolute;top:calc(100% + 6px);left:0;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.12);width:300px;z-index:200;overflow:hidden;display:none;}
+.dropdown.open{display:block;animation:dropIn .15s ease;}
+@keyframes dropIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+/* Company search */
+.dd-search{padding:12px 12px 8px;}
+.dd-search input{width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;color:var(--text);outline:none;background:#f9fafb;}
+.dd-search input:focus{border-color:var(--purple);background:white;}
+
+/* Company list */
+.dd-list{max-height:240px;overflow-y:auto;padding:4px 0;}
+.dd-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .1s;}
+.dd-item:hover{background:#f5f5ff;}
+.dd-item.active-item{background:#f5f5ff;}
+.dd-av{width:32px;height:32px;border-radius:50%;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dd-info{flex:1;min-width:0;}
+.dd-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dd-meta{display:flex;align-items:center;gap:6px;margin-top:2px;}
+.dd-status-dot{width:6px;height:6px;border-radius:50%;}
+.dd-meta-text{font-size:11px;color:var(--text3);}
+.dd-checkmark{color:var(--purple);font-size:13px;flex-shrink:0;}
+.dd-remove{width:24px;height:24px;border-radius:6px;border:none;background:none;cursor:pointer;color:var(--text3);font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0;transition:opacity .1s,background .1s,color .1s;}
+.dd-item:hover .dd-remove{opacity:1;}
+.dd-remove:hover{background:#fee2e2;color:var(--red);}
+
+/* Section header */
+.dd-section{padding:8px 14px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:6px;}
+
+/* Account item */
+.dd-acct{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .1s;}
+.dd-acct:hover{background:#f5f5ff;}
+.dd-acct.active-acct{background:#f5f5ff;}
+.dd-acct-icon{font-size:16px;flex-shrink:0;}
+.dd-acct-info{flex:1;min-width:0;}
+.dd-acct-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dd-acct-sub{font-size:11px;color:var(--text3);}
+.dd-acct-bal{font-size:13px;font-weight:600;color:#065f46;flex-shrink:0;}
+.dd-acct-bal.negative{color:var(--red);}
+.dd-acct-check{color:var(--purple);font-size:13px;flex-shrink:0;}
+
+/* Footer */
+.dd-footer{border-top:1px solid var(--border);padding:8px;}
+.dd-footer-btn{width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--purple);font-family:'Inter',sans-serif;transition:background .1s;}
+.dd-footer-btn:hover{background:#f5f5ff;}
+.dd-footer-btn.ghost{color:var(--text2);font-weight:500;}
+.dd-footer-btn.ghost:hover{background:#f9fafb;}
+.dd-add-circle{width:20px;height:20px;border-radius:50%;background:var(--purple);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* ── RECONNECT PILL ──────────────────────────── */
+.reconnect-pill{display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:20px;font-size:12px;font-weight:600;color:var(--red);cursor:pointer;}
+
+/* ── DISCONNECT MODAL ────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:white;border-radius:18px;padding:28px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+.modal-body{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:24px;}
+.modal-body strong{color:var(--text);font-weight:600;}
+.modal-btns{display:flex;gap:10px;}
+.modal-btn{flex:1;padding:10px;border-radius:10px;border:none;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:opacity .15s;}
+.modal-btn.cancel{background:#f3f4f6;color:var(--text);}
+.modal-btn.cancel:hover{background:#e5e7eb;}
+.modal-btn.danger{background:var(--red);color:white;}
+.modal-btn.danger:hover{opacity:.9;}
+
+/* ── TOAST ───────────────────────────────────── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:#111827;color:white;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* ── CONTENT ─────────────────────────────────── */
+.content{flex:1;overflow-y:auto;padding:28px;}
+.page-header{margin-bottom:24px;}
+.page-title{font-size:22px;font-weight:800;color:var(--text);}
+.page-sub{font-size:14px;color:var(--text2);margin-top:3px;}
+.stat-row{display:flex;gap:16px;margin-bottom:24px;}
+.stat{flex:1;background:white;border-radius:14px;border:1px solid var(--border);padding:18px 20px;}
+.stat-n{font-size:26px;font-weight:800;}
+.stat-l{font-size:12px;color:var(--text2);margin-top:2px;}
+.content-card{background:white;border-radius:14px;border:1px solid var(--border);padding:20px;}
+.content-card h3{font-size:14px;font-weight:700;margin-bottom:14px;}
+.skeleton{background:#f3f4f6;border-radius:6px;height:14px;margin-bottom:10px;animation:pulse 1.5s infinite;}
+.skeleton:last-child{width:70%;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── ANNOTATION OVERLAY ──────────────────────── */
+.annotation-bar{background:white;border-bottom:2px solid #e0e7ff;padding:12px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.ann-tag{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
+.ann-tag.purple{background:#ede9fe;color:var(--purple);}
+.ann-tag.green{background:#d1fae5;color:#065f46;}
+.ann-tag.amber{background:#fef3c7;color:#92400e;}
+.ann-tag.red{background:#fee2e2;color:var(--red);}
+.ann-sep{color:var(--text3);}
+.ann-label{font-size:12px;color:var(--text3);}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-logo">
+    <svg width="26" height="26" viewBox="0 0 40 40" fill="none">
+      <rect width="40" height="40" rx="8" fill="#0d0f1a"/>
+      <line x1="13" y1="10" x2="13" y2="30" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="13" y1="20" x2="28" y2="10" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+      <line x1="13" y1="20" x2="28" y2="30" stroke="#6366f1" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <span class="sb-logo-text">kyriq</span>
+  </div>
+  <nav class="sb-nav">
+    <a class="nav-item active" href="#"><span class="nav-icon">⊞</span> Dashboard</a>
+    <a class="nav-item" href="#"><span class="nav-icon">↑</span> Upload Checks</a>
+    <a class="nav-item" href="#"><span class="nav-icon">⇄</span> QB Match <span class="nav-badge">19</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">⚠</span> Duplicates <span class="nav-badge">3</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">📊</span> Analytics</a>
+    <div class="nav-divider"></div>
+    <a class="nav-item" href="#"><span class="nav-icon">📋</span> Audit Log</a>
+    <a class="nav-item" href="#"><span class="nav-icon">👥</span> Users</a>
+    <a class="nav-item" href="#"><span class="nav-icon">⚙</span> Settings</a>
+    <a class="nav-item" href="#"><span class="nav-icon">💳</span> Billing</a>
+  </nav>
+  <div class="sb-footer">
+    <div class="sb-user">
+      <div class="sb-av">M</div>
+      <div>
+        <div class="sb-uname">Michael</div>
+        <div class="sb-urole">Accountant · Pro Plan</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Annotation bar -->
+  <div class="annotation-bar">
+    <span class="ann-label">Try it →</span>
+    <span class="ann-tag purple" onclick="openCompany()">① Company switcher</span>
+    <span class="ann-sep">·</span>
+    <span class="ann-tag green" onclick="openAccount()">② Account switcher</span>
+    <span class="ann-sep">·</span>
+    <span class="ann-tag amber" onclick="demoExpired()">③ Expired token</span>
+    <span class="ann-sep">·</span>
+    <span class="ann-tag red" onclick="demoDisconnect()">④ Disconnect flow</span>
+  </div>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <span class="topbar-title">Dashboard</span>
+    <span class="tb-sep">|</span>
+
+    <!-- ①  COMPANY SWITCHER -->
+    <div class="switcher-wrap" id="companySwitcher">
+      <button class="cs-btn" id="csBtn" onclick="toggleCompany()">
+        <div class="cs-av" id="csAv" style="background:#6366f1;">AS</div>
+        <span class="cs-name" id="csName">Alvarez &amp; Sons LLC</span>
+        <div class="cs-dot" id="csDot" style="background:#10b981;"></div>
+        <span class="cs-caret" id="csCaret">▾</span>
+      </button>
+
+      <div class="dropdown" id="companyDropdown">
+        <div class="dd-search"><input type="text" id="csSearch" placeholder="Search clients…" oninput="filterClients(this.value)" autocomplete="off"/></div>
+        <div class="dd-list" id="csList"></div>
+        <div class="dd-footer">
+          <button class="dd-footer-btn" onclick="connectNew()">
+            <div class="dd-add-circle">+</div>
+            Add New Client
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ②  ACCOUNT SWITCHER -->
+    <div class="switcher-wrap" id="accountSwitcher">
+      <button class="as-btn" id="asBtn" onclick="toggleAccount()">
+        <span class="as-icon" id="asIcon">🏦</span>
+        <span class="as-name" id="asName">Business Checking ···4421</span>
+        <span class="as-bal" id="asBal">$48,220</span>
+        <span class="as-caret" id="asCaret">▾</span>
+      </button>
+
+      <div class="dropdown" id="accountDropdown" style="width:280px;">
+        <div id="acctList"></div>
+        <div class="dd-footer">
+          <button class="dd-footer-btn ghost" onclick="refreshAccounts()">
+            <span>🔄</span> Refresh balances
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expired reconnect pill (hidden by default) -->
+    <div class="reconnect-pill" id="reconnectPill" style="display:none;" onclick="connectNew()">
+      ⚠ Reconnect QB
+    </div>
+
+    <div class="tb-right">
+      <div class="tb-icon-btn">🔔</div>
+      <div class="tb-icon-btn">❓</div>
+      <div class="tb-av">M</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title" id="pageTitle">Alvarez &amp; Sons LLC</div>
+      <div class="page-sub" id="pageSub">Business Checking ···4421 &nbsp;·&nbsp; March 2026 &nbsp;·&nbsp; <span style="color:#10b981;font-weight:600;">QB Live</span></div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n" id="statTotal">867</div><div class="stat-l">Total Checks</div></div>
+      <div class="stat"><div class="stat-n" style="color:#10b981;" id="statMatched">841</div><div class="stat-l">Matched</div></div>
+      <div class="stat"><div class="stat-n" style="color:#f59e0b;" id="statReview">19</div><div class="stat-l">Review</div></div>
+      <div class="stat"><div class="stat-n" style="color:#ef4444;" id="statDups">3</div><div class="stat-l">Duplicates</div></div>
+      <div class="stat"><div class="stat-n" style="color:#9ca3af;" id="statUnmatch">4</div><div class="stat-l">Unmatched</div></div>
+    </div>
+
+    <div class="content-card">
+      <h3 id="cardTitle">Recent Checks — Business Checking ···4421</h3>
+      <div class="skeleton" style="width:95%"></div>
+      <div class="skeleton" style="width:88%"></div>
+      <div class="skeleton" style="width:92%"></div>
+      <div class="skeleton" style="width:85%"></div>
+      <div class="skeleton" style="width:91%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DISCONNECT MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">Disconnect client?</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn danger" id="modalConfirmBtn">Disconnect</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ───────────────────────────────────────────────────────
+const CLIENTS = [
+  {
+    realmId:'9341082003', name:'Alvarez & Sons LLC', initials:'AS',
+    color:'#6366f1', connected:true,
+    accounts:[
+      {id:'a1', icon:'🏦', name:'Business Checking', lastFour:'4421', type:'Bank', bal:48220},
+      {id:'a2', icon:'🏦', name:'Payroll Checking',  lastFour:'8803', type:'Bank', bal:12450},
+      {id:'a3', icon:'💳', name:'Business Visa',     lastFour:'7710', type:'Credit Card', bal:-3850},
+    ]
+  },
+  {
+    realmId:'7728401920', name:'Thornton Medical Group', initials:'TM',
+    color:'#0ea5e9', connected:true,
+    accounts:[
+      {id:'b1', icon:'🏦', name:'Operating Account', lastFour:'2291', type:'Bank', bal:124900},
+      {id:'b2', icon:'🏦', name:'Reserve Fund',      lastFour:'5508', type:'Bank', bal:89000},
+      {id:'b3', icon:'💳', name:'Amex Corporate',    lastFour:'3344', type:'Credit Card', bal:-7210},
+    ]
+  },
+  {
+    realmId:'4401928374', name:'Rivera Construction', initials:'RC',
+    color:'#10b981', connected:true,
+    accounts:[
+      {id:'c1', icon:'🏦', name:'Main Checking',     lastFour:'6612', type:'Bank', bal:31080},
+      {id:'c2', icon:'💳', name:'Home Depot Biz',    lastFour:'9900', type:'Credit Card', bal:-1420},
+    ]
+  },
+  {
+    realmId:'5582910472', name:'Patel Family Trust', initials:'PF',
+    color:'#f59e0b', connected:true,
+    accounts:[
+      {id:'d1', icon:'🏦', name:'Trust Checking',    lastFour:'1177', type:'Bank', bal:205000},
+    ]
+  },
+  {
+    realmId:'2291038847', name:'Nguyen & Partners', initials:'NP',
+    color:'#8b5cf6', connected:false, // expired
+    accounts:[
+      {id:'e1', icon:'🏦', name:'Business Checking', lastFour:'4430', type:'Bank', bal:0},
+    ]
+  },
+];
+
+const STATS = {
+  '9341082003': {total:867, matched:841, review:19, dups:3, unmatch:4},
+  '7728401920': {total:1204, matched:1190, review:10, dups:2, unmatch:2},
+  '4401928374': {total:312, matched:298, review:12, dups:1, unmatch:1},
+  '5582910472': {total:88,  matched:88,  review:0,  dups:0, unmatch:0},
+  '2291038847': {total:0,   matched:0,   review:0,  dups:0, unmatch:0},
+};
+
+// ── STATE ──────────────────────────────────────────────────────
+let activeRealm   = '9341082003';
+let activeAcctId  = 'a1';
+let companyOpen   = false;
+let accountOpen   = false;
+let disconnectTarget = null;
+let searchQuery   = '';
+
+// ── INIT ───────────────────────────────────────────────────────
+renderCompanyBtn();
+renderAccountBtn();
+renderCompanyList();
+renderAccountList();
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', e => {
+  if (!document.getElementById('companySwitcher').contains(e.target)) closeCompany();
+  if (!document.getElementById('accountSwitcher').contains(e.target)) closeAccount();
+});
+
+// ── COMPANY SWITCHER ───────────────────────────────────────────
+function toggleCompany() {
+  if (companyOpen) { closeCompany(); return; }
+  openCompany();
+}
+function openCompany() {
+  companyOpen = true; accountOpen = false;
+  document.getElementById('csBtn').classList.add('open');
+  document.getElementById('csCaret').style.transform = 'rotate(180deg)';
+  document.getElementById('companyDropdown').classList.add('open');
+  document.getElementById('accountDropdown').classList.remove('open');
+  document.getElementById('asBtn').classList.remove('open');
+  document.getElementById('asCaret').style.transform = '';
+  setTimeout(() => document.getElementById('csSearch').focus(), 50);
+}
+function closeCompany() {
+  companyOpen = false;
+  document.getElementById('csBtn').classList.remove('open');
+  document.getElementById('csCaret').style.transform = '';
+  document.getElementById('companyDropdown').classList.remove('open');
+  document.getElementById('csSearch').value = '';
+  searchQuery = '';
+  renderCompanyList();
+}
+
+function filterClients(val) {
+  searchQuery = val.toLowerCase();
+  renderCompanyList();
+}
+
+function renderCompanyList() {
+  const list = document.getElementById('csList');
+  const filtered = CLIENTS.filter(c =>
+    !searchQuery || c.name.toLowerCase().includes(searchQuery)
+  );
+  list.innerHTML = filtered.map(c => `
+    <div class="dd-item${c.realmId === activeRealm ? ' active-item' : ''}" onclick="selectClient('${c.realmId}')">
+      <div class="dd-av" style="background:${c.color};">${c.initials}</div>
+      <div class="dd-info">
+        <div class="dd-name">${c.name}</div>
+        <div class="dd-meta">
+          <div class="dd-status-dot" style="background:${c.connected ? '#10b981' : '#ef4444'};"></div>
+          <span class="dd-meta-text">${c.connected ? 'Connected' : 'Needs reconnect'} · ${c.accounts.length} account${c.accounts.length !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      ${c.realmId === activeRealm ? '<span class="dd-checkmark">✓</span>' : ''}
+      <button class="dd-remove" onclick="promptDisconnect(event,'${c.realmId}')" title="Disconnect">✕</button>
+    </div>
+  `).join('') || '<div style="padding:16px;text-align:center;font-size:13px;color:#9ca3af;">No clients found</div>';
+}
+
+function selectClient(realmId) {
+  const client = CLIENTS.find(c => c.realmId === realmId);
+  if (!client) return;
+  activeRealm  = realmId;
+  activeAcctId = client.accounts[0]?.id || null;
+  renderCompanyBtn();
+  renderAccountBtn();
+  renderAccountList();
+  updatePageContent();
+  closeCompany();
+  toast(`Switched to ${client.name}`);
+}
+
+function renderCompanyBtn() {
+  const c = CLIENTS.find(c => c.realmId === activeRealm);
+  if (!c) return;
+  document.getElementById('csAv').textContent   = c.initials;
+  document.getElementById('csAv').style.background = c.color;
+  document.getElementById('csName').textContent = c.name;
+  document.getElementById('csDot').style.background = c.connected ? '#10b981' : '#ef4444';
+  document.getElementById('reconnectPill').style.display = c.connected ? 'none' : 'flex';
+}
+
+// ── ACCOUNT SWITCHER ───────────────────────────────────────────
+function toggleAccount() {
+  if (accountOpen) { closeAccount(); return; }
+  openAccount();
+}
+function openAccount() {
+  accountOpen = true; companyOpen = false;
+  document.getElementById('asBtn').classList.add('open');
+  document.getElementById('asCaret').style.transform = 'rotate(180deg)';
+  document.getElementById('accountDropdown').classList.add('open');
+  document.getElementById('companyDropdown').classList.remove('open');
+  document.getElementById('csBtn').classList.remove('open');
+  document.getElementById('csCaret').style.transform = '';
+}
+function closeAccount() {
+  accountOpen = false;
+  document.getElementById('asBtn').classList.remove('open');
+  document.getElementById('asCaret').style.transform = '';
+  document.getElementById('accountDropdown').classList.remove('open');
+}
+
+function renderAccountList() {
+  const client = CLIENTS.find(c => c.realmId === activeRealm);
+  if (!client) return;
+  const banks  = client.accounts.filter(a => a.type === 'Bank');
+  const cards  = client.accounts.filter(a => a.type === 'Credit Card');
+  let html = '';
+
+  if (banks.length) {
+    html += `<div class="dd-section">🏦 Bank Accounts</div>`;
+    html += banks.map(a => acctItem(a)).join('');
+  }
+  if (cards.length) {
+    html += `<div class="dd-section" style="margin-top:4px;">💳 Credit Cards</div>`;
+    html += cards.map(a => acctItem(a)).join('');
+  }
+  document.getElementById('acctList').innerHTML = html;
+}
+
+function acctItem(a) {
+  const name = a.lastFour ? `${a.name} ···${a.lastFour}` : a.name;
+  const balFmt = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:0,maximumFractionDigits:0}).format(a.bal);
+  const balClass = a.bal < 0 ? 'dd-acct-bal negative' : 'dd-acct-bal';
+  return `
+    <div class="dd-acct${a.id === activeAcctId ? ' active-acct' : ''}" onclick="selectAccount('${a.id}')">
+      <span class="dd-acct-icon">${a.icon}</span>
+      <div class="dd-acct-info">
+        <div class="dd-acct-name">${name}</div>
+        <div class="dd-acct-sub">${a.type}</div>
+      </div>
+      <span class="${balClass}">${balFmt}</span>
+      ${a.id === activeAcctId ? '<span class="dd-acct-check">✓</span>' : ''}
+    </div>`;
+}
+
+function selectAccount(id) {
+  activeAcctId = id;
+  renderAccountBtn();
+  renderAccountList();
+  updatePageContent();
+  closeAccount();
+  const client = CLIENTS.find(c => c.realmId === activeRealm);
+  const acct   = client?.accounts.find(a => a.id === id);
+  if (acct) toast(`Switched to ${acct.name} ···${acct.lastFour}`);
+}
+
+function renderAccountBtn() {
+  const client = CLIENTS.find(c => c.realmId === activeRealm);
+  const acct   = client?.accounts.find(a => a.id === activeAcctId) || client?.accounts[0];
+  if (!acct) return;
+  const name = acct.lastFour ? `${acct.name} ···${acct.lastFour}` : acct.name;
+  const balFmt = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:0,maximumFractionDigits:0}).format(acct.bal);
+  document.getElementById('asIcon').textContent = acct.icon;
+  document.getElementById('asName').textContent = name;
+  document.getElementById('asBal').textContent  = balFmt;
+  document.getElementById('asBal').style.color  = acct.bal < 0 ? '#ef4444' : '#065f46';
+  document.getElementById('asBal').style.background = acct.bal < 0 ? '#fef2f2' : '#f0fdf4';
+}
+
+// ── PAGE CONTENT UPDATE ────────────────────────────────────────
+function updatePageContent() {
+  const client = CLIENTS.find(c => c.realmId === activeRealm);
+  const acct   = client?.accounts.find(a => a.id === activeAcctId) || client?.accounts[0];
+  const stats  = STATS[activeRealm] || {total:0,matched:0,review:0,dups:0,unmatch:0};
+  if (!client) return;
+  const acctName = acct ? `${acct.name}${acct.lastFour ? ' ···'+acct.lastFour : ''}` : '—';
+  document.getElementById('pageTitle').textContent = client.name;
+  document.getElementById('pageSub').innerHTML =
+    `${acctName} &nbsp;·&nbsp; March 2026 &nbsp;·&nbsp; <span style="color:${client.connected ? '#10b981' : '#ef4444'};font-weight:600;">${client.connected ? 'QB Live' : 'Disconnected'}</span>`;
+  document.getElementById('statTotal').textContent   = stats.total.toLocaleString();
+  document.getElementById('statMatched').textContent = stats.matched.toLocaleString();
+  document.getElementById('statReview').textContent  = stats.review;
+  document.getElementById('statDups').textContent    = stats.dups;
+  document.getElementById('statUnmatch').textContent = stats.unmatch;
+  document.getElementById('cardTitle').textContent   = `Recent Checks — ${acctName}`;
+}
+
+// ── DISCONNECT FLOW ────────────────────────────────────────────
+function promptDisconnect(e, realmId) {
+  e.stopPropagation();
+  closeCompany();
+  disconnectTarget = realmId;
+  const client = CLIENTS.find(c => c.realmId === realmId);
+  document.getElementById('modalBody').innerHTML =
+    `<strong>${client.name}</strong> will be removed from Kyriq. You can reconnect at any time — your QuickBooks data is not affected.`;
+  document.getElementById('modalConfirmBtn').onclick = () => confirmDisconnect();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function confirmDisconnect() {
+  const client = CLIENTS.find(c => c.realmId === disconnectTarget);
+  closeModal();
+  toast(`${client?.name} disconnected`);
+  disconnectTarget = null;
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+// ── DEMO BUTTONS ───────────────────────────────────────────────
+function demoExpired() {
+  const c = CLIENTS.find(c => c.realmId === '2291038847');
+  activeRealm  = c.realmId;
+  activeAcctId = c.accounts[0]?.id;
+  renderCompanyBtn();
+  renderAccountBtn();
+  renderAccountList();
+  updatePageContent();
+  toast('⚠ Nguyen & Partners token expired');
+}
+function demoDisconnect() {
+  promptDisconnect({ stopPropagation: () => {} }, '4401928374');
+}
+function connectNew() {
+  closeCompany();
+  toast('Redirecting to QuickBooks authorization…');
+}
+function refreshAccounts() {
+  closeAccount();
+  toast('Refreshing account balances from QB…');
+  setTimeout(() => toast('✓ Balances updated'), 1800);
+}
+
+// ── TOAST ──────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@ import {
   RefreshCw, Search, Check, AlertTriangle, Flag, Clock, HelpCircle,
   Loader2, CheckCircle2, Filter, ArrowUpDown, Building2,
 } from 'lucide-react';
+import { QBCompanySwitcher } from '@/components/QBCompanySwitcher';
 
 const STATUS_TABS = [
   { key: 'all',         label: 'All',          icon: Filter },
@@ -96,14 +97,10 @@ function QBMatchPageContent() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">QB Match Engine</h1>
-          {active && (
-            <p className="text-sm text-gray-500 mt-1">
-              <Building2 className="w-3.5 h-3.5 inline mr-1" />
-              {active.companyName}
-            </p>
-          )}
+          <p className="text-sm text-gray-500 mt-1">Match extracted checks against QuickBooks transactions</p>
         </div>
         <div className="flex items-center gap-3">
+          <QBCompanySwitcher />
           <button
             onClick={syncQB}
             disabled={isSyncing}

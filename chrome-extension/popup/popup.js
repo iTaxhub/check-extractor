@@ -70,11 +70,6 @@ function showView(view) {
     show('#view-login');
     hide('#company-bar');
     hide('#tabs');
-  } else if (view === 'settings') {
-    show('#view-settings');
-    hide('#company-bar');
-    hide('#tabs');
-    loadSettings();
   } else if (view === 'main') {
     show('#company-bar');
     show('#tabs');
@@ -364,22 +359,6 @@ function renderExtracted() {
   `).join('');
 }
 
-// ── Settings ─────────────────────────────────────────────────
-async function loadSettings() {
-  const cfg = await sendMsg({ type: 'GET_CONFIG' });
-  $('#cfg-supabase-url').value = cfg?.supabaseUrl || '';
-  $('#cfg-supabase-key').value = cfg?.supabaseAnonKey || '';
-  $('#cfg-qb-client-id').value = cfg?.qbClientId || '';
-  $('#cfg-qb-secret').value = cfg?.qbClientSecret || '';
-  $('#cfg-gemini-key').value = cfg?.geminiApiKey || '';
-
-  if (session) {
-    show('#user-info');
-    $('#user-email').textContent = session.user?.email || '';
-  } else {
-    hide('#user-info');
-  }
-}
 
 // ── Event Binding ────────────────────────────────────────────
 function bindEvents() {
@@ -406,27 +385,6 @@ function bindEvents() {
   // Enter key on password
   $('#login-password').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#btn-login').click();
-  });
-
-  // Settings
-  $('#btn-settings').addEventListener('click', () => showView('settings'));
-  $('#btn-show-settings').addEventListener('click', (e) => { e.preventDefault(); showView('settings'); });
-  $('#btn-back').addEventListener('click', () => {
-    if (session) loadMainView();
-    else showView('login');
-  });
-
-  $('#btn-save-settings').addEventListener('click', async () => {
-    const config = {
-      supabaseUrl: $('#cfg-supabase-url').value.trim().replace(/\/$/, ''),
-      supabaseAnonKey: $('#cfg-supabase-key').value.trim(),
-      qbClientId: $('#cfg-qb-client-id').value.trim(),
-      qbClientSecret: $('#cfg-qb-secret').value.trim(),
-      geminiApiKey: $('#cfg-gemini-key').value.trim(),
-    };
-    await sendMsg({ type: 'SAVE_CONFIG', config });
-    show('#settings-msg');
-    setTimeout(() => hide('#settings-msg'), 2500);
   });
 
   // Logout

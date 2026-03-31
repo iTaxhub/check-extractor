@@ -109,14 +109,14 @@ export default async function handler(
       dbError: dbError?.message
     });
 
-    // Fallback to env vars if not in database
-    const clientId = integration?.qb_client_id || process.env.QUICKBOOKS_CLIENT_ID;
-    const redirectUri = integration?.qb_redirect_uri || process.env.QUICKBOOKS_REDIRECT_URI || '';
+    // Env vars OVERRIDE database values (allows easy updates when domain changes without touching DB)
+    const clientId = process.env.QUICKBOOKS_CLIENT_ID || integration?.qb_client_id;
+    const redirectUri = process.env.QUICKBOOKS_REDIRECT_URI || integration?.qb_redirect_uri || '';
     
     console.log('🔑 QB OAuth - Using credentials:', {
       clientId: clientId ? `${clientId.substring(0, 10)}...` : 'MISSING',
       redirectUri,
-      source: integration?.qb_client_id ? 'database' : 'env'
+      source: process.env.QUICKBOOKS_REDIRECT_URI ? 'env (override)' : integration?.qb_redirect_uri ? 'database' : 'missing'
     });
     
     if (!clientId) {
@@ -128,10 +128,12 @@ export default async function handler(
       });
     }
 
-    // Generate state for CSRF protection - encode tenant_id in it
+    // Generate state for CSRF protection - encode tenant_id and source in it
     const stateData = {
       random: Math.random().toString(36).substring(7),
       tenant_id: tenantId,
+      user_id: user.id,
+      source: (req.query.source as string) || 'web',
       timestamp: Date.now()
     };
     const state = Buffer.from(JSON.stringify(stateData)).toString('base64');
