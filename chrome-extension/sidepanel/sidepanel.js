@@ -146,6 +146,10 @@ let _qbSearch    = '';
 let _qbDateFrom  = null;
 let _qbDateTo    = null;
 let _cachedQB    = null;   // null = not loaded yet; [] = loaded but empty
+// ── Document / account filter state ──
+let _docFilter      = '';  // job_id to filter matches by ('' = all)
+let _chequeDocFilter = ''; // job_id to filter cheques by ('' = all)
+let _accountFilter  = '';  // account name to filter matches + QB txns ('' = all)
 
 // ── QB endpoint-missing banner (kyriq.com not yet deployed) ─
 function showQBEndpointMissingBanner(msg) {
@@ -338,6 +342,12 @@ async function postLoginFlow() {
         dbg(`QB auto-sync failed (non-fatal): ${e.message}`, 'warn');
       }
       await loadChecksIntoMatches();
+      // Pre-load docs for filter dropdown (non-blocking)
+      sendMsg({ type: 'GET_DOCUMENTS' }).then(r => {
+        if (r?.documents?.length) { _cachedDocs = r.documents; populateDocFilter(r.documents); }
+      });
+      // Pre-load account list for account selector
+      populateAccountSelect();
       hideLoading();
     }
   } catch (e) {
@@ -400,10 +410,53 @@ function renderCompanySelect() {
 }
 
 // ── Matches ───────────────────────────────────────────────────
+function populateDocFilter(docs) {
+  const selMatch = $('#doc-filter');
+  const selCheques = $('#cheques-doc-filter');
+  [selMatch, selCheques].forEach(sel => {
+    if (!sel) return;
+    const prev = sel.value;
+    // Keep first option (All Uploads / All Docs)
+    while (sel.options.length > 1) sel.remove(1);
+    (docs || []).forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.job_id;
+      opt.textContent = (d.pdf_name || d.job_id || 'Untitled').slice(0, 30);
+      sel.appendChild(opt);
+    });
+    sel.value = prev || '';
+  });
+}
+
+async function populateAccountSelect() {
+  const sel = $('#account-select');
+  if (!sel) return;
+  const res = await sendMsg({ type: 'GET_QB_ACCOUNTS' });
+  const accounts = res?.accounts || [];
+  const prev = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  accounts.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a;
+    opt.textContent = a.slice(0, 28);
+    sel.appendChild(opt);
+  });
+  sel.value = prev || '';
+  dbg(`Account select: ${accounts.length} accounts loaded`);
+}
+
 function renderMatches() {
   const list = $('#match-list');
   // Status filter
   let filtered = currentFilter === 'all' ? matches : matches.filter(m => m.status === currentFilter);
+  // Document filter
+  if (_docFilter) {
+    filtered = filtered.filter(m => (m.check || {}).job_id === _docFilter);
+  }
+  // Account filter
+  if (_accountFilter) {
+    filtered = filtered.filter(m => (m.qbTxn?.account || '') === _accountFilter);
+  }
   // Search filter
   if (_matchSearch) {
     const q = _matchSearch.toLowerCase();
@@ -832,8 +885,9 @@ function renderQBList(txns) {
   const list = $('#qb-list');
   if (!list) return;
 
+  // Apply account filter
+  let filtered = _accountFilter ? txns.filter(t => (t.account || '') === _accountFilter) : txns;
   // Apply search filter
-  let filtered = txns;
   if (_qbSearch) {
     const q = _qbSearch.toLowerCase();
     filtered = filtered.filter(t =>
@@ -907,6 +961,7 @@ async function loadDocuments(force = false) {
   const docs = res?.documents || [];
   dbg(`Documents: ${docs.length}`);
   _cachedDocs = docs;
+  populateDocFilter(docs);
   renderDocumentsList(docs);
 }
 function renderDocumentsList(docs) {
@@ -922,16 +977,41 @@ function renderDocumentsList(docs) {
     const cls = statusClass[d.status] || 'pending';
     const date = d.created_at ? fmtDate(d.created_at) : '—';
     const pages = d.total_pages ? ` · ${d.total_pages}p` : '';
+    const isDone = ['complete', 'analyzed'].includes(d.status);
     return `
-      <div class="doc-card">
+      <div class="doc-card" data-job="${escHtml(d.job_id)}">
         <div class="doc-icon">📄</div>
         <div class="doc-info">
           <div class="doc-name">${escHtml(d.pdf_name || 'Untitled')}</div>
           <div class="doc-meta">${date}${pages} · ${d.total_checks || 0} cheques</div>
         </div>
         <div class="doc-status ${cls}">${label}</div>
+        <button class="btn-xs btn-doc-delete" data-job="${escHtml(d.job_id)}" title="Delete upload">🗑</button>
       </div>`;
   }).join('');
+  list.querySelectorAll('.btn-doc-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const jobId = btn.dataset.job;
+      const docName = docs.find(d => d.job_id === jobId)?.pdf_name || jobId;
+      if (!confirm(`Delete "${docName}" and all its extracted checks?\n\nThis cannot be undone.`)) return;
+      btn.disabled = true;
+      btn.textContent = '⏳';
+      const res = await sendMsg({ type: 'DELETE_DOCUMENT', jobId });
+      if (res?.error) {
+        dbg(`Delete failed: ${res.error}`, 'error');
+        alert(`Delete failed: ${res.error}`);
+        btn.disabled = false;
+        btn.textContent = '🗑';
+        return;
+      }
+      _cachedDocs = (_cachedDocs || []).filter(d => d.job_id !== jobId);
+      _cachedChecks = null;
+      populateDocFilter(_cachedDocs);
+      renderDocumentsList(_cachedDocs);
+      dbg(`Deleted document: ${docName}`, 'success');
+    });
+  });
 }
 
 // ── Extracted Cheques (from Supabase checks table) ────────
@@ -948,8 +1028,9 @@ async function loadChecks(force = false) {
 }
 function renderChecksList(checks) {
   const list = $('#checks-list');
+  // Apply doc filter
+  let filtered = _chequeDocFilter ? checks.filter(c => c.job_id === _chequeDocFilter) : checks;
   // Apply search + date filters
-  let filtered = checks;
   if (_checksSearch) {
     const q = _checksSearch.toLowerCase();
     filtered = filtered.filter(c =>
@@ -1770,6 +1851,30 @@ function bindEvents() {
 
   // ── Refresh docs / checks / history (force=true) ──
   $('#btn-refresh-docs').addEventListener('click', () => { _cachedDocs = null; loadDocuments(true); });
-  $('#btn-refresh-checks').addEventListener('click', () => { _cachedChecks = null; loadChecks(true); });
+  $('#btn-refresh-checks').addEventListener('click', () => {
+    _cachedChecks = null;
+    loadChecks(true).then(() => {
+      if (_cachedDocs?.length) populateDocFilter(_cachedDocs);
+    });
+  });
   $('#btn-refresh-history').addEventListener('click', () => { _cachedHistory = null; loadHistory(true); });
+
+  // ── Doc filter (Matches tab) ──
+  $('#doc-filter')?.addEventListener('change', e => {
+    _docFilter = e.target.value;
+    renderMatches();
+  });
+
+  // ── Doc filter (Cheques tab) ──
+  $('#cheques-doc-filter')?.addEventListener('change', e => {
+    _chequeDocFilter = e.target.value;
+    if (_cachedChecks !== null) renderChecksList(_cachedChecks);
+  });
+
+  // ── Account filter (company bar) ──
+  $('#account-select')?.addEventListener('change', e => {
+    _accountFilter = e.target.value;
+    renderMatches();
+    if (_cachedQB !== null) renderQBList(_cachedQB);
+  });
 }

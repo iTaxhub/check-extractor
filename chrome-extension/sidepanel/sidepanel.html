@@ -167,6 +167,9 @@
     <div class="company-select-wrap">
       <select id="company-select"></select>
     </div>
+    <div class="account-select-wrap">
+      <select id="account-select" title="Filter by bank account"><option value="">All Accounts</option></select>
+    </div>
     <button id="btn-sync" class="btn-sync" title="Sync QB transactions">
       <span id="sync-icon">↻</span> Sync
     </button>
@@ -196,6 +199,11 @@
     <div class="bulk-bar">
       <button id="btn-bulk-approve" class="btn-sm btn-green">✅ Auto-Approve ≥95%</button>
       <button id="btn-match-filter-toggle" class="btn-sm btn-ghost" title="Search &amp; filter">🔍 Filter</button>
+    </div>
+    <!-- Document filter -->
+    <div class="doc-filter-bar">
+      <label class="doc-filter-label" for="doc-filter">📄 Doc:</label>
+      <select id="doc-filter" class="doc-filter-select"><option value="">All Uploads</option></select>
     </div>
     <!-- Sort controls -->
     <div class="sort-bar">
@@ -334,6 +342,7 @@
     <div class="tab-toolbar">
       <span class="tab-toolbar-title">Extracted Cheques</span>
       <span id="checks-count-badge" class="checks-count-badge" style="margin-left:6px;"></span>
+      <select id="cheques-doc-filter" class="doc-filter-select" style="margin-left:6px;max-width:120px;"><option value="">All Docs</option></select>
       <button id="btn-refresh-checks" class="btn-xs btn-ghost" style="margin-left:auto;">↻ Refresh</button>
     </div>
     <div class="checks-filter-bar">

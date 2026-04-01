@@ -235,15 +235,11 @@ async function getValidQBToken() {
     // 400/401 from Intuit = refresh token expired (invalid_grant) → must re-authorize
     if (res.status === 400 || res.status === 401) throw new Error('QB_RECONNECT_NEEDED');
     // 404 = the /api/extension/qb/refresh-token route is not deployed on the frontend yet.
-    // If the token hasn't actually expired at Intuit's side yet, fall back to using it.
-    // Only hard-block if the token is genuinely past its expiry.
+    // Always fall back to existing token — let Intuit decide if it's still valid.
+    // If Intuit rejects it (401), that error surfaces as QB_RECONNECT_NEEDED via qbApiRequest.
     if (res.status === 404) {
-      const now = new Date();
-      if (expiresAt > now) {
-        log('⚠️ refresh-token endpoint returned 404 (not deployed) — using existing token as fallback', { expiresAt: expiresAt.toISOString() });
-        return { token: conn.access_token, realmId: conn.realm_id, tenantId: conn.tenantId, connId: conn.id };
-      }
-      throw new Error('QB_ENDPOINT_NOT_DEPLOYED');
+      log('⚠️ refresh-token endpoint returned 404 (not deployed) — using existing token as fallback', { expiresAt: expiresAt.toISOString() });
+      return { token: conn.access_token, realmId: conn.realm_id, tenantId: conn.tenantId, connId: conn.id };
     }
     throw new Error(`Token refresh failed (${res.status})${errDetail ? ': ' + errDetail : ''}`);
   }
@@ -680,13 +676,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           log('GET_CONNECTIONS');
           const s = await getSession();
           if (!s) return { connections: [] };
-          const tenantId = await getTenantId(s.user.id).catch(() => null);
+          let tenantId = null;
+          try {
+            tenantId = await getTenantId(s.user.id);
+          } catch (profileErr) {
+            logErr('GET_CONNECTIONS: getTenantId failed', profileErr);
+            return { connections: [], error: 'Profile not found — ensure user_profiles row exists for this user' };
+          }
           if (!tenantId) { log('GET_CONNECTIONS: no profile found'); return { connections: [] }; }
-          const conns = await supabaseRequest(
-            `qb_connections?tenant_id=eq.${tenantId}&select=id,realm_id,company_name,is_active,connected_at&order=connected_at.asc`
-          );
-          log('GET_CONNECTIONS result', { count: conns?.length || 0 });
-          return { connections: conns || [] };
+          try {
+            const conns = await supabaseRequest(
+              `qb_connections?tenant_id=eq.${tenantId}&select=id,realm_id,company_name,is_active,connected_at&order=connected_at.asc`
+            );
+            log('GET_CONNECTIONS result', { count: conns?.length || 0, tenantId });
+            return { connections: conns || [] };
+          } catch (connErr) {
+            logErr('GET_CONNECTIONS: Supabase qb_connections query failed', connErr);
+            return { connections: [], error: connErr.message };
+          }
         }
         case 'SWITCH_COMPANY': {
           const s = await getSession();
@@ -804,6 +811,64 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           ).catch(() => []);
           log('GET_HISTORY result', { count: hist?.length || 0 });
           return { history: hist || [] };
+        }
+        case 'GET_QB_ACCOUNTS': {
+          log('GET_QB_ACCOUNTS');
+          const s = await getSession();
+          if (!s) return { accounts: [] };
+          const bootstrap = getBootstrapConfig();
+          const accounts = new Set();
+          // Try QB API first (live accounts list)
+          try {
+            const { token, realmId } = await getValidQBToken();
+            const qbRes = await fetch(
+              `https://quickbooks.api.intuit.com/v3/company/${realmId}/query?query=${encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Bank'")}&minorversion=65`,
+              { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+            );
+            if (qbRes.ok) {
+              const qbData = await qbRes.json();
+              (qbData?.QueryResponse?.Account || []).forEach(a => {
+                if (a.Name) accounts.add(a.Name);
+              });
+              log('GET_QB_ACCOUNTS: QB API ok', { count: accounts.size });
+            }
+          } catch (qbErr) {
+            log('GET_QB_ACCOUNTS: QB API unavailable, using transaction data fallback', qbErr.message);
+          }
+          // Fallback: derive from already-synced qb_entries
+          if (accounts.size === 0) {
+            try {
+              const entries = await supabaseRequest(
+                `qb_entries?select=account&order=date.desc&limit=500`
+              ).catch(() => []);
+              (entries || []).forEach(e => { if (e.account) accounts.add(e.account); });
+              log('GET_QB_ACCOUNTS: fallback from qb_entries', { count: accounts.size });
+            } catch (_) {}
+          }
+          return { accounts: Array.from(accounts).sort() };
+        }
+        case 'DELETE_DOCUMENT': {
+          log('DELETE_DOCUMENT', { jobId: msg.jobId });
+          const s = await getSession();
+          if (!s?.access_token) return { error: 'Not logged in' };
+          const bootstrap = getBootstrapConfig();
+          const frontendUrl = (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, '');
+          if (!frontendUrl || !msg.jobId) return { error: 'Missing frontendUrl or jobId' };
+          try {
+            const res = await fetch(`${frontendUrl}/api/jobs/${msg.jobId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${s.access_token}` },
+            });
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              return { error: errData.error || `Delete failed (${res.status})` };
+            }
+            log('DELETE_DOCUMENT success', { jobId: msg.jobId });
+            return { success: true };
+          } catch (e) {
+            logErr('DELETE_DOCUMENT failed', e);
+            return { error: e.message };
+          }
         }
         case 'GET_QB_TXNS': {
           log('GET_QB_TXNS');

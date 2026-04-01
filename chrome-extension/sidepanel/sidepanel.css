@@ -772,3 +772,33 @@ header {
   background: #e6f4ea; color: #1a6b15; padding: 1px 5px; border-radius: 4px; letter-spacing: 0.3px;
 }
 .qb-count-badge { background: #2CA01C; }
+
+/* ── Account select (company bar) ─────────────────────────── */
+.account-select-wrap { flex: 1; }
+#account-select {
+  width: 100%; border: 1px solid var(--indigo-border); border-radius: 7px;
+  padding: 5px 8px; font-size: 11px; font-weight: 500; font-family: inherit;
+  background: #fff; color: var(--gray-700); outline: none; max-width: 130px;
+}
+
+/* ── Doc filter bar (Matches tab) ──────────────────────────── */
+.doc-filter-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 0 4px; margin-bottom: 2px;
+}
+.doc-filter-label { font-size: 10px; font-weight: 700; color: var(--gray-500); white-space: nowrap; }
+.doc-filter-select {
+  flex: 1; border: 1px solid var(--gray-200); border-radius: 6px;
+  padding: 4px 8px; font-size: 11px; font-family: inherit;
+  background: #fff; color: var(--gray-700); outline: none;
+}
+.doc-filter-select:focus { border-color: var(--indigo); }
+
+/* ── Delete document button ────────────────────────────────── */
+.btn-doc-delete {
+  background: none; border: none; cursor: pointer; font-size: 14px;
+  padding: 4px; border-radius: 5px; color: var(--gray-400); flex-shrink: 0;
+  transition: all 0.15s; line-height: 1;
+}
+.btn-doc-delete:hover { background: #fee2e2; color: var(--red); }
+.btn-doc-delete:disabled { opacity: 0.5; cursor: not-allowed; }

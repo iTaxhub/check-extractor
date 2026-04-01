@@ -5,6 +5,7 @@ import UserProfile from '@/components/UserProfile';
 import QBProviderWrapper from '@/components/QBProviderWrapper';
 import SidebarCompanySwitcher from '@/components/SidebarCompanySwitcher';
 import SuperAdminLink from '@/components/SuperAdminLink';
+import AccountSwitcher from '@/components/AccountSwitcher';
 
 const NAV_ITEMS = [
   { href: '/firm-dashboard', icon: LayoutDashboard, label: 'Firm Dashboard' },
@@ -37,6 +38,7 @@ export default function AppLayout({
           </div>
 
           <SidebarCompanySwitcher />
+          <AccountSwitcher />
 
           <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
             {NAV_ITEMS.map(item => (
