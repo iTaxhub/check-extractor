@@ -90,37 +90,61 @@ export const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string; example: s
   { value: 'DD-MMM-YYYY', label: 'DD-MMM-YYYY', example: '15-Jan-2026' },
 ];
 
-/**
- * Parse any date string into { year, month, day } integers (UTC-safe).
- */
-function parseDateParts(dateStr: string): { y: number; m: number; d: number } | null {
-  const s = dateStr.trim();
-
-  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (ymd) return { y: parseInt(ymd[1]), m: parseInt(ymd[2]), d: parseInt(ymd[3]) };
-
-  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (mdy) return { y: parseInt(mdy[3]), m: parseInt(mdy[1]), d: parseInt(mdy[2]) };
-
-  const dmy = s.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})$/);
-  if (dmy) {
-    const a = parseInt(dmy[1]), b = parseInt(dmy[2]);
-    if (a > 12) return { y: parseInt(dmy[3]), m: b, d: a };
-    return { y: parseInt(dmy[3]), m: a, d: b };
-  }
-
-  const dt = new Date(s);
-  if (!isNaN(dt.getTime())) {
-    // Local calendar day — UTC getters shift "Feb 2, 2026" style strings vs ISO YYYY-MM-DD
-    return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
-  }
-  return null;
-}
-
 const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_LOOKUP: Record<string, number> = Object.fromEntries(
   SHORT_MONTHS.map((m, i) => [m.toLowerCase(), i + 1])
 );
+
+/**
+ * Parse any date string into { y, m, d } integers — no Date object, no timezone risk.
+ * Used by formatDate for display; handles all formats toYMD handles.
+ */
+function parseDateParts(dateStr: string): { y: number; m: number; d: number } | null {
+  const s = dateStr.trim();
+  if (!s) return null;
+  let match: RegExpMatchArray | null;
+
+  // YYYY-MM-DD or YYYY-M-D (ISO, with optional time)
+  match = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T .Z]|$)/);
+  if (match) return { y: +match[1], m: +match[2], d: +match[3] };
+
+  // MM/DD/YYYY or M/D/YYYY — swap if first >12 (DD/MM/YYYY)
+  match = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) {
+    const a = +match[1], b = +match[2], y = +match[3];
+    return a > 12 ? { y, m: b, d: a } : { y, m: a, d: b };
+  }
+
+  // MM-DD-YYYY or DD-MM-YYYY (dash numeric)
+  match = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (match) {
+    const a = +match[1], b = +match[2], y = +match[3];
+    return a > 12 ? { y, m: b, d: a } : { y, m: a, d: b };
+  }
+
+  // MMM D, YYYY or MMM DD YYYY (e.g. "Mar 23, 2026")
+  match = s.match(/^([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/);
+  if (match) {
+    const mi = MONTH_LOOKUP[match[1].toLowerCase().slice(0, 3)];
+    if (mi) return { y: +match[3], m: mi, d: +match[2] };
+  }
+
+  // D MMM YYYY or DD MMM YYYY (e.g. "23 Mar 2026")
+  match = s.match(/^(\d{1,2})\s+([A-Za-z]{3,9}),?\s+(\d{4})$/);
+  if (match) {
+    const mi = MONTH_LOOKUP[match[2].toLowerCase().slice(0, 3)];
+    if (mi) return { y: +match[3], m: mi, d: +match[1] };
+  }
+
+  // DD-MMM-YYYY (e.g. "23-Mar-2026")
+  match = s.match(/^(\d{1,2})-([A-Za-z]{3,9})-(\d{4})$/);
+  if (match) {
+    const mi = MONTH_LOOKUP[match[2].toLowerCase().slice(0, 3)];
+    if (mi) return { y: +match[3], m: mi, d: +match[1] };
+  }
+
+  return null;
+}
 
 export function formatDate(dateStr: string, fmt: DateFormat = 'MMM D, YYYY'): string {
   if (!dateStr) return '';
