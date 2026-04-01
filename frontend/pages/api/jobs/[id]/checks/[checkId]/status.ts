@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'status is required' });
   }
 
-  const VALID_STATUSES = ['approved', 'rejected', 'pending', 'pending_review', 'flagged'];
+  const VALID_STATUSES = ['approved', 'rejected', 'pending', 'pending_review', 'processing', 'exported', 'error'];
   if (!VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` });
   }

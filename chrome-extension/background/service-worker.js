@@ -680,9 +680,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'GET_QB_AUTH_URL': {
           const bootstrap = getBootstrapConfig();
-          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
-          if (!backendUrl) return { error: 'Backend URL not set' };
-          const url = `${backendUrl}/api/qbo/auth?source=extension`;
+          // /api/qbo/auth is a Next.js route — must use frontendUrl, not the Python backendUrl
+          const qbAuthHost = (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, '');
+          if (!qbAuthHost) return { error: 'Frontend URL not set' };
+          const url = `${qbAuthHost}/api/qbo/auth?source=extension`;
           log('GET_QB_AUTH_URL', url);
           return { url };
         }
@@ -995,10 +996,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const s = await getSession();
           if (!s?.access_token) return { error: 'Not logged in' };
           const bootstrap = getBootstrapConfig();
-          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          // /api/jobs/... routes are in Next.js (frontendUrl), NOT the Python backendUrl
+          const fieldsHost = (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, '');
           try {
-            if (backendUrl && msg.jobId) {
-              const res = await fetch(`${backendUrl}/api/jobs/${msg.jobId}/checks/${msg.checkId}/fields`, {
+            if (fieldsHost && msg.jobId) {
+              const res = await fetch(`${fieldsHost}/api/jobs/${msg.jobId}/checks/${msg.checkId}/fields`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
                 body: JSON.stringify(msg.fields),
@@ -1021,17 +1023,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }
         }
         case 'UPDATE_CHECK_STATUS': {
-          // Updates a check's status (approve/reject) via the Python backend job endpoint
-          // Falls back to direct Supabase PATCH if backend not available
+          // Updates a check's status (approve/reject) via the Next.js job endpoint
+          // Falls back to direct Supabase PATCH on checks.check_id if route unavailable
           log('UPDATE_CHECK_STATUS', { checkId: msg.checkId, status: msg.status });
           const s = await getSession();
           if (!s?.access_token) return { error: 'Not logged in' };
           const bootstrap = getBootstrapConfig();
-          const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
+          // /api/jobs/... routes are in Next.js (frontendUrl), NOT the Python backendUrl
+          const statusHost = (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, '');
           try {
-            // Try backend first (sets status on check record)
-            if (backendUrl && msg.jobId) {
-              const res = await fetch(`${backendUrl}/api/jobs/${msg.jobId}/checks/${msg.checkId}/status`, {
+            // Try Next.js route first (operates on jobs.checks_data JSON)
+            if (statusHost && msg.jobId) {
+              const res = await fetch(`${statusHost}/api/jobs/${msg.jobId}/checks/${msg.checkId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
                 body: JSON.stringify({ status: msg.status }),
@@ -1191,20 +1194,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             return { success: true, cleared: false, warning: 'QB transaction not linked — approved in Kyriq only' };
           }
 
-          // Save approval status to Supabase regardless of QB clear outcome
+          // Save approval status via Next.js status route (handles jobs.checks_data JSON)
           const saveCheckApproval = async (checkId, jobId) => {
             if (!checkId) return;
             const s2 = await getSession();
             if (!s2?.access_token) return;
-            const tenantId = await getTenantId(s2.user.id).catch(() => null);
-            if (!tenantId) return;
-            try {
-              await supabaseRequest(
-                `checks?id=eq.${encodeURIComponent(checkId)}&tenant_id=eq.${tenantId}`,
-                { method: 'PATCH', body: JSON.stringify({ status: 'approved', updated_at: new Date().toISOString() }) }
-              );
-            } catch (dbErr) {
-              logErr('APPROVE_AND_CLEAR: DB status save failed (non-critical)', dbErr);
+            const bootstrap2 = getBootstrapConfig();
+            const approvalHost = (bootstrap2.frontendUrl || bootstrap2.backendUrl || '').replace(/\/$/, '');
+            if (approvalHost && jobId) {
+              try {
+                await fetch(`${approvalHost}/api/jobs/${jobId}/checks/${checkId}/status`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s2.access_token}` },
+                  body: JSON.stringify({ status: 'approved' }),
+                });
+              } catch (dbErr) {
+                logErr('APPROVE_AND_CLEAR: status route failed (non-critical)', dbErr);
+              }
+            } else {
+              // Last-resort fallback: patch checks.check_id (text column, not UUID)
+              const tenantId2 = await getTenantId(s2.user.id).catch(() => null);
+              if (tenantId2) {
+                await supabaseRequest(
+                  `checks?check_id=eq.${encodeURIComponent(checkId)}&tenant_id=eq.${tenantId2}`,
+                  { method: 'PATCH', body: JSON.stringify({ status: 'approved', updated_at: new Date().toISOString() }) }
+                ).catch(dbErr => logErr('APPROVE_AND_CLEAR: fallback DB save failed', dbErr));
+              }
             }
           };
 
@@ -1266,10 +1281,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }
         }
         case 'SEARCH_QB': {
-          const { tenantId: tid2, realmId: rid } = await getActiveConnection();
+          const { tenantId: tid2 } = await getActiveConnection();
+          // qb_entries is the canonical store (written by /api/qbo/pull-checks); qb_transactions is empty
           const results = await supabaseRequest(
-            `qb_transactions?tenant_id=eq.${tid2}&realm_id=eq.${rid}&or=(payee.ilike.%25${msg.query}%25,doc_number.ilike.%25${msg.query}%25)&order=txn_date.desc&limit=20`
-          );
+            `qb_entries?tenant_id=eq.${tid2}&or=(payee.ilike.%25${msg.query}%25,check_number.ilike.%25${msg.query}%25)&order=date.desc&limit=20`
+          ).catch(() => []);
           return { results: results || [] };
         }
         default:
