@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
   title: 'Terms of Service | Kyriq',
-  description: 'Terms of Service for Kyriq by iTax Hub',
+  description: 'Terms of Service for Kyriq',
 };
 
 export default function TermsOfServicePage() {
@@ -30,7 +30,7 @@ export default function TermsOfServicePage() {
         <div className="prose prose-gray prose-sm max-w-none [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-8 [&_h2]:mb-3 [&_p]:text-gray-600 [&_p]:leading-relaxed [&_ul]:text-gray-600 [&_li]:leading-relaxed">
           <h2>1. Acceptance of Terms</h2>
           <p>
-            By accessing or using Kyriq (the &ldquo;Service&rdquo;), operated by iTax Hub, you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.
+            By accessing or using Kyriq (the &ldquo;Service&rdquo;), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.
           </p>
 
           <h2>2. Description of Service</h2>
@@ -94,7 +94,7 @@ export default function TermsOfServicePage() {
 
           <h2>10. Limitation of Liability</h2>
           <p>
-            To the maximum extent permitted by law, iTax Hub and its officers, directors, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or business opportunities, arising from your use of the Service.
+            To the maximum extent permitted by law, Kyriq and its officers, directors, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or business opportunities, arising from your use of the Service.
           </p>
           <p>
             Our total liability for any claim arising from the Service shall not exceed the amount you paid us in the 12 months preceding the claim.
@@ -102,7 +102,7 @@ export default function TermsOfServicePage() {
 
           <h2>11. Indemnification</h2>
           <p>
-            You agree to indemnify and hold harmless iTax Hub from any claims, losses, or damages arising from your use of the Service, violation of these Terms, or infringement of any third-party rights.
+            You agree to indemnify and hold harmless Kyriq from any claims, losses, or damages arising from your use of the Service, violation of these Terms, or infringement of any third-party rights.
           </p>
 
           <h2>12. Termination</h2>

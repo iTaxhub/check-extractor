@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
   title: 'Privacy Policy | Kyriq',
-  description: 'Privacy Policy for Kyriq by iTax Hub',
+  description: 'Privacy Policy for Kyriq',
 };
 
 export default function PrivacyPolicyPage() {
@@ -30,7 +30,7 @@ export default function PrivacyPolicyPage() {
         <div className="prose prose-gray prose-sm max-w-none [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-8 [&_h2]:mb-3 [&_p]:text-gray-600 [&_p]:leading-relaxed [&_ul]:text-gray-600 [&_li]:leading-relaxed">
           <h2>1. Introduction</h2>
           <p>
-            Kyriq (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) is operated by iTax Hub. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our check reconciliation platform, including our web application, Chrome extension, and related services (collectively, the &ldquo;Service&rdquo;).
+            Kyriq (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) provides this Privacy Policy to explain how we collect, use, disclose, and safeguard your information when you use our check reconciliation platform, including our web application, Chrome extension, and related services (collectively, the &ldquo;Service&rdquo;).
           </p>
 
           <h2>2. Information We Collect</h2>
