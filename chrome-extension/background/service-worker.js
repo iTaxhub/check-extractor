@@ -805,6 +805,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           log('GET_HISTORY result', { count: hist?.length || 0 });
           return { history: hist || [] };
         }
+        case 'GET_QB_TXNS': {
+          log('GET_QB_TXNS');
+          const s = await getSession();
+          if (!s) return { txns: [] };
+          const tenantId = await getTenantId(s.user.id).catch(() => null);
+          if (!tenantId) return { txns: [] };
+          const txns = await supabaseRequest(
+            `qb_transactions?tenant_id=eq.${tenantId}&select=id,txn_id,txn_type,txn_date,payee,amount,memo,doc_number,account&order=txn_date.desc&limit=500`
+          ).catch(() => []);
+          log('GET_QB_TXNS result', { count: txns?.length || 0 });
+          return { txns: txns || [] };
+        }
         case 'SAVE_QB_TXN': {
           log('SAVE_QB_TXN', { txnId: msg.txnId, txnType: msg.txnType, fields: msg.fields });
           const s = await getSession();

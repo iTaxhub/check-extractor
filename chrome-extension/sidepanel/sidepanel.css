@@ -284,10 +284,11 @@ header {
   padding: 0 8px; flex-shrink: 0;
 }
 .tab {
-  flex: 1; padding: 10px 4px; text-align: center;
-  font-size: 11px; font-weight: 600; color: var(--gray-400);
+  flex: 1; padding: 9px 2px; text-align: center;
+  font-size: 10px; font-weight: 600; color: var(--gray-400);
   background: none; border: none; border-bottom: 2px solid transparent;
   cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
 }
 .tab.active { color: var(--indigo-dark); border-bottom-color: var(--indigo); }
 .tab:hover:not(.active) { color: var(--gray-700); }
@@ -743,3 +744,31 @@ header {
 .loading-overlay p { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-top: 12px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── QB Data tab ───────────────────────────────────────────── */
+.qb-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.qb-card {
+  background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius);
+  padding: 9px 12px; border-left: 3px solid #2CA01C;
+  display: flex; align-items: flex-start; gap: 10px;
+  transition: box-shadow 0.1s;
+}
+.qb-card:hover { box-shadow: var(--shadow-sm); }
+.qb-card-icon { font-size: 18px; flex-shrink: 0; line-height: 1.3; }
+.qb-card-body { flex: 1; min-width: 0; }
+.qb-card-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; margin-bottom: 3px;
+}
+.qb-card-payee {
+  font-size: 12px; font-weight: 700; color: var(--gray-900);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+}
+.qb-card-amount { font-size: 13px; font-weight: 800; color: #1a6b15; flex-shrink: 0; }
+.qb-card-meta { font-size: 10px; color: var(--gray-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qb-card-memo { font-size: 10px; color: var(--gray-500); margin-top: 3px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qb-type-badge {
+  display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase;
+  background: #e6f4ea; color: #1a6b15; padding: 1px 5px; border-radius: 4px; letter-spacing: 0.3px;
+}
+.qb-count-badge { background: #2CA01C; }

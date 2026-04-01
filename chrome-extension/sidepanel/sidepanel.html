@@ -176,7 +176,9 @@
   <div id="tabs" style="display:none;">
     <button class="tab active" data-tab="matches">Matches</button>
     <button class="tab" data-tab="upload">Upload</button>
-    <button class="tab" data-tab="documents">Documents</button>
+    <button class="tab" data-tab="documents">Docs</button>
+    <button class="tab" data-tab="cheques">Cheques</button>
+    <button class="tab" data-tab="qb">QB Data</button>
     <button class="tab" data-tab="history">History</button>
   </div>
 
@@ -312,9 +314,8 @@
     </div>
   </div>
 
-  <!-- ── TAB: Documents (from main app / Supabase) ── -->
+  <!-- ── TAB: Docs (uploaded PDF jobs only) ── -->
   <div id="view-documents" class="view tab-view" style="display:none;">
-    <!-- Jobs section -->
     <div class="tab-toolbar">
       <span class="tab-toolbar-title">Uploaded Documents</span>
       <button id="btn-refresh-docs" class="btn-xs btn-ghost">↻ Refresh</button>
@@ -326,12 +327,15 @@
         <p class="sub">Upload check PDFs in the Upload tab or in the web app</p>
       </div>
     </div>
-    <!-- Extracted checks section -->
-    <div class="section-divider">
-      <span class="section-label">Extracted Cheques <span id="checks-count-badge" class="checks-count-badge"></span></span>
-      <button id="btn-refresh-checks" class="btn-xs btn-ghost">↻ Refresh</button>
+  </div>
+
+  <!-- ── TAB: Cheques (extracted checks only) ── -->
+  <div id="view-cheques" class="view tab-view" style="display:none;">
+    <div class="tab-toolbar">
+      <span class="tab-toolbar-title">Extracted Cheques</span>
+      <span id="checks-count-badge" class="checks-count-badge" style="margin-left:6px;"></span>
+      <button id="btn-refresh-checks" class="btn-xs btn-ghost" style="margin-left:auto;">↻ Refresh</button>
     </div>
-    <!-- Search + date filter bar -->
     <div class="checks-filter-bar">
       <div class="checks-search-wrap">
         <span class="checks-search-icon">🔍</span>
@@ -351,6 +355,36 @@
         <div class="empty-icon">💸</div>
         <p>No extracted cheques yet</p>
         <p class="sub">Cheques extracted in the web app will appear here</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: QB Data (fetched QB transactions only) ── -->
+  <div id="view-qb" class="view tab-view" style="display:none;">
+    <div class="tab-toolbar">
+      <span class="tab-toolbar-title">QuickBooks Transactions</span>
+      <span id="qb-count-badge" class="checks-count-badge qb-count-badge" style="margin-left:6px;"></span>
+      <button id="btn-refresh-qb" class="btn-xs btn-ghost" style="margin-left:auto;">↻ Refresh</button>
+    </div>
+    <div class="checks-filter-bar">
+      <div class="checks-search-wrap">
+        <span class="checks-search-icon">🔍</span>
+        <input id="qb-search" type="text" class="checks-search" placeholder="Search payee, amount, doc #…" autocomplete="off">
+        <button id="qb-search-clear" class="checks-search-clear" style="display:none;">&#x2715;</button>
+      </div>
+      <div class="checks-date-row">
+        <label class="checks-date-label">From</label>
+        <input id="qb-date-from" type="date" class="checks-date-input">
+        <label class="checks-date-label">To</label>
+        <input id="qb-date-to" type="date" class="checks-date-input">
+        <button id="qb-date-clear" class="btn-xs btn-ghost">× Clear</button>
+      </div>
+    </div>
+    <div id="qb-list" class="qb-list">
+      <div class="empty-state">
+        <div class="empty-icon">🏦</div>
+        <p>No QB transactions yet</p>
+        <p class="sub">Click Sync in the company bar to pull transactions from QuickBooks</p>
       </div>
     </div>
   </div>

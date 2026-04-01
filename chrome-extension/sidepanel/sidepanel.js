@@ -141,6 +141,11 @@ let _matchDateTo = null;
 // ── Matches sort state ──
 let _sortField = 'date';     // 'date' | 'amount' | 'checknum' | 'score'
 let _sortDir   = 'desc';    // 'asc' | 'desc'
+// ── QB transactions filter state ──
+let _qbSearch    = '';
+let _qbDateFrom  = null;
+let _qbDateTo    = null;
+let _cachedQB    = null;   // null = not loaded yet; [] = loaded but empty
 
 // ── QB endpoint-missing banner (kyriq.com not yet deployed) ─
 function showQBEndpointMissingBanner(msg) {
@@ -235,7 +240,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── View management ───────────────────────────────────────────
 function showView(view) {
   currentView = view;
-  const allViews = ['#view-auth', '#view-qb-connect', '#view-matches', '#view-upload', '#view-documents', '#view-history'];
+  const allViews = ['#view-auth', '#view-qb-connect', '#view-matches', '#view-upload', '#view-documents', '#view-cheques', '#view-qb', '#view-history'];
   allViews.forEach(v => { const el = $(v); if (el) el.style.display = 'none'; });
 
   if (view === 'auth') {
@@ -257,18 +262,19 @@ function showView(view) {
 function switchTab(tab) {
   currentTab = tab;
   $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  ['#view-matches', '#view-upload', '#view-documents', '#view-history'].forEach(v => {
+  ['#view-matches', '#view-upload', '#view-documents', '#view-cheques', '#view-qb', '#view-history'].forEach(v => {
     const el = $(v); if (el) el.style.display = 'none';
   });
 
   if (tab === 'matches') {
     show('#view-matches');
-    // Auto-load DB checks if no checks in memory yet
     if (!extractedChecks.length) loadChecksIntoMatches();
   }
-  else if (tab === 'upload') { show('#view-upload'); }
-  else if (tab === 'documents') { show('#view-documents'); loadDocuments(); loadChecks(); }
-  else if (tab === 'history') { show('#view-history'); loadHistory(); }
+  else if (tab === 'upload')    { show('#view-upload'); }
+  else if (tab === 'documents') { show('#view-documents'); loadDocuments(); }
+  else if (tab === 'cheques')   { show('#view-cheques'); loadChecks(); }
+  else if (tab === 'qb')        { show('#view-qb'); loadQBTransactions(); }
+  else if (tab === 'history')   { show('#view-history'); loadHistory(); }
 }
 
 function setUserChip(email, user) {
@@ -809,7 +815,89 @@ function fileToBase64(file) {
   });
 }
 
-// ── Documents (from Supabase check_jobs table) ───────────
+// ── QB Transactions (from Supabase qb_transactions table) ────────────
+async function loadQBTransactions(force = false) {
+  dbg('loadQBTransactions' + (force ? ' (force)' : ''));
+  if (_cachedQB !== null && !force) { renderQBList(_cachedQB); return; }
+  const list = $('#qb-list');
+  if (list) list.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
+  const res = await sendMsg({ type: 'GET_QB_TXNS' });
+  const txns = res?.txns || [];
+  dbg(`QB Transactions: ${txns.length}`);
+  _cachedQB = txns;
+  renderQBList(txns);
+}
+
+function renderQBList(txns) {
+  const list = $('#qb-list');
+  if (!list) return;
+
+  // Apply search filter
+  let filtered = txns;
+  if (_qbSearch) {
+    const q = _qbSearch.toLowerCase();
+    filtered = filtered.filter(t =>
+      (t.payee || '').toLowerCase().includes(q) ||
+      (t.doc_number || '').toLowerCase().includes(q) ||
+      (t.account || '').toLowerCase().includes(q) ||
+      (t.txn_type || '').toLowerCase().includes(q) ||
+      String(t.amount || '').includes(q)
+    );
+  }
+  // Apply date filter
+  if (_qbDateFrom || _qbDateTo) {
+    const from = _qbDateFrom ? new Date(_qbDateFrom) : null;
+    const to   = _qbDateTo   ? new Date(_qbDateTo)   : null;
+    filtered = filtered.filter(t => {
+      if (!t.txn_date) return false;
+      const dt = new Date(t.txn_date);
+      if (from && dt < from) return false;
+      if (to   && dt > to)   return false;
+      return true;
+    });
+  }
+
+  // Update count badge
+  const badge = $('#qb-count-badge');
+  if (badge) {
+    const showing = filtered.length, total = txns.length;
+    badge.textContent = showing < total ? `${showing} / ${total}` : String(total);
+    badge.style.background = showing < total ? 'var(--amber)' : 'var(--green)';
+  }
+
+  if (!filtered.length) {
+    const msg = txns.length ? 'No transactions match the current filter' : 'No QB transactions yet';
+    const sub = txns.length ? 'Try clearing the search or date range' : 'Click Sync to pull transactions from QuickBooks';
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🏦</div><p>${msg}</p><p class="sub">${sub}</p></div>`;
+    return;
+  }
+
+  const typeIcon = { Purchase: '💳', BillPayment: '💸', Check: '💵' };
+  list.innerHTML = filtered.map(t => {
+    const icon   = typeIcon[t.txn_type] || '💰';
+    const date   = t.txn_date ? fmtDate(t.txn_date) : '—';
+    const payee  = t.payee ? escHtml(t.payee) : 'No payee';
+    const amount = fmt(t.amount);
+    const acct   = t.account ? escHtml(t.account) : '';
+    const doc    = t.doc_number ? `#${escHtml(t.doc_number)}` : '';
+    const type   = escHtml(t.txn_type || 'Transaction');
+    const memo   = t.memo ? `<div class="qb-card-memo">${escHtml(t.memo)}</div>` : '';
+    return `
+      <div class="qb-card">
+        <div class="qb-card-icon">${icon}</div>
+        <div class="qb-card-body">
+          <div class="qb-card-top">
+            <span class="qb-card-payee">${payee}</span>
+            <span class="qb-card-amount">${amount}</span>
+          </div>
+          <div class="qb-card-meta">${date}${doc ? ' · ' + doc : ''} · <span class="qb-type-badge">${type}</span>${acct ? ' · ' + acct : ''}</div>
+          ${memo}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Documents (from Supabase check_jobs table) ────────────────────────
 async function loadDocuments(force = false) {
   dbg('loadDocuments' + (force ? ' (force)' : ''));
   const list = $('#documents-list');
@@ -1526,6 +1614,30 @@ function bindEvents() {
     applyMatchFilter();
   });
 
+  // ── QB Data tab: refresh + search + date filter events ──
+  $('#btn-refresh-qb')?.addEventListener('click', () => { _cachedQB = null; loadQBTransactions(true); });
+  const applyQBFilter = () => { if (_cachedQB !== null) renderQBList(_cachedQB); };
+  $('#qb-search')?.addEventListener('input', e => {
+    _qbSearch = e.target.value.trim();
+    const clr = $('#qb-search-clear');
+    if (clr) clr.style.display = _qbSearch ? '' : 'none';
+    applyQBFilter();
+  });
+  $('#qb-search-clear')?.addEventListener('click', () => {
+    _qbSearch = '';
+    const inp = $('#qb-search'); if (inp) inp.value = '';
+    const clr = $('#qb-search-clear'); if (clr) clr.style.display = 'none';
+    applyQBFilter();
+  });
+  $('#qb-date-from')?.addEventListener('change', e => { _qbDateFrom = e.target.value || null; applyQBFilter(); });
+  $('#qb-date-to')?.addEventListener('change',   e => { _qbDateTo   = e.target.value || null; applyQBFilter(); });
+  $('#qb-date-clear')?.addEventListener('click', () => {
+    _qbDateFrom = null; _qbDateTo = null;
+    const f = $('#qb-date-from'); if (f) f.value = '';
+    const t = $('#qb-date-to');   if (t) t.value = '';
+    applyQBFilter();
+  });
+
   // ── Checks search + date filter events ──
   const applyChecksFilter = () => {
     if (_cachedChecks !== null) renderChecksList(_cachedChecks);
@@ -1657,7 +1769,7 @@ function bindEvents() {
   });
 
   // ── Refresh docs / checks / history (force=true) ──
-  $('#btn-refresh-docs').addEventListener('click', () => { _cachedDocs = null; _cachedChecks = null; loadDocuments(true); loadChecks(true); });
+  $('#btn-refresh-docs').addEventListener('click', () => { _cachedDocs = null; loadDocuments(true); });
   $('#btn-refresh-checks').addEventListener('click', () => { _cachedChecks = null; loadChecks(true); });
   $('#btn-refresh-history').addEventListener('click', () => { _cachedHistory = null; loadHistory(true); });
 }
