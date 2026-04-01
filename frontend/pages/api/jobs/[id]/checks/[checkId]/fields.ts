@@ -32,16 +32,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
     // Fetch the job row — try by job_id column first, fall back to id (UUID)
-    let { data: job, error: jobErr } = await supabase
+    // Select both `checks` (parsed array, primary) and `checks_data` (raw JSON, fallback)
+    let { data: job } = await supabase
       .from('jobs')
-      .select('id, job_id, checks_data')
+      .select('id, job_id, checks, checks_data')
       .eq('job_id', jobId)
       .maybeSingle();
 
     if (!job) {
       const { data: jobById, error: jobByIdErr } = await supabase
         .from('jobs')
-        .select('id, job_id, checks_data')
+        .select('id, job_id, checks, checks_data')
         .eq('id', jobId)
         .maybeSingle();
       if (jobByIdErr) return res.status(500).json({ error: jobByIdErr.message });
@@ -50,10 +51,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // checks_data is stored as an array; each element has a check_id field
-    const checksData: any[] = Array.isArray(job.checks_data)
-      ? job.checks_data
-      : (typeof job.checks_data === 'string' ? JSON.parse(job.checks_data || '[]') : []);
+    // Mirror GET_CHECKS fallback: `checks` (parsed array) takes priority over `checks_data` (raw JSON)
+    const checksData: any[] = Array.isArray(job.checks)
+      ? job.checks
+      : Array.isArray(job.checks_data)
+        ? job.checks_data
+        : (typeof job.checks_data === 'string' ? JSON.parse(job.checks_data || '[]') : []);
+
+    const checksCol = Array.isArray(job.checks) ? 'checks' : 'checks_data';
 
     const checkIdx = checksData.findIndex(
       (c: any) => c.check_id === checkId || c.id === checkId
@@ -78,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { error: patchErr } = await supabase
       .from('jobs')
-      .update({ checks_data: checksData, updated_at: new Date().toISOString() })
+      .update({ [checksCol]: checksData, updated_at: new Date().toISOString() })
       .eq('id', job.id);
 
     if (patchErr) {
