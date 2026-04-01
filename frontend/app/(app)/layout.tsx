@@ -70,7 +70,7 @@ export default function AppLayout({
               <UserProfile />
             </div>
             <div className="px-5 py-2 text-[11px] text-white/35 text-center">
-              Kyriq v1.6.0
+              Kyriq v1.0.0
             </div>
           </div>
         </aside>
