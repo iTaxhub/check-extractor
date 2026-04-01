@@ -116,19 +116,20 @@ export default function QBComparisonsPage() {
     checkQBConfig();
   }, [qbEntries.length, autoSyncAttempted]);
 
-  const handleSaveCheck = async (checkId: string, updates: any) => {
+  const handleSaveCheck = async (checkId: string, updates: any, jobId?: string) => {
     try {
       console.log('💾 Saving check edits:', checkId, updates);
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`/api/checks/${checkId}/update`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify(updates),
-      });
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      // Use the jobs-based fields route (avoids UUID mismatch on checks.id)
+      const url = jobId
+        ? `/api/jobs/${jobId}/checks/${checkId}/fields`
+        : `/api/checks/${checkId}/update`;
+
+      const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(updates) });
 
       if (!res.ok) {
         const error = await res.json();
@@ -137,13 +138,56 @@ export default function QBComparisonsPage() {
 
       const data = await res.json();
       console.log('✅ Check saved successfully:', data);
-      
-      // Refresh data to show updated values
       await refreshData();
-      
       return data;
     } catch (error: any) {
       console.error('❌ Failed to save check:', error);
+      throw error;
+    }
+  };
+
+  const handleApproveCheck = async (checkId: string, jobId?: string) => {
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+      const url = jobId
+        ? `/api/jobs/${jobId}/checks/${checkId}/status`
+        : `/api/checks/${checkId}/update`;
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: 'approved' }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Approve failed'); }
+      console.log('✅ Check approved:', checkId);
+      await refreshData();
+    } catch (error: any) {
+      console.error('❌ Failed to approve check:', error);
+      throw error;
+    }
+  };
+
+  const handleRejectCheck = async (checkId: string, jobId?: string) => {
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+      const url = jobId
+        ? `/api/jobs/${jobId}/checks/${checkId}/status`
+        : `/api/checks/${checkId}/update`;
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: 'rejected' }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Reject failed'); }
+      console.log('✅ Check rejected:', checkId);
+      await refreshData();
+    } catch (error: any) {
+      console.error('❌ Failed to reject check:', error);
       throw error;
     }
   };
@@ -738,7 +782,9 @@ export default function QBComparisonsPage() {
       <DetailModal 
         row={selectedRow} 
         onClose={() => setSelectedRow(null)} 
-        onSave={handleSaveCheck}
+        onSave={(checkId, updates) => handleSaveCheck(checkId, updates, selectedRow?.extractionData?.job_id)}
+        onApprove={(checkId: string) => handleApproveCheck(checkId, selectedRow?.extractionData?.job_id)}
+        onReject={(checkId: string) => handleRejectCheck(checkId, selectedRow?.extractionData?.job_id)}
       />
       
       <ColumnSettings

@@ -16,8 +16,17 @@ export default async function handler(
   try {
     const { code, state, realmId } = req.query;
 
+    // Detect extension source early (before state decode) so error redirects go to the public page
+    const isExtension = typeof state === 'string' && (() => {
+      try { return JSON.parse(Buffer.from(state, 'base64').toString())?.source === 'extension'; } catch { return false; }
+    })();
+    const errRedirect = (code: string, detail = '') =>
+      isExtension
+        ? `/qb-oauth-complete?error=${code}${detail ? '&detail=' + encodeURIComponent(detail) : ''}`
+        : `/settings?error=${code}${detail ? '&detail=' + encodeURIComponent(detail) : ''}`;
+
     if (!code || !state || !realmId) {
-      return res.redirect('/settings?error=missing_params');
+      return res.redirect(errRedirect('missing_params'));
     }
 
     // Decode tenant_id from state parameter
@@ -29,12 +38,12 @@ export default async function handler(
       console.log('✅ Decoded state:', { tenant_id: tenantId, timestamp: stateData.timestamp });
     } catch (decodeErr) {
       console.error('❌ Failed to decode state parameter:', decodeErr);
-      return res.redirect('/settings?error=invalid_state&detail=state_decode_failed');
+      return res.redirect(errRedirect('invalid_state', 'state_decode_failed'));
     }
 
     if (!tenantId) {
       console.error('❌ No tenant_id in state parameter');
-      return res.redirect('/settings?error=no_tenant&detail=missing_tenant_in_state');
+      return res.redirect(errRedirect('no_tenant', 'missing_tenant_in_state'));
     }
 
     // Verify state (CSRF protection) - optional
@@ -114,7 +123,7 @@ export default async function handler(
     });
 
     if (!clientId || !clientSecret) {
-      return res.redirect('/settings?tab=integrations&error=not_configured');
+      return res.redirect(errRedirect('not_configured'));
     }
 
     console.log('🔄 Exchanging authorization code for tokens...', {
@@ -146,7 +155,7 @@ export default async function handler(
         clientIdPrefix: clientId.substring(0, 10) + '...',
         redirectUri,
       });
-      return res.redirect(`/settings?tab=integrations&error=token_exchange_failed&detail=${encodeURIComponent(errorText.substring(0, 100))}`);
+      return res.redirect(errRedirect('token_exchange_failed', errorText.substring(0, 100)));
     }
 
     const tokens = await tokenResponse.json();
@@ -157,7 +166,7 @@ export default async function handler(
     // Save tokens to integrations table using service client
     if (!serviceClient) {
       console.error('❌ Service client not available for saving tokens');
-      return res.redirect('/settings?error=service_unavailable');
+      return res.redirect(errRedirect('service_unavailable'));
     }
 
     // Fetch company name from QB to store alongside tokens
@@ -216,7 +225,7 @@ export default async function handler(
 
       if (insertError) {
         console.error('Failed to store tokens (insert):', insertError);
-        return res.redirect('/settings?error=storage_failed');
+        return res.redirect(errRedirect('storage_failed'));
       }
     } else {
       console.log('✅ Updated existing integration with new tokens');
@@ -268,8 +277,11 @@ export default async function handler(
 
     // Redirect to settings with success (web app flow)
     return res.redirect('/settings?tab=integrations&success=quickbooks_connected');
-  } catch (error) {
+  } catch (error: any) {
     console.error('QuickBooks callback error:', error);
-    return res.redirect('/settings?error=callback_failed');
+    const isExt = typeof req.query.state === 'string' && (() => {
+      try { return JSON.parse(Buffer.from(req.query.state as string, 'base64').toString())?.source === 'extension'; } catch { return false; }
+    })();
+    return res.redirect(isExt ? `/qb-oauth-complete?error=callback_failed` : '/settings?error=callback_failed');
   }
 }

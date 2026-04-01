@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, FileCheck, DollarSign, Edit2, Save, XCircle } from 'lucide-react';
+import { X, AlertCircle, FileCheck, DollarSign, Edit2, Save, XCircle, CheckCircle2, Ban, Loader2 } from 'lucide-react';
 import {
   ComparisonRow,
   formatCurrency,
@@ -13,11 +13,15 @@ interface DetailModalProps {
   row: ComparisonRow | null;
   onClose: () => void;
   onSave?: (checkId: string, updates: any) => Promise<void>;
+  onApprove?: (checkId: string) => Promise<void>;
+  onReject?: (checkId: string) => Promise<void>;
 }
 
-export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }) => {
+export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, onApprove, onReject }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [editedData, setEditedData] = useState({
     checkNumber: '',
     date: '',
@@ -69,6 +73,36 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }
 
   if (!row) return null;
 
+  const handleApprove = async () => {
+    if (!onApprove || !row?.extractionData?.check_id) return;
+    if (!window.confirm(`Approve check #${row.checkNumber || row.extractionData.check_id}? This will mark it as approved.`)) return;
+    setIsApproving(true);
+    try {
+      await onApprove(row.extractionData.check_id);
+      onClose();
+    } catch (error) {
+      console.error('Failed to approve:', error);
+      alert('Failed to approve check. Please try again.');
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!onReject || !row?.extractionData?.check_id) return;
+    if (!window.confirm(`Reject check #${row.checkNumber || row.extractionData.check_id}?`)) return;
+    setIsRejecting(true);
+    try {
+      await onReject(row.extractionData.check_id);
+      onClose();
+    } catch (error) {
+      console.error('Failed to reject:', error);
+      alert('Failed to reject check. Please try again.');
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!onSave || !row.extractionData) return;
     
@@ -119,7 +153,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-[90vw] max-w-5xl max-h-[90vh] overflow-auto"
+        className="bg-white rounded-2xl shadow-2xl w-[90vw] max-w-5xl max-h-[90vh] overflow-auto flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex items-center justify-between rounded-t-2xl">
@@ -167,7 +201,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 flex-1 overflow-auto">
           {/* Check Image at Top */}
           {(row.extractionData?.image_file || row.extractionData?.image_url || row.extractionData?.storage_url) && (
             <div>
@@ -537,6 +571,33 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave }
           </div>
 
         </div>
+
+        {/* Action bar */}
+        {row.extractionData && (onApprove || onReject) && (
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center gap-3 rounded-b-2xl">
+            <span className="text-xs text-gray-500 font-medium mr-auto">Actions for Check #{row.checkNumber || row.extractionData.check_id}</span>
+            {onApprove && (
+              <button
+                onClick={handleApprove}
+                disabled={isApproving || isRejecting}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
+              >
+                {isApproving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                {isApproving ? 'Approving…' : 'Approve'}
+              </button>
+            )}
+            {onReject && (
+              <button
+                onClick={handleReject}
+                disabled={isApproving || isRejecting}
+                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
+              >
+                {isRejecting ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
+                {isRejecting ? 'Rejecting…' : 'Reject'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
