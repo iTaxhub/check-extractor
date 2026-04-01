@@ -274,6 +274,20 @@ chrome.runtime.onMessage.addListener((msg) => {
 });
 
 // ── Init ──────────────────────────────────────────────────────
+async function init() {
+  dbg('Kyriq side panel init');
+  const res = await sendMsg({ type: 'GET_SESSION' });
+  session = res?.session;
+  dbg(`Session: ${session ? session.user?.email : 'none'}`);
+  if (session) {
+    setUserChip(session.user?.email, session.user);
+    await postLoginFlow();
+  } else {
+    hide('#btn-profile'); hide('#profile-panel'); hide('#btn-logout');
+    showView('auth');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   loadDateFormat();
