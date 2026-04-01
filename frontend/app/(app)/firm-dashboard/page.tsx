@@ -120,7 +120,13 @@ export default function FirmDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ store: true }),
       });
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any;
+      try { data = JSON.parse(rawText); } catch {
+        throw new Error(res.status === 504 || rawText.startsWith('An error')
+          ? 'Request timed out — try again or add a date range filter.'
+          : `Server error (${res.status}): ${rawText.substring(0, 120)}`);
+      }
       if (!res.ok) throw new Error(data.error || 'Sync failed');
       setSyncResult({ count: data.count });
     } catch (e: any) {

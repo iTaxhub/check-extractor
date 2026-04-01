@@ -236,7 +236,13 @@ function SettingsPageContent() {
                 },
                 body: JSON.stringify({ ...filters, store: true })
             })
-            const data = await response.json()
+            const rawText = await response.text()
+            let data: any
+            try { data = JSON.parse(rawText) } catch {
+                throw new Error(response.status === 504 || rawText.startsWith('An error')
+                    ? 'Request timed out — try a narrower date range or add filters to reduce data volume.'
+                    : `Server error (${response.status}): ${rawText.substring(0, 120)}`)
+            }
             if (response.ok) {
                 const filterInfo = data.filters_applied || {};
                 const filterSummary = [];

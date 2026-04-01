@@ -142,6 +142,37 @@ let _matchDateTo = null;
 let _sortField = 'date';     // 'date' | 'amount' | 'checknum' | 'score'
 let _sortDir   = 'desc';    // 'asc' | 'desc'
 
+// ── QB endpoint-missing banner (kyriq.com not yet deployed) ─
+function showQBEndpointMissingBanner(msg) {
+  const banner = $('#match-banner');
+  if (!banner) return;
+  banner.innerHTML = `
+    <span>${escHtml(msg || 'Token refresh endpoint not found — please deploy the latest frontend build.')}</span>
+    <a id="btn-qb-deploy-link" href="https://kyriq.com/settings" target="_blank" class="btn-sm btn-qb" style="margin-left:8px;padding:3px 10px;font-size:11px;">Open Web App</a>`;
+  banner.style.display = '';
+  banner.className = 'match-banner banner-warn';
+}
+
+// ── QB reconnect banner ───────────────────────────────────────
+function showQBReconnectBanner(msg) {
+  const banner = $('#match-banner');
+  if (!banner) return;
+  banner.innerHTML = `
+    <span>${escHtml(msg || 'QuickBooks authorization expired.')}</span>
+    <button id="btn-qb-reconnect-banner" class="btn-sm btn-qb" style="margin-left:8px;padding:3px 10px;font-size:11px;">Reconnect QB</button>`;
+  banner.style.display = '';
+  banner.className = 'match-banner banner-warn';
+  $('#btn-qb-reconnect-banner')?.addEventListener('click', async () => {
+    banner.style.display = 'none';
+    const res = await sendMsg({ type: 'OPEN_QB_AUTH' });
+    if (res?.success) {
+      dbg('QB re-auth tab opened — authorize and return here', 'info');
+    } else {
+      dbg(`QB re-auth failed: ${res?.error}`, 'error');
+    }
+  });
+}
+
 // ── Runtime message listener (from service worker) ────────────
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'QB_OAUTH_COMPLETE') {
@@ -160,9 +191,21 @@ chrome.runtime.onMessage.addListener((msg) => {
         renderCompanySelect();
         showView('main');
         showLoading('Syncing QuickBooks transactions...');
-        try { await sendMsg({ type: 'PULL_QB_TXNS' }); } catch (_) {}
-        await loadChecksIntoMatches();
+        const pullRes = await sendMsg({ type: 'PULL_QB_TXNS' }).catch(() => ({}));
         hideLoading();
+        if (pullRes?.endpointMissing) {
+          switchTab('matches');
+          showQBEndpointMissingBanner(pullRes.error);
+          dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
+          return;
+        }
+        if (pullRes?.reconnectNeeded) {
+          switchTab('matches');
+          showQBReconnectBanner(pullRes.error);
+          dbg('QB token expired on OAuth complete — reconnect required', 'error');
+          return;
+        }
+        await loadChecksIntoMatches();
         dbg('QB auto-connect flow complete', 'success');
       } else {
         hideLoading();
@@ -270,6 +313,20 @@ async function postLoginFlow() {
       showLoading('Syncing QuickBooks transactions...');
       try {
         const pullRes = await sendMsg({ type: 'PULL_QB_TXNS' });
+        if (pullRes?.endpointMissing) {
+          hideLoading();
+          switchTab('matches');
+          showQBEndpointMissingBanner(pullRes.error);
+          dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
+          return;
+        }
+        if (pullRes?.reconnectNeeded) {
+          hideLoading();
+          switchTab('matches');
+          showQBReconnectBanner(pullRes.error);
+          dbg('QB token expired on login — reconnect required', 'error');
+          return;
+        }
         dbg(`QB auto-sync: ${pullRes?.count || 0} transactions`);
       } catch (e) {
         dbg(`QB auto-sync failed (non-fatal): ${e.message}`, 'warn');
@@ -1276,6 +1333,20 @@ function bindEvents() {
     // Pull QB transactions for the new company
     showLoading('Syncing QB data for new company...');
     const pullRes = await sendMsg({ type: 'PULL_QB_TXNS' });
+    if (pullRes?.endpointMissing) {
+      hideLoading();
+      switchTab('matches');
+      showQBEndpointMissingBanner(pullRes.error);
+      dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
+      return;
+    }
+    if (pullRes?.reconnectNeeded) {
+      hideLoading();
+      switchTab('matches');
+      showQBReconnectBanner(pullRes.error);
+      dbg('QB token expired on company switch — reconnect required', 'error');
+      return;
+    }
     dbg(`QB sync: ${pullRes?.count || 0} txns pulled`);
     // Reload checks and run matching
     showLoading('Loading cheques...');
@@ -1283,12 +1354,9 @@ function bindEvents() {
     if (chkRes?.checks?.length) {
       extractedChecks = chkRes.checks;
       _cachedChecks = chkRes.checks;
-      updateMatchesBanner('loaded', extractedChecks.length);
       showLoading(`Matching ${extractedChecks.length} cheques...`);
       const matchRes = await sendMsg({ type: 'RUN_MATCHING', checks: extractedChecks });
       if (matchRes?.matches) { matches = matchRes.matches; }
-    } else {
-      updateMatchesBanner('empty');
     }
     renderMatches();
     hideLoading();
@@ -1302,21 +1370,35 @@ function bindEvents() {
     dbg('Syncing QB transactions...');
     showLoading('Syncing QB transactions...');
     const pullRes = await sendMsg({ type: 'PULL_QB_TXNS' });
+    hideLoading();
+    syncBtn.classList.remove('spinning');
+    if (pullRes?.endpointMissing) {
+      switchTab('matches');
+      showQBEndpointMissingBanner(pullRes.error);
+      dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
+      return;
+    }
+    if (pullRes?.reconnectNeeded) {
+      switchTab('matches');
+      showQBReconnectBanner(pullRes.error);
+      dbg('QB token expired — reconnect required', 'error');
+      return;
+    }
     dbg(`Sync done: ${pullRes?.count || 0} txns`);
     // If no checks in memory yet, load from DB first
     if (!extractedChecks.length) {
       showLoading('Loading cheques from database…');
       const chkRes = await sendMsg({ type: 'GET_CHECKS' });
       if (chkRes?.checks?.length) { extractedChecks = chkRes.checks; }
+      hideLoading();
     }
     if (extractedChecks.length > 0) {
       showLoading(`Matching ${extractedChecks.length} cheques…`);
       const matchRes = await sendMsg({ type: 'RUN_MATCHING', checks: extractedChecks });
+      hideLoading();
       if (matchRes?.matches) { matches = matchRes.matches; dbg(`Matches: ${matches.length}`, 'success'); }
     }
     renderMatches();
-    hideLoading();
-    syncBtn.classList.remove('spinning');
   });
 
   // ── Bulk approve ──

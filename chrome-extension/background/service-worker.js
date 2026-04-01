@@ -229,7 +229,24 @@ async function getValidQBToken() {
     body: JSON.stringify({ connectionId: conn.id, refreshToken: conn.refresh_token }),
   });
 
-  if (!res.ok) throw new Error('Token refresh failed');
+  if (!res.ok) {
+    let errDetail = '';
+    try { const errBody = await res.json(); errDetail = errBody?.error || errBody?.detail || ''; } catch (_) {}
+    // 400/401 from Intuit = refresh token expired (invalid_grant) → must re-authorize
+    if (res.status === 400 || res.status === 401) throw new Error('QB_RECONNECT_NEEDED');
+    // 404 = the /api/extension/qb/refresh-token route is not deployed on the frontend yet.
+    // If the token hasn't actually expired at Intuit's side yet, fall back to using it.
+    // Only hard-block if the token is genuinely past its expiry.
+    if (res.status === 404) {
+      const now = new Date();
+      if (expiresAt > now) {
+        log('⚠️ refresh-token endpoint returned 404 (not deployed) — using existing token as fallback', { expiresAt: expiresAt.toISOString() });
+        return { token: conn.access_token, realmId: conn.realm_id, tenantId: conn.tenantId, connId: conn.id };
+      }
+      throw new Error('QB_ENDPOINT_NOT_DEPLOYED');
+    }
+    throw new Error(`Token refresh failed (${res.status})${errDetail ? ': ' + errDetail : ''}`);
+  }
   const newTokens = await res.json();
 
   // Save refreshed tokens back to qb_connections
@@ -966,9 +983,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'PULL_QB_TXNS': {
           log('PULL_QB_TXNS start');
-          const txns = await pullQBTransactions();
-          log('PULL_QB_TXNS done', { count: txns.length });
-          return { success: true, count: txns.length };
+          try {
+            const txns = await pullQBTransactions();
+            log('PULL_QB_TXNS done', { count: txns.length });
+            return { success: true, count: txns.length };
+          } catch (pullErr) {
+            if (pullErr.message === 'QB_RECONNECT_NEEDED') {
+              logErr('PULL_QB_TXNS: QB authorization expired — reconnect required', pullErr);
+              return { error: 'QuickBooks authorization has expired. Please reconnect.', reconnectNeeded: true };
+            }
+            if (pullErr.message === 'QB_ENDPOINT_NOT_DEPLOYED') {
+              logErr('PULL_QB_TXNS: refresh-token endpoint not found on kyriq.com — frontend needs to be deployed', pullErr);
+              return { error: 'Token refresh endpoint not found on kyriq.com. Please deploy the latest frontend build.', endpointMissing: true };
+            }
+            throw pullErr;
+          }
         }
         case 'EXTRACT_CHECK': {
           log('EXTRACT_CHECK', { mimeType: msg.mimeType });

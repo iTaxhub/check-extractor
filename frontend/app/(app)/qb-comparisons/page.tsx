@@ -166,7 +166,13 @@ export default function QBComparisonsPage() {
         },
         body: JSON.stringify({ store: true }),
       });
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any;
+      try { data = JSON.parse(rawText); } catch {
+        throw new Error(res.status === 504 || rawText.startsWith('An error')
+          ? 'Request timed out — try adding a date range filter to reduce data volume.'
+          : `Server error (${res.status}): ${rawText.substring(0, 120)}`);
+      }
       console.log('✅ QB Sync result:', data);
       if (res.ok) {
         await refreshData();
@@ -512,66 +518,6 @@ export default function QBComparisonsPage() {
       </div>
     );
   }
-
-  {/* QB Not Connected Banner */}
-  {!qbConnected && !checkingConfig && (
-    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-      <div className="flex items-start gap-3">
-        <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
-        <div className="flex-1">
-          <h3 className="font-semibold text-red-900 text-sm">No QuickBooks Data Found</h3>
-          <p className="text-red-700 text-xs mt-1">
-            {!qbConfigured 
-              ? 'QuickBooks credentials not configured. Please set up your QB credentials first.'
-              : 'Not connected to QuickBooks Online. Connect to start comparing data.'}
-          </p>
-          <div className="mt-3 space-y-2 text-xs text-red-800">
-            <p className="font-medium">To connect QuickBooks:</p>
-            <ol className="list-decimal list-inside space-y-1 ml-2">
-              <li>Go to Settings → Integrations</li>
-              <li>Configure your QB credentials (Client ID, Secret, Redirect URI)</li>
-              <li>Click "Connect to QuickBooks"</li>
-              <li>Select your company when prompted</li>
-              <li>Pull data to populate this comparison table</li>
-            </ol>
-          </div>
-        </div>
-        <Link
-          href="/settings?tab=integrations"
-          className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 flex items-center gap-2 whitespace-nowrap"
-        >
-          <Settings size={16} />
-          {!qbConfigured ? 'Configure' : 'Connect QB'}
-        </Link>
-      </div>
-    </div>
-  )}
-  
-  {/* QB Connected but No Data */}
-  {qbConnected && qbEntries.length === 0 && !loading && (
-    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-      <div className="flex items-start gap-3">
-        <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
-        <div className="flex-1">
-          <h3 className="font-semibold text-amber-900 text-sm">QuickBooks Connected - No Data Pulled</h3>
-          <p className="text-amber-700 text-xs mt-1">
-            You're connected to QuickBooks, but no check data has been pulled yet.
-          </p>
-          <div className="mt-3 text-xs text-amber-800">
-            <p className="font-medium mb-1">Next step:</p>
-            <p>Go to Settings → Integrations → "Fetch QuickBooks Data" and click "Pull Data from QuickBooks"</p>
-          </div>
-        </div>
-        <Link
-          href="/settings?tab=integrations"
-          className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 flex items-center gap-2 whitespace-nowrap"
-        >
-          <RefreshCw size={16} />
-          Pull Data
-        </Link>
-      </div>
-    </div>
-  )}
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">

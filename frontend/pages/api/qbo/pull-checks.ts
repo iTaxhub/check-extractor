@@ -349,8 +349,15 @@ export default async function handler(
       return undefined;
     }
 
-    const formattedStartDate = toQBDate(rawStartDate);
-    const formattedEndDate = toQBDate(rawEndDate);
+    let formattedStartDate = toQBDate(rawStartDate);
+    let formattedEndDate = toQBDate(rawEndDate);
+
+    // Default to last 365 days when no date range is provided.
+    // This prevents unbounded full-history queries that time out on Vercel (10-60s limit).
+    if (!formattedStartDate && !formattedEndDate) {
+      formattedStartDate = new Date(Date.now() - 365 * 86400000).toISOString().split('T')[0];
+      console.log('📅 No date filter supplied — defaulting to last 365 days from', formattedStartDate);
+    }
     
     console.log('📅 Date filter input:', { rawStartDate, rawEndDate });
     console.log('📅 Date filter parsed:', { formattedStartDate, formattedEndDate });
