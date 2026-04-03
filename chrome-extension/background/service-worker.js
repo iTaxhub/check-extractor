@@ -289,18 +289,26 @@ async function clearQBTransaction(txnType, txnId) {
   const entity = readData[txnType] || readData[Object.keys(readData)[0]];
   if (!entity) throw new Error('Transaction not found in QB');
 
-  // QuickBooks reconciliation clear:
-  // - ClearStatus: "Cleared" marks the transaction in QB's reconcile view (the actual tick)
-  // - PrivateNote stamp provides a human-readable audit trail inside the transaction
-  // Strip read-only / file-attachment fields QB rejects on full-update POST:
-  //   AttachableRef  → "Operation fileimport is not supported"
-  //   RecurDataRef   → read-only recurring transaction reference
-  const { AttachableRef, RecurDataRef, ...entityForUpdate } = entity;
+  // QuickBooks reconciliation clear via SPARSE update:
+  // - sparse:true tells QB to only update the fields we include; all others are left unchanged.
+  //   This avoids every "Operation fileimport is not supported" (error 6070) trigger:
+  //     AttachableRef      → file-attachment import reference
+  //     RecurDataRef       → recurring template reference
+  //     Line[].LinkedTxn   → linked-transaction import reference (present in BillPayment)
+  // - ClearStatus placement differs by txn type:
+  //     BillPayment (PayType=Check) → nested under CheckPayment.ClearStatus
+  //     Check / Purchase            → top-level ClearStatus
   const clearDate = new Date().toISOString().split('T')[0];
+  const isBillPayCheck = txnType === 'BillPayment' && entity.PayType === 'Check';
   const updatePayload = {
-    ...entityForUpdate,
-    ClearStatus: 'Cleared',
+    Id: entity.Id,
+    SyncToken: entity.SyncToken,
+    sparse: true,
     PrivateNote: `${entity.PrivateNote || ''}\n[Kyriq] Verified & Cleared ${clearDate}`.trim(),
+    ...(isBillPayCheck
+      ? { CheckPayment: { ...entity.CheckPayment, ClearStatus: 'Cleared' } }
+      : { ClearStatus: 'Cleared' }
+    ),
   };
 
   const result = await qbApiRequest(
