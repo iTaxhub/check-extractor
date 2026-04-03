@@ -38,17 +38,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
-    // Fetch job — try job_id column first, fall back to UUID id column
+    // Fetch job — live table is check_jobs (not 'jobs'); try job_id column first, fall back to integer PK
     let { data: job } = await supabase
-      .from('jobs')
-      .select('id, job_id, checks, checks_data')
+      .from('check_jobs')
+      .select('id, job_id, checks_data')
       .eq('job_id', jobId)
       .maybeSingle();
 
     if (!job) {
       const { data: jobById, error: jobByIdErr } = await supabase
-        .from('jobs')
-        .select('id, job_id, checks, checks_data')
+        .from('check_jobs')
+        .select('id, job_id, checks_data')
         .eq('id', jobId)
         .maybeSingle();
       if (jobByIdErr) return res.status(500).json({ error: jobByIdErr.message });
@@ -57,14 +57,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // Resolve array — same fallback priority as GET_CHECKS and fields.ts
-    const checksData: any[] = Array.isArray(job.checks)
-      ? job.checks
-      : Array.isArray(job.checks_data)
-        ? job.checks_data
-        : (typeof job.checks_data === 'string' ? JSON.parse(job.checks_data || '[]') : []);
+    // check_jobs only has checks_data (no 'checks' column)
+    const checksData: any[] = Array.isArray(job.checks_data)
+      ? job.checks_data
+      : (typeof job.checks_data === 'string' ? JSON.parse(job.checks_data || '[]') : []);
 
-    const checksCol = Array.isArray(job.checks) ? 'checks' : 'checks_data';
+    const checksCol = 'checks_data';
 
     const checkIdx = checksData.findIndex(
       (c: any) => c.check_id === checkId || c.id === checkId
@@ -78,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     checksData[checkIdx] = check;
 
     const { error: patchErr } = await supabase
-      .from('jobs')
+      .from('check_jobs')
       .update({ [checksCol]: checksData, updated_at: new Date().toISOString() })
       .eq('id', job.id);
 
@@ -87,15 +85,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: patchErr.message });
     }
 
-    // Best-effort audit log
+    // Best-effort audit log — check_id must be UUID; use metadata for text check_id
     try {
       await supabase.from('audit_logs').insert({
-        check_id: checkId,
-        job_id: jobId,
+        tenant_id: (await supabase.from('user_profiles').select('tenant_id').eq('id', user.id).maybeSingle()).data?.tenant_id,
         action: status,
-        field: 'status',
-        new_value: status,
+        entity_type: 'check',
         user_id: user.id,
+        metadata: { check_id: checkId, job_id: jobId, field: 'status', new_value: status },
       });
     } catch (_) {
       // Non-critical

@@ -31,18 +31,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
-    // Fetch the job row — try by job_id column first, fall back to id (UUID)
-    // Select both `checks` (parsed array, primary) and `checks_data` (raw JSON, fallback)
+    // Fetch the job row — live table is check_jobs (not 'jobs'); try job_id first, fall back to integer PK
     let { data: job } = await supabase
-      .from('jobs')
-      .select('id, job_id, checks, checks_data')
+      .from('check_jobs')
+      .select('id, job_id, checks_data')
       .eq('job_id', jobId)
       .maybeSingle();
 
     if (!job) {
       const { data: jobById, error: jobByIdErr } = await supabase
-        .from('jobs')
-        .select('id, job_id, checks, checks_data')
+        .from('check_jobs')
+        .select('id, job_id, checks_data')
         .eq('id', jobId)
         .maybeSingle();
       if (jobByIdErr) return res.status(500).json({ error: jobByIdErr.message });
@@ -51,14 +50,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // Mirror GET_CHECKS fallback: `checks` (parsed array) takes priority over `checks_data` (raw JSON)
-    const checksData: any[] = Array.isArray(job.checks)
-      ? job.checks
-      : Array.isArray(job.checks_data)
-        ? job.checks_data
-        : (typeof job.checks_data === 'string' ? JSON.parse(job.checks_data || '[]') : []);
+    // check_jobs only has checks_data (no 'checks' column)
+    const checksData: any[] = Array.isArray(job.checks_data)
+      ? job.checks_data
+      : (typeof job.checks_data === 'string' ? JSON.parse(job.checks_data || '[]') : []);
 
-    const checksCol = Array.isArray(job.checks) ? 'checks' : 'checks_data';
+    const checksCol = 'checks_data';
 
     const checkIdx = checksData.findIndex(
       (c: any) => c.check_id === checkId || c.id === checkId
@@ -82,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     checksData[checkIdx] = check;
 
     const { error: patchErr } = await supabase
-      .from('jobs')
+      .from('check_jobs')
       .update({ [checksCol]: checksData, updated_at: new Date().toISOString() })
       .eq('id', job.id);
 
@@ -91,13 +88,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: patchErr.message });
     }
 
-    // Best-effort: also log to audit_logs if the check has a UUID in a separate checks table
+    // Best-effort audit log — check_id must be UUID; put text check_id + field changes in metadata
     try {
       const editedFields = Object.entries({ amount, payee, check_date, check_number, memo })
         .filter(([, v]) => v !== undefined)
-        .map(([field, value]) => ({ check_id: checkId, job_id: jobId, action: 'updated', field, new_value: String(value), user_id: user.id }));
-      if (editedFields.length > 0) {
-        await supabase.from('audit_logs').insert(editedFields);
+        .reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {} as Record<string, string>);
+      if (Object.keys(editedFields).length > 0) {
+        const { data: profile } = await supabase.from('user_profiles').select('tenant_id').eq('id', user.id).maybeSingle();
+        await supabase.from('audit_logs').insert({
+          tenant_id: profile?.tenant_id,
+          action: 'updated',
+          entity_type: 'check',
+          user_id: user.id,
+          metadata: { check_id: checkId, job_id: jobId, fields: editedFields },
+        });
       }
     } catch (_) {
       // Non-critical — don't fail the request
