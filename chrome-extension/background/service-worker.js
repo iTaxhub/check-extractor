@@ -158,7 +158,9 @@ async function supabaseRequest(path, options = {}) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `Supabase error ${res.status}`);
   }
-  return res.json();
+  // 204 No Content (upsert merge) returns empty body — .json() throws on empty string
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
 async function supabaseAuth(endpoint, body) {
