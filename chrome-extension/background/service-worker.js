@@ -292,9 +292,13 @@ async function clearQBTransaction(txnType, txnId) {
   // QuickBooks reconciliation clear:
   // - ClearStatus: "Cleared" marks the transaction in QB's reconcile view (the actual tick)
   // - PrivateNote stamp provides a human-readable audit trail inside the transaction
+  // Strip read-only / file-attachment fields QB rejects on full-update POST:
+  //   AttachableRef  → "Operation fileimport is not supported"
+  //   RecurDataRef   → read-only recurring transaction reference
+  const { AttachableRef, RecurDataRef, ...entityForUpdate } = entity;
   const clearDate = new Date().toISOString().split('T')[0];
   const updatePayload = {
-    ...entity,
+    ...entityForUpdate,
     ClearStatus: 'Cleared',
     PrivateNote: `${entity.PrivateNote || ''}\n[Kyriq] Verified & Cleared ${clearDate}`.trim(),
   };
@@ -851,8 +855,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           if (!s) return { history: [] };
           const tenantId = await getTenantId(s.user.id).catch(() => null);
           if (!tenantId) return { history: [] };
+          // Only select columns that exist in the live checks schema
+          // job_id and source_file are NOT in the live checks table
           const hist = await supabaseRequest(
-            `checks?tenant_id=eq.${tenantId}&status=eq.approved&select=id,job_id,check_number,amount,payee,check_date,status,source_file&order=updated_at.desc&limit=50`
+            `checks?tenant_id=eq.${tenantId}&status=eq.approved&select=id,check_number,amount,payee,check_date,status,realm_id&order=updated_at.desc&limit=50`
           ).catch(() => []);
           log('GET_HISTORY result', { count: hist?.length || 0 });
           return { history: hist || [] };
@@ -923,8 +929,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           if (!s) return { txns: [] };
           // qb_entries is where /api/qbo/pull-checks stores data (the 561 records shown in the web app).
           // qb_transactions is a separate extension-only store — use qb_entries as primary source.
+          const tenantIdQb = await getTenantId(s.user.id).catch(() => null);
+          const tenantFilterQb = tenantIdQb ? `tenant_id=eq.${tenantIdQb}&` : '';
           const entries = await supabaseRequest(
-            `qb_entries?select=id,intuit_id,check_number,date,amount,payee,account,memo,qb_source,qb_type&order=date.desc&limit=1000`
+            `qb_entries?${tenantFilterQb}select=id,intuit_id,check_number,date,amount,payee,account,memo,qb_source,qb_type&order=date.desc&limit=1000`
           ).catch(() => []);
           // Normalise to a common shape used by renderQBList
           const txns = (entries || []).map(e => ({
@@ -1220,26 +1228,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               data: { txnType, intuitIdLen: String(qbIntuitId).length },
             });
             // #endregion
-            // Log QB clear action to match_audit_log for full audit trail
+            // Log QB clear action to audit_logs (general-purpose table, confirmed in live schema)
+            // match_audit_log requires match_id FK and has no tenant_id — wrong table for this flow
             try {
               const s3 = await getSession();
               const tid3 = s3 ? await getTenantId(s3.user.id).catch(() => null) : null;
               if (tid3) {
                 await supabaseRequest(
-                  'match_audit_log',
+                  'audit_logs',
                   {
                     method: 'POST',
                     body: JSON.stringify({
                       tenant_id: tid3,
                       action: 'qb_cleared',
-                      old_status: 'pending',
-                      new_status: 'approved',
-                      details: {
+                      entity_type: 'qb_transaction',
+                      // check_id is UUID column — put text check_id in metadata instead
+                      metadata: {
                         txn_type: txnType,
                         intuit_id: qbIntuitId,
                         check_id: msg.checkId || null,
                         check_number: qbTxn.doc_number || null,
-                        qb_note: `[Kyriq] Verified & Cleared ${new Date().toISOString().split('T')[0]}`,
                         cleared_at: new Date().toISOString(),
                       },
                     }),
@@ -1269,8 +1277,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'SEARCH_QB': {
           const { tenantId: tid2 } = await getActiveConnection();
           // qb_entries is the canonical store (written by /api/qbo/pull-checks); qb_transactions is empty
+          // encodeURIComponent the query so spaces and special chars don't break the PostgREST filter
+          const safeQuery = encodeURIComponent(msg.query || '');
           const results = await supabaseRequest(
-            `qb_entries?tenant_id=eq.${tid2}&or=(payee.ilike.%25${msg.query}%25,check_number.ilike.%25${msg.query}%25)&order=date.desc&limit=20`
+            `qb_entries?tenant_id=eq.${tid2}&or=(payee.ilike.%25${safeQuery}%25,check_number.ilike.%25${safeQuery}%25)&order=date.desc&limit=20`
           ).catch(() => []);
           return { results: results || [] };
         }
