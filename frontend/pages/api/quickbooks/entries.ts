@@ -51,6 +51,7 @@ export default async function handler(
           memo: e.memo,
           qb_source: e.qb_source,
           qb_type: e.qb_type,
+          intuit_id: e.intuit_id,
           synced_at: e.synced_at,
         })),
         count: entries.length,

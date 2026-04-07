@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { clearQBTransactionServer } from '@/pages/api/qbo/clear-transaction';
 
 /**
  * PATCH /api/jobs/[id]/checks/[checkId]/status
@@ -23,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'checkId is required' });
   }
 
-  const { status } = req.body || {};
+  const { status, qbEntryId } = req.body || {};
   if (!status || typeof status !== 'string') {
     return res.status(400).json({ error: 'status is required' });
   }
@@ -98,7 +99,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Non-critical
     }
 
-    return res.status(200).json({ success: true, status, message: `Check status updated to "${status}"` });
+    // QB clear — non-blocking: approval already saved; QB failure just sets qbSync.status = 'failed'
+    let qbSync: { status: 'cleared' | 'failed' | 'skipped'; message?: string } = { status: 'skipped' };
+    if (status === 'approved' && qbEntryId && typeof qbEntryId === 'string') {
+      try {
+        const clearResult = await clearQBTransactionServer(supabase, qbEntryId);
+        qbSync = clearResult.cleared
+          ? { status: 'cleared' }
+          : { status: 'failed', message: clearResult.warning };
+      } catch (qbErr: any) {
+        qbSync = { status: 'failed', message: qbErr.message };
+      }
+    }
+
+    return res.status(200).json({ success: true, status, message: `Check status updated to "${status}"`, qbSync });
   } catch (error: any) {
     console.error('PATCH check status error:', error);
     return res.status(500).json({ error: error.message || 'Failed to update check status' });

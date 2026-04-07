@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Trash2 } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { QBCompanySwitcher } from '@/components/QBCompanySwitcher';
 import Link from 'next/link';
 import { useComparisonData } from './hooks/useComparisonData';
@@ -79,6 +79,12 @@ export default function QBComparisonsPage() {
   const [deletingQBEntry, setDeletingQBEntry] = useState<string | null>(null);
   const [deletingAllQB, setDeletingAllQB] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
+
+  const showToast = useCallback((type: 'success' | 'warning' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 5000);
+  }, []);
 
   // Check if QuickBooks is configured and connected
   useEffect(() => {
@@ -146,50 +152,65 @@ export default function QBComparisonsPage() {
     }
   };
 
-  const handleApproveCheck = async (checkId: string, jobId?: string) => {
-    try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-      const url = jobId
-        ? `/api/jobs/${jobId}/checks/${checkId}/status`
-        : `/api/checks/${checkId}/update`;
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: 'approved' }),
-      });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Approve failed'); }
-      console.log('✅ Check approved:', checkId);
-      await refreshData();
-    } catch (error: any) {
-      console.error('❌ Failed to approve check:', error);
-      throw error;
+  const handleApproveCheck = async (checkId: string, jobId?: string, qbEntryId?: string) => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+    if (!jobId) {
+      throw new Error('Job ID is required to approve a check. Please reload and try again.');
     }
+
+    const res = await fetch(`/api/jobs/${jobId}/checks/${checkId}/status`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ status: 'approved', qbEntryId: qbEntryId || null }),
+    });
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `Approve failed (${res.status})`);
+    }
+
+    const data = await res.json();
+    console.log('✅ Check approved:', checkId, data);
+
+    const qbSync = data.qbSync as { status: string; message?: string } | undefined;
+    if (qbSync?.status === 'cleared') {
+      showToast('success', 'Approved & cleared in QuickBooks ✓');
+    } else if (qbSync?.status === 'failed') {
+      showToast('warning', `Approved ⚠ QB not cleared: ${qbSync.message || 'unknown error'}`);
+    } else {
+      showToast('success', 'Check approved ✓');
+    }
+
+    await refreshData();
   };
 
   const handleRejectCheck = async (checkId: string, jobId?: string) => {
-    try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-      const url = jobId
-        ? `/api/jobs/${jobId}/checks/${checkId}/status`
-        : `/api/checks/${checkId}/update`;
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: 'rejected' }),
-      });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Reject failed'); }
-      console.log('✅ Check rejected:', checkId);
-      await refreshData();
-    } catch (error: any) {
-      console.error('❌ Failed to reject check:', error);
-      throw error;
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+    if (!jobId) {
+      throw new Error('Job ID is required to reject a check. Please reload and try again.');
     }
+
+    const res = await fetch(`/api/jobs/${jobId}/checks/${checkId}/status`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ status: 'rejected' }),
+    });
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `Reject failed (${res.status})`);
+    }
+
+    console.log('✅ Check rejected:', checkId);
+    await refreshData();
   };
 
   const handleAutoSync = async () => {
@@ -565,6 +586,17 @@ export default function QBComparisonsPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
+      {/* Approve/action toast notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[9999] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
+          toast.type === 'success' ? 'bg-emerald-600 text-white' :
+          toast.type === 'warning' ? 'bg-amber-500 text-white' :
+          'bg-red-600 text-white'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+          {toast.message}
+        </div>
+      )}
       {/* QB Connection Status Banner - Clickable to go to Settings */}
       {!loading && qbEntries.length === 0 && (
         <Link href="/settings">
@@ -783,7 +815,7 @@ export default function QBComparisonsPage() {
         row={selectedRow} 
         onClose={() => setSelectedRow(null)} 
         onSave={(checkId, updates) => handleSaveCheck(checkId, updates, selectedRow?.extractionData?.job_id)}
-        onApprove={(checkId: string) => handleApproveCheck(checkId, selectedRow?.extractionData?.job_id)}
+        onApprove={(checkId: string) => handleApproveCheck(checkId, selectedRow?.extractionData?.job_id, selectedRow?.qbData?.id)}
         onReject={(checkId: string) => handleRejectCheck(checkId, selectedRow?.extractionData?.job_id)}
       />
       

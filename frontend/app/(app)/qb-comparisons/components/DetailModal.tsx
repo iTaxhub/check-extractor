@@ -22,6 +22,8 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
   const [isSaving, setIsSaving] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
+  const [approveSuccess, setApproveSuccess] = useState(false);
   const [editedData, setEditedData] = useState({
     checkNumber: '',
     date: '',
@@ -75,14 +77,16 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
 
   const handleApprove = async () => {
     if (!onApprove || !row?.extractionData?.check_id) return;
-    if (!window.confirm(`Approve check #${row.checkNumber || row.extractionData.check_id}? This will mark it as approved.`)) return;
+    setApproveError(null);
+    setApproveSuccess(false);
     setIsApproving(true);
     try {
       await onApprove(row.extractionData.check_id);
-      onClose();
-    } catch (error) {
+      setApproveSuccess(true);
+      setTimeout(() => onClose(), 1200);
+    } catch (error: any) {
       console.error('Failed to approve:', error);
-      alert('Failed to approve check. Please try again.');
+      setApproveError(error.message || 'Failed to approve check. Please try again.');
     } finally {
       setIsApproving(false);
     }
@@ -90,14 +94,14 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
 
   const handleReject = async () => {
     if (!onReject || !row?.extractionData?.check_id) return;
-    if (!window.confirm(`Reject check #${row.checkNumber || row.extractionData.check_id}?`)) return;
+    setApproveError(null);
     setIsRejecting(true);
     try {
       await onReject(row.extractionData.check_id);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to reject:', error);
-      alert('Failed to reject check. Please try again.');
+      setApproveError(error.message || 'Failed to reject check. Please try again.');
     } finally {
       setIsRejecting(false);
     }
@@ -574,28 +578,44 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
 
         {/* Action bar */}
         {row.extractionData && (onApprove || onReject) && (
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center gap-3 rounded-b-2xl">
-            <span className="text-xs text-gray-500 font-medium mr-auto">Actions for Check #{row.checkNumber || row.extractionData.check_id}</span>
-            {onApprove && (
-              <button
-                onClick={handleApprove}
-                disabled={isApproving || isRejecting}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
-              >
-                {isApproving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                {isApproving ? 'Approving…' : 'Approve'}
-              </button>
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-2xl">
+            {approveError && (
+              <div className="mb-3 flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                <span className="mt-0.5">⚠</span>
+                <span>{approveError}</span>
+              </div>
             )}
-            {onReject && (
-              <button
-                onClick={handleReject}
-                disabled={isApproving || isRejecting}
-                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
-              >
-                {isRejecting ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
-                {isRejecting ? 'Rejecting…' : 'Reject'}
-              </button>
+            {approveSuccess && (
+              <div className="mb-3 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
+                <CheckCircle2 size={15} />
+                <span>Approved! Closing…</span>
+              </div>
             )}
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 font-medium mr-auto">Actions for Check #{row.checkNumber || row.extractionData.check_id}</span>
+              {onApprove && (
+                <button
+                  onClick={handleApprove}
+                  disabled={isApproving || isRejecting || approveSuccess}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 text-white ${
+                    approveSuccess ? 'bg-emerald-400 cursor-default' : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  {isApproving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                  {isApproving ? 'Approving…' : approveSuccess ? '✓ Approved' : 'Approve'}
+                </button>
+              )}
+              {onReject && (
+                <button
+                  onClick={handleReject}
+                  disabled={isApproving || isRejecting || approveSuccess}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
+                >
+                  {isRejecting ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
+                  {isRejecting ? 'Rejecting…' : 'Reject'}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

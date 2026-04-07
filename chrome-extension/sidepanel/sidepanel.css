@@ -335,6 +335,12 @@ header {
   font-size: 11px; font-weight: 600; color: var(--indigo-dark);
 }
 .match-banner::before { content: '✓'; font-size: 12px; }
+.match-banner.banner-warn { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+.match-banner.banner-warn::before { content: '⚠'; }
+.match-banner.banner-success { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.match-banner.banner-success::before { content: '✓'; }
+.match-banner.banner-error { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+.match-banner.banner-error::before { content: '✕'; }
 
 .bulk-bar { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
 

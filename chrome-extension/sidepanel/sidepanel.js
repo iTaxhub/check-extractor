@@ -302,6 +302,25 @@ document.addEventListener('DOMContentLoaded', () => {
     hideApproveConfirm();
     if (idx !== null) await approveAndClear(idx);
   });
+
+  // Listen for CHECK_UPDATED broadcasts from service-worker after approve
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type !== 'CHECK_UPDATED') return;
+    if (!msg.checkId) return;
+    const m = matches.find(m =>
+      m.check?.id === msg.checkId ||
+      m.check?.check_id === msg.checkId
+    );
+    if (m && m.status !== (msg.status || 'approved')) {
+      m.status = msg.status || 'approved';
+      renderMatches();
+      if (msg.cleared) {
+        dbg('Approved & cleared in QB ✓', 'success');
+      } else {
+        dbg('Approved locally (QB sync pending)', 'warn');
+      }
+    }
+  });
 });
 
 // ── View management ───────────────────────────────────────────
@@ -753,7 +772,7 @@ async function approveAndClear(idx) {
       const res = await sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: match.qbTxn, checkId, jobId });
       if (res?.error) {
         dbg(`Approve failed: ${res.error}`, 'error');
-        alert('Approval failed: ' + res.error);
+        showWarningBanner(`❌ Approval failed: ${res.error}`);
         hideLoading();
         return;
       }
@@ -764,25 +783,34 @@ async function approveAndClear(idx) {
         showWarningBanner(`⚠️ Approved locally — QB not cleared: ${res.warning}`);
       } else {
         dbg('Approved & cleared in QB', 'success');
+        showSuccessBanner('Approved & cleared in QuickBooks ✓');
       }
     } else {
-      // No QB txn — local only
+      // No QB txn — persist status to DB then update UI
       match.status = 'approved';
+      if (checkId && jobId) {
+        sendMsg({ type: 'UPDATE_CHECK_STATUS', checkId, jobId, status: 'approved' }).catch(() => {});
+      }
+      showWarningBanner('⚠️ Approved locally — no QB transaction linked to this check');
       dbg('Approved locally only (no QB txn linked)', 'warn');
     }
     renderMatches();
   } finally { hideLoading(); }
 }
 
-function showWarningBanner(msg) {
+function showBanner(msg, type = 'warn', autoHideMs = 8000) {
   const banner = $('#match-banner');
   if (!banner) return;
   banner.textContent = msg;
-  banner.style.background = '#fef3c7';
-  banner.style.color = '#92400e';
+  banner.className = `match-banner banner-${type}`;
+  banner.style.removeProperty('background');
+  banner.style.removeProperty('color');
   banner.style.display = '';
-  setTimeout(() => { if (banner) banner.style.display = 'none'; }, 8000);
+  if (autoHideMs > 0) setTimeout(() => { if (banner) banner.style.display = 'none'; }, autoHideMs);
 }
+function showWarningBanner(msg) { showBanner(msg, 'warn', 8000); }
+function showSuccessBanner(msg) { showBanner(msg, 'success', 6000); }
+function showErrorBanner(msg)   { showBanner(msg, 'error',   10000); }
 
 // ── Upload workflow (3-step) ──────────────────────────────────
 function setUploadStep(step) {
@@ -1704,13 +1732,13 @@ function bindEvents() {
   $('#btn-bulk-approve').addEventListener('click', async () => {
     const toApprove = matches.filter(m => ['matched', 'pending'].includes(m.status) && m.score >= 95);
     if (toApprove.length === 0) {
-      alert('No matches with ≥95% confidence to auto-approve.');
+      showWarningBanner('No matches with ≥95% confidence to auto-approve.');
       return;
     }
     showLoading(`Approving ${toApprove.length} matches in QuickBooks…`);
     let approved = 0, failed = 0, localOnly = 0;
     for (const m of toApprove) {
-      const res = await sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: m.qbTxn });
+      const res = await sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: m.qbTxn, checkId: m.check?.id, jobId: m.check?.job_id });
       if (res?.success) {
         m.status = 'approved';
         approved++;
@@ -1726,7 +1754,8 @@ function bindEvents() {
     if (localOnly > 0) parts.push(`${localOnly} approved locally only (no QB link)`);
     if (failed > 0) parts.push(`${failed} failed — see debug log`);
     dbg(`Bulk approve done: ${parts.join(', ')}`, failed > 0 ? 'error' : 'success');
-    if (failed > 0) alert(`Bulk approve: ${parts.join(', ')}.`);
+    if (failed > 0) showErrorBanner(`Bulk approve: ${parts.join(', ')}.`);
+    else if (approved > 0) showSuccessBanner(`Bulk approve: ${parts.join(', ')}.`);
   });
 
   // ── Upload zone ──
@@ -1896,8 +1925,13 @@ function bindEvents() {
       renderChecksList(_cachedChecks || []);
       if (status === 'approved') { _cachedHistory = null; } // invalidate history cache
     } else {
-      if (btn) { btn.disabled = false; btn.textContent = status === 'approved' ? '✅ Approve' : status === 'rejected' ? '❌ Reject' : '↩ Undo'; }
-      alert(res?.error || 'Failed to update status');
+      const origLabel = status === 'approved' ? '✅ Approve' : status === 'rejected' ? '❌ Reject' : '↩ Undo';
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '⚠ ' + (res?.error || 'Failed');
+        setTimeout(() => { btn.textContent = origLabel; }, 3000);
+      }
+      dbg(`reviewAction ${status} failed: ${res?.error}`, 'error');
     }
   };
   $('#rm-approve')?.addEventListener('click', () => reviewAction('approved'));

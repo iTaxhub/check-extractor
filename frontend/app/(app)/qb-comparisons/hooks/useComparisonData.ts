@@ -48,6 +48,8 @@ export function useComparisonData() {
             memo: entry.memo || '',
             source: 'quickbooks' as const,
             qbSource: entry.qb_source || 'default',
+            intuit_id: entry.intuit_id || '',
+            qb_type: entry.qb_type || '',
           }));
           
           console.log('✅ Processed QB entries:', entries.length);

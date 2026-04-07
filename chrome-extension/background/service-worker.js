@@ -1199,6 +1199,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               data: { hasType: !!txnType, hasIntuitId: !!qbIntuitId, txn_id_prefix: qbTxn.txn_id ? String(qbTxn.txn_id).slice(0, 24) : null },
             });
             // #endregion
+            // Still persist approval to DB and notify UI even without QB link
+            if (msg.checkId) {
+              const s0 = await getSession();
+              if (s0?.access_token) {
+                const bs0 = getBootstrapConfig();
+                const h0 = (bs0.frontendUrl || bs0.backendUrl || '').replace(/\/$/, '');
+                if (h0 && msg.jobId) {
+                  fetch(`${h0}/api/jobs/${msg.jobId}/checks/${msg.checkId}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s0.access_token}` },
+                    body: JSON.stringify({ status: 'approved' }),
+                  }).catch(() => {});
+                }
+              }
+            }
+            chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false }).catch(() => {});
             return { success: true, cleared: false, warning: 'QB transaction not linked — approved in Kyriq only' };
           }
 
@@ -1266,6 +1282,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               logErr('APPROVE_AND_CLEAR: audit log write failed (non-critical)', auditErr);
             }
             await saveCheckApproval(msg.checkId, msg.jobId);
+            chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: true }).catch(() => {});
             return { success: true, cleared: true };
           } catch (e) {
             logErr('APPROVE_AND_CLEAR QB clear failed — approving locally only', e);
@@ -1279,6 +1296,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             // #endregion
             // Local-only approve: record status in DB but warn user that QB was not cleared
             await saveCheckApproval(msg.checkId, msg.jobId);
+            chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false }).catch(() => {});
             return { success: true, cleared: false, warning: `QB not cleared: ${e.message}` };
           }
         }

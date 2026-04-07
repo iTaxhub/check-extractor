@@ -27,6 +27,8 @@ export interface QuickBooksEntry {
   memo: string;
   source: 'quickbooks';
   qbSource?: string;
+  intuit_id?: string;
+  qb_type?: string;
 }
 
 export interface ComparisonRow {
