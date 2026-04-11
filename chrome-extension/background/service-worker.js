@@ -296,7 +296,7 @@ async function qbApiRequest(endpoint, method = 'GET', body = null) {
 // ── QB Clear Transaction (mark as Cleared for reconciliation) ──
 async function clearQBTransaction(txnType, txnId) {
   // Read current transaction
-  const readData = await qbApiRequest(`${txnType.toLowerCase()}/${txnId}?minorversion=65`);
+  const readData = await qbApiRequest(`${txnType.toLowerCase()}/${txnId}?minorversion=73`);
   const entity = readData[txnType] || readData[Object.keys(readData)[0]];
   if (!entity) throw new Error('Transaction not found in QB');
 
@@ -305,25 +305,35 @@ async function clearQBTransaction(txnType, txnId) {
   //   This avoids every "Operation fileimport is not supported" (error 6070) trigger:
   //     AttachableRef      → file-attachment import reference
   //     RecurDataRef       → recurring template reference
-  //     Line[].LinkedTxn   → linked-transaction import reference (present in BillPayment)
+  //     Line[].LinkedTxn   → linked-transaction reference (present in BillPayment)
   // - ClearStatus placement differs by txn type:
   //     BillPayment (PayType=Check) → nested under CheckPayment.ClearStatus
-  //     Check / Purchase            → top-level ClearStatus
+  //     Deposit                     → ClearStatus not supported — PrivateNote stamp only
+  //     Purchase / other            → top-level ClearStatus
   const clearDate = new Date().toISOString().split('T')[0];
   const isBillPayCheck = txnType === 'BillPayment' && entity.PayType === 'Check';
+  const isDeposit = txnType === 'Deposit';
+
+  let clearFields;
+  if (isBillPayCheck) {
+    clearFields = { CheckPayment: { ...entity.CheckPayment, ClearStatus: 'Cleared' } };
+  } else if (isDeposit) {
+    // Deposit rejects ClearStatus (QB error 2010) but requires DepositToAccountRef even in sparse mode (QB error 2020)
+    clearFields = { DepositToAccountRef: entity.DepositToAccountRef };
+  } else {
+    clearFields = { ClearStatus: 'Cleared' };
+  }
+
   const updatePayload = {
     Id: entity.Id,
     SyncToken: entity.SyncToken,
     sparse: true,
     PrivateNote: `${entity.PrivateNote || ''}\n[Kyriq] Verified & Cleared ${clearDate}`.trim(),
-    ...(isBillPayCheck
-      ? { CheckPayment: { ...entity.CheckPayment, ClearStatus: 'Cleared' } }
-      : { ClearStatus: 'Cleared' }
-    ),
+    ...clearFields,
   };
 
   const result = await qbApiRequest(
-    `${txnType.toLowerCase()}?minorversion=65`,
+    `${txnType.toLowerCase()}?minorversion=73`,
     'POST',
     updatePayload
   );
@@ -497,6 +507,8 @@ async function pullQBTransactions() {
     { q: `SELECT * FROM BillPayment WHERE TxnDate >= '${windowStart}'`, key: 'BillPayment', type: 'BillPayment', source: 'bill_paid_by_cheque' },
     { q: `SELECT * FROM Payment WHERE TxnDate >= '${windowStart}'`, key: 'Payment', type: 'Payment', source: 'cheque_received' },
     { q: `SELECT * FROM Deposit WHERE TxnDate >= '${windowStart}'`, key: 'Deposit', type: 'Deposit', source: 'cheque_received' },
+    // NOTE: BankTransaction is NOT a queryable IDS entity (QB returns 400 QueryValidationError).
+    // Pending bank feed items must be fetched via GET /v3/company/{id}/bankdata/account/{accountId}/transactions
   ];
 
   const QBO_PAGE_SIZE = 1000;
@@ -567,6 +579,9 @@ async function pullQBTransactions() {
         } else if (type === 'Deposit') {
           payee   = t.Line?.[0]?.DepositLineDetail?.Entity?.name || null;
           account = t.DepositToAccountRef?.name || null;
+        } else if (type === 'BankTransaction') {
+          payee   = null;
+          account = t.AccountRef?.name || null;
         } else {
           payee   = t.PayeeRef?.name || t.EntityRef?.name || null;
           account = t.BankAccountRef?.name || t.AccountRef?.name || null;
@@ -579,10 +594,13 @@ async function pullQBTransactions() {
           qb_source: source,
           txn_date: t.TxnDate,
           payee,
-          amount: t.TotalAmt,
-          memo: t.PrivateNote || null,
-          doc_number: t.DocNumber || (type === 'Payment' ? (t.PaymentRefNum || null) : null),
+          amount: type === 'BankTransaction' ? Math.abs(t.Amount || 0) : t.TotalAmt,
+          memo: t.PrivateNote || t.Description || null,
+          doc_number: type === 'BankTransaction'
+            ? ((t.Description || '').match(/CHECK\s+(\d+)/i)?.[1] || t.DocNumber || null)
+            : (t.DocNumber || (type === 'Payment' ? (t.PaymentRefNum || null) : null)),
           account,
+          ...(type === 'BankTransaction' ? { account_ref_id: t.AccountRef?.value, is_pending: true } : {}),
         };
       });
     } catch (e) {
@@ -1406,6 +1424,38 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             await saveCheckApproval(msg.checkId, msg.jobId);
             chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false }).catch(() => {});
             return { success: true, cleared: false, warning: 'File import entry — approval saved in Kyriq. No QB Online update needed.' };
+          }
+
+          // BankTransaction (pending bank feed item) — create a Purchase in QB to confirm/categorize it
+          const isBankFeed = txnType === 'BankTransaction';
+          if (isBankFeed) {
+            try {
+              const bankAmt = parseFloat(qbTxn.amount) || 0;
+              const purchasePayload = {
+                PaymentType: 'Check',
+                AccountRef: { name: qbTxn.account || 'Checking' },
+                TxnDate: qbTxn.txn_date,
+                DocNumber: qbTxn.doc_number || '',
+                TotalAmt: bankAmt,
+                Line: [{
+                  DetailType: 'AccountBasedExpenseLineDetail',
+                  Amount: bankAmt,
+                  AccountBasedExpenseLineDetail: {
+                    AccountRef: { name: 'Uncategorized Expense' },
+                  },
+                }],
+              };
+              await qbApiRequest('purchase?minorversion=73', 'POST', purchasePayload);
+              log(`APPROVE_AND_CLEAR: created Purchase from BankTransaction ${qbIntuitId} in QB`);
+              await saveCheckApproval(msg.checkId, msg.jobId);
+              chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: true }).catch(() => {});
+              return { success: true, cleared: true };
+            } catch (e) {
+              logErr('APPROVE_AND_CLEAR: BankTransaction -> Purchase creation failed', e);
+              await saveCheckApproval(msg.checkId, msg.jobId);
+              chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false }).catch(() => {});
+              return { success: true, cleared: false, warning: `QB not updated: ${e.message}. Approved in Kyriq — manually categorize this bank transaction in QB.`, qbRaw: e.qbRaw || null };
+            }
           }
 
           try {

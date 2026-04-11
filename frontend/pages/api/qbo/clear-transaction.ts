@@ -123,7 +123,7 @@ export async function clearQBTransactionServer(
   const txnId = entry.intuit_id;
   const realmId = tokens.realm_id;
 
-  const readUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}/${txnId}?minorversion=65`;
+  const readUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}/${txnId}?minorversion=73`;
   const readRes = await fetch(readUrl, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
   });
@@ -139,17 +139,27 @@ export async function clearQBTransactionServer(
 
   const clearDate = new Date().toISOString().split('T')[0];
   const isBillPayCheck = txnType === 'BillPayment' && entity.PayType === 'Check';
+  const isDeposit = txnType === 'Deposit';
+
+  let clearFields: any;
+  if (isBillPayCheck) {
+    clearFields = { CheckPayment: { ...entity.CheckPayment, ClearStatus: 'Cleared' } };
+  } else if (isDeposit) {
+    // Deposit rejects ClearStatus (QB error 2010) but requires DepositToAccountRef in sparse update (QB error 2020)
+    clearFields = { DepositToAccountRef: entity.DepositToAccountRef };
+  } else {
+    clearFields = { ClearStatus: 'Cleared' };
+  }
+
   const updatePayload: any = {
     Id: entity.Id,
     SyncToken: entity.SyncToken,
     sparse: true,
     PrivateNote: `${entity.PrivateNote || ''}\n[Kyriq] Verified & Cleared ${clearDate}`.trim(),
-    ...(isBillPayCheck
-      ? { CheckPayment: { ...entity.CheckPayment, ClearStatus: 'Cleared' } }
-      : { ClearStatus: 'Cleared' }),
+    ...clearFields,
   };
 
-  const writeUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}?minorversion=65`;
+  const writeUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}?minorversion=73`;
   const writeRes = await fetch(writeUrl, {
     method: 'POST',
     headers: {

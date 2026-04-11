@@ -80,6 +80,8 @@ export default function QBComparisonsPage() {
   const [deletingAllQB, setDeletingAllQB] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
+  const [vouchDialog, setVouchDialog] = useState<{ row: ComparisonRow } | null>(null);
+  const [vouchingToQB, setVouchingToQB] = useState(false);
 
   const showToast = useCallback((type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ type, message });
@@ -241,9 +243,21 @@ export default function QBComparisonsPage() {
       console.log('✅ QB Sync result:', data);
       if (res.ok) {
         await refreshData();
+        const count = data.count ?? data.total ?? data.entries?.length ?? 0;
+        const partialErrors: string[] = data.partialErrors || data.errors || [];
+        if (count === 0) {
+          showToast('warning', `Sync complete — 0 QB transactions found. Check your QB connection or date range.`);
+        } else if (partialErrors.length > 0) {
+          showToast('warning', `Synced ${count} QB transactions ⚠ (${partialErrors.length} partial error${partialErrors.length > 1 ? 's' : ''}: ${partialErrors[0].slice(0, 60)})`);
+        } else {
+          showToast('success', `Synced ${count} QB transactions ✓`);
+        }
+      } else {
+        showToast('error', data.error || `Sync failed (${res.status})`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Auto-sync failed:', err);
+      showToast('error', err.message || 'Sync failed');
     } finally {
       setSyncing(false);
     }
@@ -441,39 +455,73 @@ export default function QBComparisonsPage() {
     setShowExportDropdown(false);
   };
 
+  const doVouchLocal = async (row: ComparisonRow) => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const response = await fetch('/api/checks/vouch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ checkIdentifier: row.id, checkNumber: row.checkNumber }),
+    });
+    if (response.ok) {
+      setVouchedMap(prev => ({
+        ...prev,
+        [row.id]: { vouchedBy: session.user.id, vouchedAt: new Date().toISOString() },
+      }));
+    }
+  };
+
   const handleVouch = async (row: ComparisonRow) => {
+    // Missing-in-QB rows: show dialog to optionally create in QB first
+    if (row.matchStatus === 'missing-in-qb') {
+      setVouchDialog({ row });
+      return;
+    }
     setVouchingId(row.id);
     try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const response = await fetch('/api/checks/vouch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          checkIdentifier: row.id,
-          checkNumber: row.checkNumber,
-        }),
-      });
-
-      if (response.ok) {
-        // Update local vouched map
-        setVouchedMap(prev => ({
-          ...prev,
-          [row.id]: {
-            vouchedBy: session.user.id,
-            vouchedAt: new Date().toISOString(),
-          },
-        }));
-      }
+      await doVouchLocal(row);
     } catch (err) {
       console.error('Failed to vouch check:', err);
     } finally {
       setVouchingId(null);
+    }
+  };
+
+  const handleVouchConfirm = async (txnType: 'Deposit' | 'Purchase' | 'local') => {
+    if (!vouchDialog) return;
+    const row = vouchDialog.row;
+    setVouchDialog(null);
+    setVouchingId(row.id);
+    setVouchingToQB(txnType !== 'local');
+    try {
+      if (txnType !== 'local') {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Not authenticated');
+        const res = await fetch('/api/qbo/create-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({
+            txnType,
+            checkNumber: row.checkNumber,
+            amount: row.amount,
+            date: row.date,
+            payee: row.payee,
+            memo: row.memo,
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || `QB create failed (${res.status})`);
+        showToast('success', `Created ${txnType} #${row.checkNumber} in QuickBooks ✓`);
+        await refreshData();
+      }
+      await doVouchLocal(row);
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to create in QB');
+    } finally {
+      setVouchingId(null);
+      setVouchingToQB(false);
     }
   };
 
@@ -844,6 +892,70 @@ export default function QBComparisonsPage() {
         confirmText="Delete All"
         cancelText="Cancel"
       />
+
+      {/* Vouch → Create in QB dialog */}
+      {vouchDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4">
+              <h2 className="text-white font-bold text-lg">Add to QuickBooks?</h2>
+              <p className="text-slate-300 text-sm mt-1">
+                Check #{vouchDialog.row.checkNumber} · {vouchDialog.row.amount} is missing in QB.
+              </p>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-gray-600 mb-4">
+                Would you like to create this check in QuickBooks before vouching, or just mark it as resolved in Kyriq?
+              </p>
+              <button
+                onClick={() => handleVouchConfirm('Deposit')}
+                disabled={vouchingToQB}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition disabled:opacity-50 text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">D</div>
+                <div>
+                  <div className="font-semibold text-sm text-gray-800">Create as Deposit</div>
+                  <div className="text-xs text-gray-500">Best for received / incoming checks</div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleVouchConfirm('Purchase')}
+                disabled={vouchingToQB}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition disabled:opacity-50 text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm flex-shrink-0">P</div>
+                <div>
+                  <div className="font-semibold text-sm text-gray-800">Create as Purchase / Check Written</div>
+                  <div className="text-xs text-gray-500">Best for outgoing / written checks</div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleVouchConfirm('local')}
+                disabled={vouchingToQB}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition disabled:opacity-50 text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-sm flex-shrink-0">K</div>
+                <div>
+                  <div className="font-semibold text-sm text-gray-800">Vouch in Kyriq only</div>
+                  <div className="text-xs text-gray-500">Mark as resolved — don't touch QB</div>
+                </div>
+              </button>
+              <button
+                onClick={() => setVouchDialog(null)}
+                className="w-full mt-2 text-sm text-gray-400 hover:text-gray-600 transition py-2"
+              >
+                Cancel
+              </button>
+            </div>
+            {vouchingToQB && (
+              <div className="px-6 pb-4 flex items-center gap-2 text-sm text-blue-600">
+                <Loader2 size={14} className="animate-spin" />
+                Creating in QuickBooks...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

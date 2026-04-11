@@ -472,6 +472,9 @@ export default async function handler(
       errors.push(`Payment query failed: ${e.message}`);
     }
 
+    // NOTE: BankTransaction is NOT a queryable IDS entity (QB returns QueryValidationError).
+    // Pending bank feed items must be fetched via GET /v3/company/{id}/bankdata/account/{accountId}/transactions
+
     // ── 4. Deposit — Bank transactions posted as deposits (received checks) ──
     try {
       const depositDateFilter = dateFilter
