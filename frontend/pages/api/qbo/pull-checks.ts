@@ -232,6 +232,23 @@ function normalizePaymentCheck(payment: any): any {
   };
 }
 
+function normalizeDeposit(deposit: any): any {
+  return {
+    id: `deposit-${deposit.Id}`,
+    intuit_id: String(deposit.Id),
+    qb_type: 'Deposit',
+    qb_source: 'cheque_received',
+    check_number: deposit.DocNumber || '',
+    date: deposit.TxnDate || '',
+    amount: deposit.TotalAmt?.toString() || '0',
+    payee: deposit.Line?.[0]?.DepositLineDetail?.Entity?.name || '',
+    account: deposit.DepositToAccountRef?.name || '',
+    memo: deposit.PrivateNote || '',
+    currency: deposit.CurrencyRef?.value || 'USD',
+    raw: deposit,
+  };
+}
+
 function normalizeQBCheck(check: any): any {
   return {
     id: `check-${check.Id}`,
@@ -434,23 +451,7 @@ export default async function handler(
       errors.push(`BillPayment query failed: ${e.message}`);
     }
 
-    // ── 3. Check — Payroll checks and direct disbursements (not tied to bills) ──
-    try {
-      const checkDateFilter = dateFilter ? ` WHERE ${dateFilter.replace(/^ AND /, '')}` : '';
-      const checkQuery = `SELECT * FROM Check${checkDateFilter}`;
-      console.log('🔍 Check query:', checkQuery);
-      const checks = await qboQueryAll(accessToken, realmId, checkQuery, 'Check', useSandbox);
-      console.log(`✅ Checks found: ${checks.length}`);
-      if (checks.length > 0) {
-        console.log('  📝 Sample Check:', { Id: checks[0].Id, DocNumber: checks[0].DocNumber, TxnDate: checks[0].TxnDate, TotalAmt: checks[0].TotalAmt, Payee: checks[0].PayeeRef?.name || checks[0].EntityRef?.name });
-      }
-      checks.forEach((c: any) => allEntries.push(normalizeQBCheck(c)));
-    } catch (e: any) {
-      console.error('❌ Check query error:', e.message);
-      errors.push(`Check query failed: ${e.message}`);
-    }
-
-    // ── 4. Payment — Cheques received from customers ──
+    // ── 3. Payment — Cheques received from customers ──
     try {
       // QB query language: WHERE clause needs actual conditions, not 'WHERE 1=1'
       const paymentDateFilter = dateFilter
@@ -469,6 +470,24 @@ export default async function handler(
     } catch (e: any) {
       console.error('❌ Payment query error:', e.message);
       errors.push(`Payment query failed: ${e.message}`);
+    }
+
+    // ── 4. Deposit — Bank transactions posted as deposits (received checks) ──
+    try {
+      const depositDateFilter = dateFilter
+        ? ` WHERE ${dateFilter.replace(/^ AND /, '')}`
+        : '';
+      const depositQuery = `SELECT * FROM Deposit${depositDateFilter}`;
+      console.log('🔍 Deposit query:', depositQuery);
+      const deposits = await qboQueryAll(accessToken, realmId, depositQuery, 'Deposit', useSandbox);
+      console.log(`✅ Deposits found: ${deposits.length}`);
+      if (deposits.length > 0) {
+        console.log('  📝 Sample Deposit:', { Id: deposits[0].Id, DocNumber: deposits[0].DocNumber, TxnDate: deposits[0].TxnDate, TotalAmt: deposits[0].TotalAmt });
+      }
+      deposits.forEach((d: any) => allEntries.push(normalizeDeposit(d)));
+    } catch (e: any) {
+      console.error('❌ Deposit query error:', e.message);
+      errors.push(`Deposit query failed: ${e.message}`);
     }
 
     console.log(`📊 Total entries before filters: ${allEntries.length}`);

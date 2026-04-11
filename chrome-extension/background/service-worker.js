@@ -495,8 +495,8 @@ async function pullQBTransactions() {
   const queries = [
     { q: `SELECT * FROM Purchase WHERE PaymentType = 'Check' AND TxnDate >= '${windowStart}'`, key: 'Purchase', type: 'Purchase', source: 'cheque_written' },
     { q: `SELECT * FROM BillPayment WHERE TxnDate >= '${windowStart}'`, key: 'BillPayment', type: 'BillPayment', source: 'bill_paid_by_cheque' },
-    { q: `SELECT * FROM Check WHERE TxnDate >= '${windowStart}'`, key: 'Check', type: 'Check', source: 'payroll_check' },
     { q: `SELECT * FROM Payment WHERE TxnDate >= '${windowStart}'`, key: 'Payment', type: 'Payment', source: 'cheque_received' },
+    { q: `SELECT * FROM Deposit WHERE TxnDate >= '${windowStart}'`, key: 'Deposit', type: 'Deposit', source: 'cheque_received' },
   ];
 
   const QBO_PAGE_SIZE = 1000;
@@ -564,7 +564,10 @@ async function pullQBTransactions() {
         } else if (type === 'Payment') {
           payee   = t.CustomerRef?.name || null;
           account = t.DepositToAccountRef?.name || 'Undeposited Funds';
-        } else { // Check (payroll / direct disbursement)
+        } else if (type === 'Deposit') {
+          payee   = t.Line?.[0]?.DepositLineDetail?.Entity?.name || null;
+          account = t.DepositToAccountRef?.name || null;
+        } else {
           payee   = t.PayeeRef?.name || t.EntityRef?.name || null;
           account = t.BankAccountRef?.name || t.AccountRef?.name || null;
         }
