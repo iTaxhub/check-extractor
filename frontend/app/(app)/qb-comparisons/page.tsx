@@ -192,13 +192,26 @@ export default function QBComparisonsPage() {
     const data = await res.json();
     console.log('✅ Check approved:', checkId, data);
 
-    const qbSync = data.qbSync as { status: string; message?: string } | undefined;
-    if (qbSync?.status === 'cleared') {
-      showToast('success', 'Approved & cleared in QuickBooks ✓');
-    } else if (qbSync?.status === 'failed') {
-      showToast('warning', `Approved ⚠ QB not cleared: ${qbSync.message || 'unknown error'}`);
-    } else {
-      showToast('success', 'Check approved ✓');
+    const qbSync = data.qbSync as { status: string; message?: string; attemptedField?: string | null } | undefined;
+    switch (qbSync?.status) {
+      case 'cleared':
+        showToast('success', `Approved & marked Cleared in QuickBooks ✓${qbSync.attemptedField ? ` (${qbSync.attemptedField})` : ''}`);
+        break;
+      case 'already_cleared':
+        showToast('success', 'Approved — already Cleared in QuickBooks ✓');
+        break;
+      case 'manual_required':
+        showToast('warning', `Approved — ${qbSync.message || 'Bill Payment must be marked Cleared manually in QB reconciliation.'}`);
+        break;
+      case 'note_only':
+        showToast('warning', `Approved — Kyriq note stamped in QB, but cleared flag could not be set: ${qbSync.message || ''}`);
+        break;
+      case 'failed':
+        showToast('warning', `Approved ⚠ QB not cleared: ${qbSync.message || 'unknown error'}`);
+        break;
+      case 'skipped':
+      default:
+        showToast('success', 'Check approved ✓');
     }
 
     await refreshData();

@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
-import { clearQBTransactionServer } from '@/pages/api/qbo/clear-transaction';
+import { clearQBTransactionServer, type QBClearStatus } from '@/pages/api/qbo/clear-transaction';
+
+type QBSync = { status: QBClearStatus; message?: string; attemptedField?: string | null };
 
 /**
  * PATCH /api/jobs/[id]/checks/[checkId]/status
@@ -71,13 +73,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       } catch (_) { /* non-critical */ }
 
-      let qbSync: { status: 'cleared' | 'failed' | 'skipped'; message?: string } = { status: 'skipped' };
+      let qbSync: QBSync = { status: 'skipped' };
       if (status === 'approved' && qbEntryId && typeof qbEntryId === 'string') {
         try {
           const clearResult = await clearQBTransactionServer(supabase, qbEntryId, clientCheckData || null);
-          qbSync = clearResult.cleared
-            ? { status: 'cleared' }
-            : { status: 'failed', message: clearResult.warning };
+          qbSync = {
+            status: clearResult.status,
+            message: clearResult.warning,
+            attemptedField: clearResult.attemptedField ?? null,
+          };
         } catch (qbErr: any) {
           qbSync = { status: 'failed', message: qbErr.message };
         }
@@ -126,8 +130,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Non-critical
     }
 
-    // QB clear — non-blocking: approval already saved; QB failure just sets qbSync.status = 'failed'
-    let qbSync: { status: 'cleared' | 'failed' | 'skipped'; message?: string } = { status: 'skipped' };
+    // QB clear — non-blocking: approval already saved; qbSync.status surfaces the real QB outcome
+    let qbSync: QBSync = { status: 'skipped' };
     if (status === 'approved' && qbEntryId && typeof qbEntryId === 'string') {
       // Extract OCR fields from the check's extraction data to enrich the QB PrivateNote.
       // safeStr handles { value, confidence } objects, plain strings, numbers, and nulls.
@@ -151,9 +155,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
       try {
         const clearResult = await clearQBTransactionServer(supabase, qbEntryId, extractedCheckData);
-        qbSync = clearResult.cleared
-          ? { status: 'cleared' }
-          : { status: 'failed', message: clearResult.warning };
+        qbSync = {
+          status: clearResult.status,
+          message: clearResult.warning,
+          attemptedField: clearResult.attemptedField ?? null,
+        };
       } catch (qbErr: any) {
         qbSync = { status: 'failed', message: qbErr.message };
       }

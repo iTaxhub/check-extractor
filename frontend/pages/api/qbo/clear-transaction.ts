@@ -101,76 +101,32 @@ interface CheckData {
   routing_number?: string | null;
 }
 
-export async function clearQBTransactionServer(
-  supabase: any,
-  qbEntryId: string,
-  checkData: CheckData | null = null
-): Promise<{ cleared: boolean; warning?: string }> {
-  const { data: entry } = await supabase
-    .from('qb_entries')
-    .select('intuit_id, qb_type, raw_data, check_number, date, amount, payee, account')
-    .eq('id', qbEntryId)
-    .maybeSingle();
+export type QBClearStatus =
+  | 'cleared'          // QB confirmed ClearedStatus set
+  | 'already_cleared'  // QB already had it Cleared/Reconciled
+  | 'manual_required'  // Entity type (e.g. BillPayment) that QB API does not allow setting cleared on
+  | 'note_only'        // Fallback — PrivateNote stamped, no cleared flag set
+  | 'failed'           // QB rejected the update
+  | 'skipped';         // No QB link / file import
 
-  if (!entry?.intuit_id || !entry?.qb_type) {
-    return { cleared: false, warning: 'QB entry not found or missing identifiers' };
-  }
+export interface QBClearResult {
+  cleared: boolean;
+  status: QBClearStatus;
+  warning?: string;
+  qbFault?: any;
+  attemptedField?: string | null;
+}
 
-  if (entry.qb_type === 'FileImport') {
-    return { cleared: false, warning: 'File import entry — approval saved in Kyriq. No QB Online record to update.' };
-  }
+/**
+ * Candidate property names QBO has accepted historically for the cleared flag.
+ * QBO documentation is inconsistent across entities and minor versions; we try
+ * the documented name first and fall back on the others if QB rejects with
+ * fault 2010 (unsupported property).
+ */
+const CLEARED_FIELD_CANDIDATES = ['TxnStatus', 'ClearedStatus', 'ClearStatus'] as const;
 
-  const tokens = await getTokens(supabase);
-  if (!tokens) return { cleared: false, warning: 'QuickBooks not connected' };
-
-  let accessToken = tokens.access_token;
-  const isExpired = tokens.expires_at && new Date(tokens.expires_at) <= new Date(Date.now() + 60_000);
-  if (isExpired) {
-    const refreshed = await refreshAccessToken(supabase, tokens);
-    if (refreshed) accessToken = refreshed;
-  }
-
-  const useSandbox = process.env.QB_SANDBOX === 'true';
-  const base = useSandbox ? QBO_SANDBOX : QBO_BASE;
-  const txnType = entry.qb_type;
-  const txnId = entry.intuit_id;
-  const realmId = tokens.realm_id;
-
-  const readUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}/${txnId}?minorversion=73`;
-  const readRes = await fetch(readUrl, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
-  });
-
-  if (!readRes.ok) {
-    const text = await readRes.text();
-    return { cleared: false, warning: `QB read failed (${readRes.status}): ${text.slice(0, 200)}` };
-  }
-
-  const readData = await readRes.json();
-  const entity: any = readData[txnType] || readData[Object.keys(readData)[0]];
-  if (!entity) return { cleared: false, warning: 'Transaction not found in QB response' };
-
+function buildKyriqNote(entity: any, entry: any, checkData: CheckData | null): string {
   const today = new Date().toISOString().split('T')[0];
-  const isBillPayCheck = txnType === 'BillPayment' && entity.PayType === 'Check';
-  const isDeposit = txnType === 'Deposit';
-
-  let clearFields: any;
-  if (isBillPayCheck) {
-    clearFields = { CheckPayment: { ...entity.CheckPayment, ClearStatus: 'Cleared' } };
-  } else if (isDeposit) {
-    // Deposit rejects ClearStatus (QB error 2010) but requires DepositToAccountRef in sparse update (QB error 2020)
-    clearFields = { DepositToAccountRef: entity.DepositToAccountRef };
-  } else if (txnType === 'Purchase') {
-    // Purchase requires PaymentType even in sparse mode (QB error 2020).
-    // ClearStatus is NOT supported on Purchase via IDS API (QB error 2010).
-    clearFields = { PaymentType: entity.PaymentType };
-  } else {
-    clearFields = { ClearStatus: 'Cleared' };
-  }
-
-  // Build a structured PrivateNote with all available fields.
-  // Priority: live QB entity > qb_entries cache > OCR extraction (checkData).
-  // safeField ensures we never write [object Object] for partially-extracted OCR values.
   const safeField = (v: any): string | null => {
     if (v == null) return null;
     if (typeof v === 'string') return v.trim() || null;
@@ -192,7 +148,6 @@ export async function clearQBTransactionServer(
   if (amount != null) noteFields.push(['Amount',  `$${parseFloat(String(amount)).toFixed(2)}`]);
   if (acct)          noteFields.push(['Account',  acct]);
 
-  // OCR-only fields (bank details from scanned cheque)
   const bankName = safeField(checkData?.bank_name);
   const routingNum = safeField(checkData?.routing_number);
   const acctNum = safeField(checkData?.account_number);
@@ -200,9 +155,7 @@ export async function clearQBTransactionServer(
 
   if (bankName)    noteFields.push(['Bank',    bankName]);
   if (routingNum)  noteFields.push(['Routing', routingNum]);
-  if (acctNum) {
-    noteFields.push(['Acct #', acctNum.length > 4 ? `****${acctNum.slice(-4)}` : acctNum]);
-  }
+  if (acctNum)     noteFields.push(['Acct #',  acctNum.length > 4 ? `****${acctNum.slice(-4)}` : acctNum]);
   if (memo)        noteFields.push(['Memo',    memo]);
 
   const kyriqBlock = [
@@ -215,31 +168,198 @@ export async function clearQBTransactionServer(
     .replace(/\[Kyriq\][\s\S]*$/, '')
     .trim();
 
-  const updatePayload: any = {
-    Id: entity.Id,
-    SyncToken: entity.SyncToken,
-    sparse: true,
-    PrivateNote: existingNote ? `${existingNote}\n---\n${kyriqBlock}` : kyriqBlock,
-    ...clearFields,
-  };
+  return existingNote ? `${existingNote}\n---\n${kyriqBlock}` : kyriqBlock;
+}
 
-  const writeUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}?minorversion=73`;
-  const writeRes = await fetch(writeUrl, {
+function isAlreadyCleared(entity: any): string | null {
+  for (const f of CLEARED_FIELD_CANDIDATES) {
+    const v = entity?.[f];
+    if (v === 'Cleared' || v === 'Reconciled') return v;
+  }
+  // BillPayment nests under CheckPayment
+  const cp = entity?.CheckPayment;
+  if (cp) {
+    for (const f of CLEARED_FIELD_CANDIDATES) {
+      const v = cp[f];
+      if (v === 'Cleared' || v === 'Reconciled') return v;
+    }
+  }
+  return null;
+}
+
+async function postSparseUpdate(params: {
+  base: string;
+  realmId: string;
+  txnType: string;
+  accessToken: string;
+  payload: any;
+}): Promise<{ ok: boolean; status: number; body: string; parsed?: any }> {
+  const { base, realmId, txnType, accessToken, payload } = params;
+  const url = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}?minorversion=73`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(updatePayload),
+    body: JSON.stringify(payload),
   });
+  const body = await res.text();
+  let parsed: any;
+  try { parsed = JSON.parse(body); } catch {}
+  const fault = parsed?.Fault || parsed?.fault;
+  return { ok: res.ok && !fault, status: res.status, body, parsed };
+}
 
-  if (!writeRes.ok) {
-    const text = await writeRes.text();
-    return { cleared: false, warning: `QB clear failed (${writeRes.status}): ${text.slice(0, 200)}` };
+function isPropertyFault(parsed: any): boolean {
+  const msg = parsed?.Fault?.Error?.[0]?.Message || '';
+  const detail = parsed?.Fault?.Error?.[0]?.Detail || '';
+  const code = String(parsed?.Fault?.Error?.[0]?.code || '');
+  return code === '2010' || /unsupported|invalid/i.test(msg) || /property/i.test(detail);
+}
+
+export async function clearQBTransactionServer(
+  supabase: any,
+  qbEntryId: string,
+  checkData: CheckData | null = null
+): Promise<QBClearResult> {
+  const { data: entry } = await supabase
+    .from('qb_entries')
+    .select('intuit_id, qb_type, raw_data, check_number, date, amount, payee, account')
+    .eq('id', qbEntryId)
+    .maybeSingle();
+
+  if (!entry?.intuit_id || !entry?.qb_type) {
+    return { cleared: false, status: 'skipped', warning: 'QB entry not found or missing identifiers' };
   }
 
-  return { cleared: true };
+  if (entry.qb_type === 'FileImport') {
+    return { cleared: false, status: 'skipped', warning: 'File import entry — approval saved in Kyriq. No QB Online record to update.' };
+  }
+
+  const tokens = await getTokens(supabase);
+  if (!tokens) return { cleared: false, status: 'skipped', warning: 'QuickBooks not connected' };
+
+  let accessToken = tokens.access_token;
+  const isExpired = tokens.expires_at && new Date(tokens.expires_at) <= new Date(Date.now() + 60_000);
+  if (isExpired) {
+    const refreshed = await refreshAccessToken(supabase, tokens);
+    if (refreshed) accessToken = refreshed;
+  }
+
+  const useSandbox = process.env.QB_SANDBOX === 'true';
+  const base = useSandbox ? QBO_SANDBOX : QBO_BASE;
+  const txnType = entry.qb_type;
+  const txnId = entry.intuit_id;
+  const realmId = tokens.realm_id;
+
+  const readUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}/${txnId}?minorversion=73`;
+  const readRes = await fetch(readUrl, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+  });
+
+  if (!readRes.ok) {
+    const text = await readRes.text();
+    return { cleared: false, status: 'failed', warning: `QB read failed (${readRes.status}): ${text.slice(0, 200)}` };
+  }
+
+  const readData = await readRes.json();
+  const entity: any = readData[txnType] || readData[Object.keys(readData)[0]];
+  if (!entity) return { cleared: false, status: 'failed', warning: 'Transaction not found in QB response' };
+
+  // Short-circuit if QB already has it Cleared/Reconciled.
+  const already = isAlreadyCleared(entity);
+  if (already) {
+    // Still stamp the Kyriq note so the audit trail exists.
+    const privateNote = buildKyriqNote(entity, entry, checkData);
+    await postSparseUpdate({
+      base, realmId, txnType, accessToken,
+      payload: { Id: entity.Id, SyncToken: entity.SyncToken, sparse: true, PrivateNote: privateNote },
+    });
+    return { cleared: true, status: 'already_cleared', warning: `Already ${already} in QuickBooks` };
+  }
+
+  const privateNote = buildKyriqNote(entity, entry, checkData);
+  const basePayload: any = {
+    Id: entity.Id,
+    SyncToken: entity.SyncToken,
+    sparse: true,
+    PrivateNote: privateNote,
+  };
+
+  // ── Per-entity dispatcher ──────────────────────────────────────────────
+  // BillPayment: QB IDS API does NOT allow setting the cleared flag.
+  // Honest status rather than a silent no-op false positive.
+  if (txnType === 'BillPayment') {
+    // Still stamp the PrivateNote so Kyriq has an audit trail.
+    const bpPayload = {
+      ...basePayload,
+      // BillPayment sparse updates require these for validation in some cases.
+      VendorRef: entity.VendorRef,
+      PayType: entity.PayType,
+    };
+    await postSparseUpdate({ base, realmId, txnType, accessToken, payload: bpPayload });
+    return {
+      cleared: false,
+      status: 'manual_required',
+      warning: 'Bill Payment cleared-status cannot be set via the QuickBooks API. Mark it Cleared manually in QB reconciliation.',
+    };
+  }
+
+  // Deposit requires DepositToAccountRef on every sparse update; cleared flag historically rejected.
+  if (txnType === 'Deposit') {
+    const depPayload = {
+      ...basePayload,
+      DepositToAccountRef: entity.DepositToAccountRef,
+    };
+    // Try with cleared flag candidates first; if all fail, stamp note only.
+    for (const field of CLEARED_FIELD_CANDIDATES) {
+      const r = await postSparseUpdate({
+        base, realmId, txnType, accessToken,
+        payload: { ...depPayload, [field]: 'Cleared' },
+      });
+      if (r.ok) return { cleared: true, status: 'cleared', attemptedField: field };
+      if (!isPropertyFault(r.parsed)) {
+        return { cleared: false, status: 'failed', warning: `QB clear failed (${r.status}): ${r.body.slice(0, 200)}`, qbFault: r.parsed?.Fault };
+      }
+    }
+    // All candidates rejected → stamp note only.
+    const r = await postSparseUpdate({ base, realmId, txnType, accessToken, payload: depPayload });
+    if (!r.ok) return { cleared: false, status: 'failed', warning: `QB note stamp failed (${r.status}): ${r.body.slice(0, 200)}`, qbFault: r.parsed?.Fault };
+    return { cleared: false, status: 'note_only', warning: 'Deposit cleared flag not settable via API — Kyriq note stamped only.' };
+  }
+
+  // Purchase, Check, Payment, SalesReceipt, JournalEntry → try property-name candidates.
+  // Purchase also requires PaymentType in sparse updates.
+  const extra: any = {};
+  if (txnType === 'Purchase') extra.PaymentType = entity.PaymentType;
+  if (txnType === 'Payment')  extra.CustomerRef = entity.CustomerRef;
+
+  let lastFault: any;
+  for (const field of CLEARED_FIELD_CANDIDATES) {
+    const r = await postSparseUpdate({
+      base, realmId, txnType, accessToken,
+      payload: { ...basePayload, ...extra, [field]: 'Cleared' },
+    });
+    if (r.ok) return { cleared: true, status: 'cleared', attemptedField: field };
+    lastFault = r.parsed?.Fault;
+    if (!isPropertyFault(r.parsed)) {
+      return { cleared: false, status: 'failed', warning: `QB clear failed (${r.status}): ${r.body.slice(0, 200)}`, qbFault: lastFault };
+    }
+  }
+
+  // All property-name candidates rejected → stamp PrivateNote only, return note_only.
+  const r = await postSparseUpdate({ base, realmId, txnType, accessToken, payload: { ...basePayload, ...extra } });
+  if (!r.ok) {
+    return { cleared: false, status: 'failed', warning: `QB note stamp failed (${r.status}): ${r.body.slice(0, 200)}`, qbFault: r.parsed?.Fault };
+  }
+  return {
+    cleared: false,
+    status: 'note_only',
+    warning: `QB rejected all cleared-flag property names (${CLEARED_FIELD_CANDIDATES.join(', ')}) for ${txnType}. Kyriq note stamped only.`,
+    qbFault: lastFault,
+  };
 }
 
 /**

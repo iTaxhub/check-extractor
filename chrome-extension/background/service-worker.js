@@ -380,64 +380,144 @@ function buildKyriqNote(entity, checkData, qbTxn) {
 }
 
 // ── QB Clear Transaction (mark as Cleared for reconciliation) ──
+//
+// Property name for the cleared flag varies across QB entities / minor versions.
+// Try the documented name first, fall back to the historical names on fault 2010.
+const QB_CLEAR_FIELDS = ['TxnStatus', 'ClearedStatus', 'ClearStatus'];
+
+function qbIsPropertyFault(err) {
+  const code = String(err?.qbFault?.Fault?.Error?.[0]?.code || '');
+  const msg  = err?.qbFault?.Fault?.Error?.[0]?.Message || '';
+  const det  = err?.qbFault?.Fault?.Error?.[0]?.Detail  || '';
+  return code === '2010' || /unsupported|invalid/i.test(msg) || /property/i.test(det);
+}
+
+function qbAlreadyCleared(entity) {
+  for (const f of QB_CLEAR_FIELDS) {
+    const v = entity?.[f];
+    if (v === 'Cleared' || v === 'Reconciled') return v;
+  }
+  const cp = entity?.CheckPayment;
+  if (cp) {
+    for (const f of QB_CLEAR_FIELDS) {
+      const v = cp[f];
+      if (v === 'Cleared' || v === 'Reconciled') return v;
+    }
+  }
+  return null;
+}
+
+async function tryPostSparse(txnType, payload) {
+  try {
+    const r = await qbApiRequest(`${txnType.toLowerCase()}?minorversion=73`, 'POST', payload);
+    return { ok: true, result: r };
+  } catch (err) {
+    return { ok: false, err };
+  }
+}
+
+/**
+ * Mark a QB transaction as Cleared. Returns:
+ *   { status: 'cleared'|'already_cleared'|'manual_required'|'note_only'|'failed',
+ *     attemptedField, confirmedNote, noteStamped, result }
+ *
+ * Throws only for hard network/auth errors; soft QB property faults resolve to
+ * note_only / manual_required so the caller can render an accurate toast.
+ */
 async function clearQBTransaction(txnType, txnId, checkData = null, qbTxn = null) {
-  // Read current transaction
   const readData = await qbApiRequest(`${txnType.toLowerCase()}/${txnId}?minorversion=73`);
   const entity = readData[txnType] || readData[Object.keys(readData)[0]];
   if (!entity) throw new Error('Transaction not found in QB');
 
-  // QuickBooks reconciliation clear via SPARSE update:
-  // - sparse:true tells QB to only update the fields we include; all others are left unchanged.
-  //   This avoids every "Operation fileimport is not supported" (error 6070) trigger:
-  //     AttachableRef      → file-attachment import reference
-  //     RecurDataRef       → recurring template reference
-  //     Line[].LinkedTxn   → linked-transaction reference (present in BillPayment)
-  // - ClearStatus placement differs by txn type:
-  //     BillPayment (PayType=Check) → nested under CheckPayment.ClearStatus
-  //     Deposit                     → ClearStatus not supported (QB error 2010) — PrivateNote stamp only
-  //     Purchase                    → ClearStatus not supported (QB error 2010) — PrivateNote stamp only
-  //     Check / Payment / other     → top-level ClearStatus: 'Cleared'
-  const clearDate = new Date().toISOString().split('T')[0];
-  const isBillPayCheck = txnType === 'BillPayment' && entity.PayType === 'Check';
-  const isDeposit = txnType === 'Deposit';
-  const isPurchase = txnType === 'Purchase';
-
-  let clearFields;
-  if (isBillPayCheck) {
-    clearFields = { CheckPayment: { ...entity.CheckPayment, ClearStatus: 'Cleared' } };
-  } else if (isDeposit) {
-    // Deposit rejects ClearStatus (QB error 2010) but requires DepositToAccountRef even in sparse mode (QB error 2020)
-    clearFields = { DepositToAccountRef: entity.DepositToAccountRef };
-  } else if (isPurchase) {
-    // Purchase requires PaymentType even in sparse mode (QB error 2020).
-    // ClearStatus is NOT supported on Purchase via IDS API (QB error 2010) —
-    // use the reconciliation page automation in qbo-overlay.js instead.
-    clearFields = { PaymentType: entity.PaymentType };
-  } else {
-    // Check, Payment, SalesReceipt, etc. — top-level ClearStatus is supported
-    clearFields = { ClearStatus: 'Cleared' };
-  }
-
-  const updatePayload = {
+  const privateNote = buildKyriqNote(entity, checkData, qbTxn);
+  const basePayload = {
     Id: entity.Id,
     SyncToken: entity.SyncToken,
     sparse: true,
-    PrivateNote: buildKyriqNote(entity, checkData, qbTxn),
-    ...clearFields,
+    PrivateNote: privateNote,
   };
 
-  const result = await qbApiRequest(
-    `${txnType.toLowerCase()}?minorversion=73`,
-    'POST',
-    updatePayload
-  );
+  const already = qbAlreadyCleared(entity);
+  if (already) {
+    const r = await tryPostSparse(txnType, basePayload);
+    const updated = r.ok ? (r.result[txnType] || r.result[Object.keys(r.result)[0]] || {}) : {};
+    return {
+      status: 'already_cleared',
+      attemptedField: null,
+      result: r.result,
+      confirmedNote: updated.PrivateNote || null,
+      noteStamped: (updated.PrivateNote || '').includes('[Kyriq]'),
+    };
+  }
 
-  // QB returns the full updated entity — read back PrivateNote to confirm the stamp was written.
-  const updatedEntity = result[txnType] || result[Object.keys(result)[0]] || {};
-  const confirmedNote = updatedEntity.PrivateNote || null;
-  const noteStamped   = confirmedNote ? confirmedNote.includes('[Kyriq]') : false;
+  // BillPayment — QB IDS API does not support setting cleared via any known field.
+  // Stamp the note and return manual_required so the UI toast is truthful.
+  if (txnType === 'BillPayment') {
+    const bpPayload = {
+      ...basePayload,
+      VendorRef: entity.VendorRef,
+      PayType:   entity.PayType,
+    };
+    const r = await tryPostSparse(txnType, bpPayload);
+    const updated = r.ok ? (r.result[txnType] || r.result[Object.keys(r.result)[0]] || {}) : {};
+    return {
+      status: 'manual_required',
+      attemptedField: null,
+      result: r.result,
+      confirmedNote: updated.PrivateNote || null,
+      noteStamped: (updated.PrivateNote || '').includes('[Kyriq]'),
+    };
+  }
 
-  return { result, confirmedNote, noteStamped };
+  // Required extras per entity (QB rejects sparse updates without these on some types).
+  const extra = {};
+  if (txnType === 'Purchase') extra.PaymentType        = entity.PaymentType;
+  if (txnType === 'Payment')  extra.CustomerRef        = entity.CustomerRef;
+  if (txnType === 'Deposit')  extra.DepositToAccountRef = entity.DepositToAccountRef;
+
+  let lastErr = null;
+  for (const field of QB_CLEAR_FIELDS) {
+    const payload = { ...basePayload, ...extra, [field]: 'Cleared' };
+    const r = await tryPostSparse(txnType, payload);
+    if (r.ok) {
+      const updated = r.result[txnType] || r.result[Object.keys(r.result)[0]] || {};
+      return {
+        status: 'cleared',
+        attemptedField: field,
+        result: r.result,
+        confirmedNote: updated.PrivateNote || null,
+        noteStamped: (updated.PrivateNote || '').includes('[Kyriq]'),
+      };
+    }
+    lastErr = r.err;
+    if (!qbIsPropertyFault(r.err)) {
+      // Non-property error (auth, sync token conflict, etc.) — surface it.
+      const e = new Error(r.err.message || 'QB clear failed');
+      e.qbFault  = r.err.qbFault;
+      e.qbStatus = r.err.qbStatus;
+      e.qbRaw    = r.err.qbRaw;
+      throw e;
+    }
+  }
+
+  // All field candidates rejected with property fault 2010 — stamp note only.
+  const r = await tryPostSparse(txnType, { ...basePayload, ...extra });
+  if (!r.ok) {
+    const e = new Error(r.err?.message || 'QB note stamp failed');
+    e.qbFault  = r.err?.qbFault  || lastErr?.qbFault;
+    e.qbStatus = r.err?.qbStatus || lastErr?.qbStatus;
+    e.qbRaw    = r.err?.qbRaw    || lastErr?.qbRaw;
+    throw e;
+  }
+  const updated = r.result[txnType] || r.result[Object.keys(r.result)[0]] || {};
+  return {
+    status: 'note_only',
+    attemptedField: null,
+    result: r.result,
+    confirmedNote: updated.PrivateNote || null,
+    noteStamped: (updated.PrivateNote || '').includes('[Kyriq]'),
+    lastFault: lastErr?.qbFault || null,
+  };
 }
 
 // ── OCR via Gemini API ───────────────────────────────────────
@@ -1171,15 +1251,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'GET_QB_TXNS': {
           log('GET_QB_TXNS');
           const s = await getSession();
-          if (!s) return { txns: [] };
-          // qb_entries is where /api/qbo/pull-checks stores data (the 561 records shown in the web app).
-          // qb_transactions is a separate extension-only store — use qb_entries as primary source.
+          // Return richer status so the sidepanel can distinguish:
+          //   not_authed       → "Sign in to Kyriq to load QB data"
+          //   no_tenant        → "Profile has no tenant — contact admin"
+          //   fetch_failed     → "Could not reach Supabase — try Refresh"
+          //   empty            → "No QB transactions yet — click Sync"
+          //   ok               → render the list
+          if (!s) return { txns: [], status: 'not_authed' };
           const tenantIdQb = await getTenantId(s.user.id).catch(() => null);
-          const tenantFilterQb = tenantIdQb ? `tenant_id=eq.${tenantIdQb}&` : '';
-          const entries = await supabaseRequest(
-            `qb_entries?${tenantFilterQb}select=id,intuit_id,check_number,date,amount,payee,account,memo,qb_source,qb_type&order=date.desc&limit=5000`
-          ).catch(() => []);
-          // Normalise to a common shape used by renderQBList
+          if (!tenantIdQb) {
+            log('GET_QB_TXNS: no tenant_id for user');
+            return { txns: [], status: 'no_tenant' };
+          }
+          let entries;
+          try {
+            entries = await supabaseRequest(
+              `qb_entries?tenant_id=eq.${tenantIdQb}&select=id,intuit_id,check_number,date,amount,payee,account,memo,qb_source,qb_type&order=date.desc&limit=5000`
+            );
+          } catch (fetchErr) {
+            logErr('GET_QB_TXNS: supabase fetch failed', fetchErr);
+            return { txns: [], status: 'fetch_failed', error: fetchErr?.message || 'fetch failed' };
+          }
           const txns = (entries || []).map(e => ({
             id: e.id,
             txn_id: e.id,
@@ -1193,8 +1285,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             doc_number: e.check_number,
             account: e.account,
           }));
-          log('GET_QB_TXNS result', { count: txns.length });
-          return { txns };
+          log('GET_QB_TXNS result', { count: txns.length, tenantId: tenantIdQb });
+          return { txns, status: txns.length ? 'ok' : 'empty', tenantId: tenantIdQb };
         }
         case 'SAVE_QB_TXN': {
           log('SAVE_QB_TXN', { txnId: msg.txnId, txnType: msg.txnType, fields: msg.fields });
@@ -1566,14 +1658,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
           try {
             const clearResult = await clearQBTransaction(txnType, qbIntuitId, msg.check || null, qbTxn);
-            const { confirmedNote, noteStamped } = clearResult;
-            log(`APPROVE_AND_CLEAR: cleared ${txnType} #${qbIntuitId} in QB`, { noteStamped });
+            const { confirmedNote, noteStamped, status: qbStatus, attemptedField } = clearResult;
+            const didClear = qbStatus === 'cleared' || qbStatus === 'already_cleared';
+            log(`APPROVE_AND_CLEAR: ${qbStatus} ${txnType} #${qbIntuitId} in QB`, { noteStamped, attemptedField });
             // #region agent log
             debugAgentLog({
               hypothesisId: 'H4',
               location: 'service-worker.js:APPROVE_AND_CLEAR',
-              message: 'qb clear ok',
-              data: { txnType, intuitIdLen: String(qbIntuitId).length },
+              message: `qb clear ${qbStatus}`,
+              data: { txnType, intuitIdLen: String(qbIntuitId).length, attemptedField },
             });
             // #endregion
             // Log QB clear action to audit_logs (general-purpose table, confirmed in live schema)
@@ -1588,7 +1681,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     method: 'POST',
                     body: JSON.stringify({
                       tenant_id: tid3,
-                      action: 'qb_cleared',
+                      action: `qb_${qbStatus}`,
                       entity_type: 'qb_transaction',
                       // check_id is UUID column — put text check_id in metadata instead
                       metadata: {
@@ -1596,6 +1689,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                         intuit_id: qbIntuitId,
                         check_id: msg.checkId || null,
                         check_number: qbTxn.doc_number || null,
+                        qb_status: qbStatus,
+                        attempted_field: attemptedField || null,
                         cleared_at: new Date().toISOString(),
                       },
                     }),
@@ -1609,14 +1704,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             await saveCheckApproval(msg.checkId, msg.jobId);
             const { realmId: rId } = await getValidQBToken().catch(() => ({}));
             const qbUrl = rId ? qbTxnUrl(rId, txnType, qbIntuitId) : null;
-            chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: true }).catch(() => {});
+            chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: didClear, qbStatus }).catch(() => {});
+            const warning =
+              qbStatus === 'manual_required' ? 'Bill Payment cleared-status cannot be set via API. Mark it Cleared manually in QB reconciliation.' :
+              qbStatus === 'note_only'       ? `QB rejected all cleared-flag property names for ${txnType}. Kyriq note stamped only — mark Cleared manually in QB reconciliation.` :
+              undefined;
             return {
               success: true,
-              cleared: true,
+              cleared: didClear,
+              qbStatus,
+              attemptedField,
               txnType,
               qbUrl,
               confirmedNote,
               noteStamped,
+              warning,
             };
           } catch (e) {
             logErr('APPROVE_AND_CLEAR QB clear failed — approving locally only', e);
@@ -1632,8 +1734,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             // Still store in local map so the reconciliation page can auto-check the row.
             await storeKyriqApproved().catch(() => {});
             await saveCheckApproval(msg.checkId, msg.jobId);
-            chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false }).catch(() => {});
-            return { success: true, cleared: false, warning: `QB not cleared: ${e.message}`, qbRaw: e.qbRaw || null, qbStatus: e.qbStatus || null };
+            chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false, qbStatus: 'failed' }).catch(() => {});
+            return { success: true, cleared: false, qbStatus: 'failed', warning: `QB not cleared: ${e.message}`, qbRaw: e.qbRaw || null, qbHttpStatus: e.qbStatus || null };
           }
         }
         case 'SEARCH_QB': {

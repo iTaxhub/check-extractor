@@ -780,7 +780,7 @@ function showApproveConfirm(idx) {
     ['QB Type', q.txn_type || '—'],
     ['QB Amount', fmt(q.amount)],
     ['QB Account', q.account || '—'],
-    ['Action', 'Set ClearStatus = Cleared in QB'],
+    ['Action', 'Mark as Cleared in QuickBooks (bank reconciliation)'],
   ];
   const detailsEl = $('#approve-confirm-details');
   if (detailsEl) {
@@ -815,13 +815,36 @@ async function approveAndClear(idx) {
         return;
       }
       match.status = 'approved';
-      if (res?.warning) {
-        // Local-only approve — show persistent error dialog so user can read + copy the reason
-        dbg(`Approved locally only: ${res.warning}`, 'warn');
-        showErrorDialog('QB Not Cleared', `Approved in Kyriq — but QB was not updated:\n\n${res.warning}`, res.qbRaw || null);
-      } else {
-        dbg('Approved & cleared in QB', 'success');
-        showQBConfirmation(res);
+      // Truthful toast per qbStatus (cleared | already_cleared | manual_required | note_only | failed)
+      switch (res?.qbStatus) {
+        case 'cleared':
+          dbg(`Approved & marked Cleared in QB${res.attemptedField ? ` (${res.attemptedField})` : ''} ✓`, 'success');
+          showQBConfirmation(res);
+          break;
+        case 'already_cleared':
+          dbg('Approved — already Cleared in QB ✓', 'success');
+          showQBConfirmation(res);
+          break;
+        case 'manual_required':
+          dbg(`Approved — ${res.warning || 'mark manually in QB reconciliation'}`, 'warn');
+          showErrorDialog('Mark Cleared Manually in QB', res.warning || 'Bill Payment cleared-status cannot be set via the QuickBooks API. Open QB Reconciliation and tick the Cleared box for this transaction.', null);
+          break;
+        case 'note_only':
+          dbg(`Approved — note stamped, cleared flag not set`, 'warn');
+          showErrorDialog('QB Note Stamped — Mark Cleared Manually', res.warning || 'QB rejected the cleared-flag property. PrivateNote was stamped. Open QB Reconciliation to mark this cleared.', null);
+          break;
+        case 'failed':
+          dbg(`Approved locally only: ${res.warning || 'QB update failed'}`, 'error');
+          showErrorDialog('QB Not Cleared', `Approved in Kyriq — but QB was not updated:\n\n${res.warning || 'unknown error'}`, res.qbRaw || null);
+          break;
+        default:
+          if (res?.warning) {
+            dbg(`Approved: ${res.warning}`, 'warn');
+            showErrorDialog('QB Approval', res.warning, res.qbRaw || null);
+          } else {
+            dbg('Approved in Kyriq', 'success');
+            showQBConfirmation(res);
+          }
       }
     } else {
       // No QB txn — persist status to DB then update UI
@@ -876,17 +899,26 @@ function hideErrorDialog() {
 
 // ── QB confirmation toast — shows what was actually written + View in QB link ──
 function showQBConfirmation(res) {
-  const isPurchase  = res?.txnType === 'Purchase';
   const noteStamped = res?.noteStamped === true;
+  const qbStatus    = res?.qbStatus;
   const AUTO_MS     = 10000;
 
-  const title = isPurchase
-    ? (noteStamped ? 'Approved — PrivateNote stamped in QB' : 'Approved in Kyriq')
-    : (noteStamped ? 'Approved & Cleared in QuickBooks' : 'Approved in Kyriq');
+  // Truthful title/subtext based on real qbStatus, not per-entity guesswork.
+  const title =
+    qbStatus === 'cleared'         ? 'Approved & Cleared in QuickBooks'          :
+    qbStatus === 'already_cleared' ? 'Approved — already Cleared in QuickBooks'  :
+    qbStatus === 'manual_required' ? 'Approved — mark Cleared manually in QB'    :
+    qbStatus === 'note_only'       ? 'Approved — PrivateNote stamped in QB'      :
+    noteStamped                    ? 'Approved — PrivateNote stamped in QB'      :
+                                     'Approved in Kyriq';
 
-  const sub = isPurchase
-    ? 'Open QB Reconcile to tick the Cleared checkbox for this transaction.'
-    : (noteStamped ? 'ClearStatus set to Cleared. Transaction reconciled.' : 'QB was updated successfully.');
+  const sub =
+    qbStatus === 'cleared'         ? `Cleared flag set via ${res?.attemptedField || 'QB API'}.` :
+    qbStatus === 'already_cleared' ? 'QB already had this transaction cleared.' :
+    qbStatus === 'manual_required' ? 'Bill Payment cleared-status cannot be set via QB API — tick it manually in Reconcile.' :
+    qbStatus === 'note_only'       ? 'Open QB Reconcile to tick the Cleared checkbox for this transaction.' :
+    noteStamped                    ? 'QB was updated successfully.' :
+                                     '';
 
   // Remove any existing toast
   document.getElementById('kyriq-qb-toast')?.remove();
@@ -1131,7 +1163,7 @@ function fileToBase64(file) {
   });
 }
 
-// ── QB Transactions (from Supabase qb_transactions table) ────────────
+// ── QB Transactions (from Supabase qb_entries table) ────────────
 async function loadQBTransactions(force = false) {
   dbg('loadQBTransactions' + (force ? ' (force)' : ''));
   if (_cachedQB !== null && !force) { renderQBList(_cachedQB); return; }
@@ -1139,14 +1171,37 @@ async function loadQBTransactions(force = false) {
   if (list) list.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
   const res = await sendMsg({ type: 'GET_QB_TXNS' });
   const txns = res?.txns || [];
-  dbg(`QB Transactions: ${txns.length}`);
-  _cachedQB = txns;
-  renderQBList(txns);
+  const status = res?.status || 'ok';
+  dbg(`QB Transactions: ${txns.length} (${status})`);
+
+  // Do NOT cache when the fetch couldn't run (auth / tenant / network failure).
+  // Otherwise the list stays empty forever after a transient failure.
+  if (status === 'ok' || status === 'empty') {
+    _cachedQB = txns;
+  } else {
+    _cachedQB = null;
+  }
+  renderQBList(txns, status);
 }
 
-function renderQBList(txns) {
+function renderQBList(txns, status = 'ok') {
   const list = $('#qb-list');
   if (!list) return;
+
+  // Truthful empty-state messages per status — no more "No QB transactions yet"
+  // when the real reason is "not signed in" or "no tenant".
+  if (!txns.length && status !== 'ok' && status !== 'empty') {
+    const MAP = {
+      not_authed:   { icon: '🔒', msg: 'Sign in to Kyriq to load QB data',      sub: 'Open the Kyriq web app and sign in, then reopen this panel.' },
+      no_tenant:    { icon: '👤', msg: 'Your profile has no tenant_id',          sub: 'Contact your Kyriq admin to link you to a workspace.' },
+      fetch_failed: { icon: '⚠️', msg: 'Could not reach Kyriq database',         sub: 'Check your connection and click Refresh.' },
+    };
+    const m = MAP[status] || { icon: '🏦', msg: 'No QB transactions yet', sub: 'Click Sync to pull transactions from QuickBooks' };
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">${m.icon}</div><p>${m.msg}</p><p class="sub">${m.sub}</p></div>`;
+    const badge = $('#qb-count-badge');
+    if (badge) { badge.textContent = '0'; badge.style.background = 'var(--amber)'; }
+    return;
+  }
 
   // Apply account filter
   let filtered = _accountFilter ? txns.filter(t => (t.account || '') === _accountFilter) : txns;
