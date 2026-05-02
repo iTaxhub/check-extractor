@@ -283,6 +283,43 @@
   font-family: var(--k-font) !important;
 }
 
+/* ── Reconcile ending balance input ─────────────────────────────── */
+
+.kyriq-recon-balance-input {
+  width: 90px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 999px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-family: var(--k-font);
+  outline: none;
+  text-align: right;
+}
+.kyriq-recon-balance-input:focus {
+  border-color: var(--k-green);
+}
+.kyriq-recon-balance-input::placeholder {
+  color: #475569;
+}
+
+/* ── Reconcile difference display ────────────────────────────────── */
+
+.kyriq-recon-diff {
+  font-size: 10px;
+  font-weight: 700;
+  color: #f59e0b;
+  padding: 2px 6px;
+  background: rgba(245,158,11,0.15);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.kyriq-recon-diff.kyriq-recon-balanced {
+  color: #34d399;
+  background: rgba(52,211,153,0.15);
+}
+
 /* ── Row highlights (reconcile preview) ────────────────────────── */
 
 [data-kyriq-highlighted] {

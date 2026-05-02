@@ -123,14 +123,33 @@ function fmtSize(bytes) {
 function fmtTs() {
   return new Date().toISOString().slice(11, 19);
 }
-function sendMsg(msg) {
+function sendMsg(msg, timeoutMs = 10000) {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(msg, (res) => {
-      if (chrome.runtime.lastError) {
-        dbg(`SW error [${msg.type}]: ${chrome.runtime.lastError.message}`, 'error');
-      }
-      resolve(res);
-    });
+    let settled = false;
+    const settle = (val) => {
+      if (settled) return;
+      settled = true;
+      resolve(val ?? null);
+    };
+    const timer = setTimeout(() => {
+      dbg(`SW timeout [${msg?.type}] after ${timeoutMs}ms`, 'error');
+      settle(null);
+    }, timeoutMs);
+    try {
+      chrome.runtime.sendMessage(msg, (res) => {
+        clearTimeout(timer);
+        if (chrome.runtime.lastError) {
+          dbg(`SW error [${msg?.type}]: ${chrome.runtime.lastError.message}`, 'error');
+          settle(null);
+          return;
+        }
+        settle(res);
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      dbg(`SW sendMessage threw [${msg?.type}]: ${e?.message}`, 'error');
+      settle(null);
+    }
   });
 }
 function scoreClass(s) {
@@ -384,7 +403,12 @@ function openSidepanelPort() {
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   dbg('Kyriq side panel init');
-  const res = await sendMsg({ type: 'GET_SESSION' });
+  let res = null;
+  // Retry session fetch — SW may still be warming up
+  for (let t = 0; t < 3 && !res; t++) {
+    res = await sendMsg({ type: 'GET_SESSION' });
+    if (!res && t < 2) await new Promise(r => setTimeout(r, 500 * (t + 1)));
+  }
   session = res?.session;
   dbg(`Session: ${session ? session.user?.email : 'none'}`);
   if (session) {
@@ -591,10 +615,20 @@ async function loadChecksIntoMatches() {
         const sel = $('#account-select');
         if (sel) {
           const prev = sel.value;
+          // Preserve any QB Account.Id values already loaded by populateAccountSelect()
+          // so toast CTAs can build a real /reconcileAccount URL even after a re-match.
+          const savedIds = {};
+          [...sel.options].forEach(o => {
+            if (o.dataset.accountName && o.dataset.accountId)
+              savedIds[o.dataset.accountName] = o.dataset.accountId;
+          });
           while (sel.options.length > 1) sel.remove(1);
           matchAccounts.forEach(a => {
             const opt = document.createElement('option');
-            opt.value = a;
+            const knownId = savedIds[a] || '';
+            opt.value = a;                  // always name — keeps _accountFilter working
+            opt.dataset.accountId = knownId;
+            opt.dataset.accountName = a;
             opt.textContent = a.slice(0, 28);
             sel.appendChild(opt);
           });
@@ -657,17 +691,30 @@ async function populateAccountSelect() {
   const sel = $('#account-select');
   if (!sel) return;
   const res = await sendMsg({ type: 'GET_QB_ACCOUNTS' });
-  const accounts = res?.accounts || [];
+  const accounts = res?.accounts || []; // [{id, name}]
   const prev = sel.value;
   while (sel.options.length > 1) sel.remove(1);
   accounts.forEach(a => {
     const opt = document.createElement('option');
-    opt.value = a;
-    opt.textContent = a.slice(0, 28);
+    // value = account NAME so _accountFilter === m.qbTxn.account comparisons keep working.
+    // QB Account.Id lives in dataset.accountId for URL building only.
+    opt.value = a.name;
+    opt.dataset.accountId = a.id || '';
+    opt.dataset.accountName = a.name;
+    opt.textContent = (a.name || '').slice(0, 28);
     sel.appendChild(opt);
   });
   sel.value = prev || '';
   dbg(`Account select: ${accounts.length} accounts loaded`);
+}
+
+function getSelectedQbAccount() {
+  const sel = document.getElementById('account-select');
+  const opt = sel?.selectedOptions?.[0];
+  return {
+    id: opt?.dataset?.accountId || null,
+    name: opt?.dataset?.accountName || sel?.value || '',
+  };
 }
 
 function renderMatches() {
@@ -896,7 +943,13 @@ async function approveAndClear(idx) {
     const jobId   = match.check?.job_id;
     if (match.qbTxn) {
       const res = await sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: match.qbTxn, check: match.check || null, checkId, jobId });
-      if (res?.error) {
+      if (!res) {
+        dbg('Approve failed: no response from service worker (timeout or crash)', 'error');
+        showErrorDialog('QB Approve Failed', 'The extension service worker did not respond. Try reloading the extension.', null);
+        hideLoading();
+        return;
+      }
+      if (res.error) {
         dbg(`Approve failed: ${res.error}`, 'error');
         showErrorDialog('QB Approve Failed', res.error, res.qbRaw || null);
         hideLoading();
@@ -1019,8 +1072,12 @@ function showQBConfirmation(res) {
   const showReconcileCta =
     qbStatus === 'queued_for_reconcile' || qbStatus === 'manual_required';
 
-  // Remove any existing toast
-  document.getElementById('kyriq-qb-toast')?.remove();
+  // Remove any existing toast and cancel its auto-dismiss timer
+  const _oldToast = document.getElementById('kyriq-qb-toast');
+  if (_oldToast) {
+    if (_oldToast._dismissTimer) clearTimeout(_oldToast._dismissTimer);
+    _oldToast.remove();
+  }
 
   const toast = document.createElement('div');
   toast.id = 'kyriq-qb-toast';
@@ -1032,6 +1089,7 @@ function showQBConfirmation(res) {
       <div class="kyriq-toast-sub">${escHtml(sub)}</div>
       <div class="kyriq-toast-actions">
         ${showReconcileCta ? `<button class="kyriq-toast-btn kyriq-toast-btn-primary" data-act="open-reconcile">Open QB Reconcile →</button>` : ''}
+        ${showReconcileCta ? `<button class="kyriq-toast-btn" data-act="open-register">Open QB Register →</button>` : ''}
         ${res?.qbUrl ? `<a class="kyriq-toast-link" href="${escHtml(res.qbUrl)}" target="_blank">View in QB →</a>` : ''}
       </div>
     </div>
@@ -1040,22 +1098,42 @@ function showQBConfirmation(res) {
   `;
 
   function dismiss() {
+    if (!toast.isConnected) return; // already removed
+    clearTimeout(toast._dismissTimer);
     toast.classList.add('kyriq-toast-out');
     toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    setTimeout(() => { if (toast.isConnected) toast.remove(); }, 600); // fallback if no animation
   }
 
   const closeBtn = toast.querySelector('.kyriq-toast-close');
-  const timer = setTimeout(dismiss, AUTO_MS);
-  closeBtn.addEventListener('click', () => { clearTimeout(timer); dismiss(); });
+  toast._dismissTimer = setTimeout(dismiss, AUTO_MS);
+  closeBtn?.addEventListener('click', () => { clearTimeout(toast._dismissTimer); dismiss(); });
+
+  const acct = getSelectedQbAccount();
 
   const reconBtn = toast.querySelector('[data-act="open-reconcile"]');
   if (reconBtn) {
     reconBtn.addEventListener('click', async () => {
-      clearTimeout(timer);
+      clearTimeout(toast._dismissTimer);
       try {
-        await sendMsg({ type: 'OPEN_QB_RECONCILE' });
+        const r = await sendMsg({ type: 'OPEN_QB_RECONCILE', accountId: acct?.id || null });
+        if (!r?.success) dbg(`OPEN_QB_RECONCILE returned ${JSON.stringify(r)}`, 'warn');
       } catch (e) {
         dbg(`OPEN_QB_RECONCILE failed: ${e?.message || e}`, 'warn');
+      }
+      dismiss();
+    });
+  }
+
+  const regBtn = toast.querySelector('[data-act="open-register"]');
+  if (regBtn) {
+    regBtn.addEventListener('click', async () => {
+      clearTimeout(toast._dismissTimer);
+      try {
+        const r = await sendMsg({ type: 'OPEN_QB_REGISTER', accountId: acct?.id || null });
+        if (!r?.success) dbg(`OPEN_QB_REGISTER returned ${JSON.stringify(r)}`, 'warn');
+      } catch (e) {
+        dbg(`OPEN_QB_REGISTER failed: ${e?.message || e}`, 'warn');
       }
       dismiss();
     });
@@ -1200,7 +1278,13 @@ async function runExtraction() {
       $('#progress-summary').textContent = 'Timed out';
       return;
     }
-    const pollRes = await sendMsg({ type: 'POLL_JOB', jobId: currentJobId });
+    let pollRes;
+    try {
+      pollRes = await sendMsg({ type: 'POLL_JOB', jobId: currentJobId });
+    } catch (pollErr) {
+      dbg(`Poll error: ${pollErr?.message}`, 'error');
+      return; // skip this tick, retry next
+    }
     const job = pollRes?.job;
     if (!job) return;
 
@@ -1219,10 +1303,17 @@ async function runExtraction() {
       }
 
       // Parse checks — backend returns `checks` (array), legacy used `checks_data` (JSON string)
-      const checksData = job.checks
-        || (typeof job.checks_data === 'string'
-          ? JSON.parse(job.checks_data || '[]')
-          : (job.checks_data || []));
+      let checksData = job.checks || [];
+      if (!checksData.length && job.checks_data) {
+        try {
+          checksData = typeof job.checks_data === 'string'
+            ? JSON.parse(job.checks_data)
+            : job.checks_data;
+        } catch (parseErr) {
+          dbg(`checks_data JSON parse failed: ${parseErr?.message}`, 'error');
+          checksData = [];
+        }
+      }
 
       extractedChecks = checksData.map(c => {
         const ext = c.extraction || {};

@@ -8,6 +8,8 @@ const CONFIG_CACHE_TTL = 3600000; // 1 hour in ms
 // In-memory checks cache — avoids round-tripping 1000+ check objects through sendMessage
 let _swChecksCache = null;
 
+let _tenantIdCache = null; // { userId, tenantId, cachedAt }
+
 /**
  * Safely extract a string from an OCR extraction field.
  * Fields can be a plain string, a number, or an object like { value: "...", confidence: 0.9 }.
@@ -129,13 +131,28 @@ async function getConfig() {
   }
 }
 
+// Single-flight lock for token refreshes — 31 concurrent callers share one POST.
+let _refreshInFlight = null;
+
+function isTerminalAuthError(e) {
+  if (e?.status === 400 || e?.status === 401) return true;
+  const msg = String(e?.message || '').toLowerCase();
+  return msg.includes('invalid refresh token')
+      || msg.includes('refresh token not found')
+      || msg.includes('refresh_token_not_found');
+}
+
 async function getSession() {
   const { session } = await chrome.storage.local.get('session');
   if (!session) return null;
-  // Auto-refresh if access_token expires within 5 minutes
+
   const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
-  if (expiresAt && Date.now() > expiresAt - 5 * 60 * 1000) {
-    if (session.refresh_token) {
+  const expiringSoon = expiresAt && Date.now() > expiresAt - 5 * 60 * 1000;
+  if (!expiringSoon || !session.refresh_token) return session;
+
+  // Coalesce concurrent refresh attempts — one POST regardless of how many callers.
+  if (!_refreshInFlight) {
+    _refreshInFlight = (async () => {
       try {
         log('getSession: access_token expiring, refreshing…');
         const refreshed = await supabaseAuth('token?grant_type=refresh_token', {
@@ -146,10 +163,22 @@ async function getSession() {
         return refreshed;
       } catch (e) {
         logErr('getSession: token refresh failed', e);
+        if (isTerminalAuthError(e)) {
+          // Supabase has no record of this refresh token (revoked / rotated).
+          // Clear the dead session so subsequent getSession() calls return null
+          // immediately instead of hammering the auth endpoint, and broadcast
+          // SESSION_CHANGED so the sidepanel returns to its login screen.
+          await clearSessionAndNotify();
+          return null;
+        }
+        // Transient error (network outage, 5xx) — keep stale session; caller handles it.
+        return session;
+      } finally {
+        _refreshInFlight = null;
       }
-    }
+    })();
   }
-  return session;
+  return _refreshInFlight;
 }
 
 // Track the last broadcast signed-in state so token-refresh writes don't
@@ -271,7 +300,10 @@ async function supabaseAuth(endpoint, body) {
   const data = await res.json();
   if (!res.ok) {
     logErr(`supabaseAuth failed (${endpoint})`, data.error_description || data.msg);
-    throw new Error(data.error_description || data.msg || 'Auth failed');
+    const err = new Error(data.error_description || data.msg || 'Auth failed');
+    err.status = res.status;
+    err.code   = data.error_code || data.code || null;
+    throw err;
   }
   log(`supabaseAuth success (${endpoint})`);
   return data;
@@ -279,13 +311,31 @@ async function supabaseAuth(endpoint, body) {
 
 // ── Tenant lookup (handles both 'user_profiles' and 'profiles' table names) ──
 async function getTenantId(userId) {
+  // Return cached value if fresh (5 min) and same user
+  if (_tenantIdCache?.userId === userId && Date.now() - _tenantIdCache.cachedAt < 300_000) {
+    return _tenantIdCache.tenantId;
+  }
+  // DB is authoritative — JWT claims are sometimes stale or wrong, so check DB first.
   let rows = await supabaseRequest(`user_profiles?id=eq.${userId}&select=tenant_id`).catch(() => []);
   if (!rows?.length) {
     log('getTenantId: user_profiles empty, trying profiles table');
     rows = await supabaseRequest(`profiles?id=eq.${userId}&select=tenant_id`).catch(() => []);
   }
-  if (!rows?.length) throw new Error('No user profile found — ensure user_profiles or profiles table exists');
-  return rows[0].tenant_id;
+  if (rows?.length) {
+    const tenantId = rows[0].tenant_id;
+    _tenantIdCache = { userId, tenantId, cachedAt: Date.now() };
+    return tenantId;
+  }
+  // Last resort: JWT claims, only if BOTH DB tables came back empty (RLS / missing row).
+  const session = await getSession().catch(() => null);
+  const claimsTid = session?.user?.app_metadata?.tenant_id
+                 || session?.user?.user_metadata?.tenant_id;
+  if (claimsTid) {
+    log('getTenantId: DB empty, using tenant_id from JWT claims');
+    _tenantIdCache = { userId, tenantId: claimsTid, cachedAt: Date.now() };
+    return claimsTid;
+  }
+  throw new Error('No user profile found — ensure user_profiles or profiles table exists');
 }
 
 // ── QB API helpers ───────────────────────────────────────────
@@ -344,23 +394,28 @@ async function getValidQBToken() {
   }
   const newTokens = await res.json();
 
-  // Save refreshed tokens back to qb_connections
-  await supabaseRequest(
-    `qb_connections?id=eq.${conn.id}`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify({
-        access_token: newTokens.accessToken,
-        refresh_token: newTokens.refreshToken,
-        token_expires_at: new Date(Date.now() + newTokens.expiresIn * 1000).toISOString(),
-      }),
-    }
-  );
+  // Save refreshed tokens — non-fatal if Supabase is momentarily down
+  try {
+    await supabaseRequest(
+      `qb_connections?id=eq.${conn.id}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          access_token: newTokens.accessToken,
+          refresh_token: newTokens.refreshToken,
+          token_expires_at: new Date(Date.now() + newTokens.expiresIn * 1000).toISOString(),
+        }),
+      }
+    );
+  } catch (saveErr) {
+    log('⚠️ Token save failed — continuing with refreshed token (will retry on next call)', saveErr?.message);
+  }
 
   return { token: newTokens.accessToken, realmId: conn.realm_id, tenantId: conn.tenantId, connId: conn.id };
 }
 
-async function qbApiRequest(endpoint, method = 'GET', body = null) {
+async function qbApiRequest(endpoint, method = 'GET', body = null, _attempt = 0) {
+  const MAX_RETRIES = 2;
   const { token, realmId } = await getValidQBToken();
   const url = `https://quickbooks.api.intuit.com/v3/company/${realmId}/${endpoint}`;
   const opts = {
@@ -371,7 +426,31 @@ async function qbApiRequest(endpoint, method = 'GET', body = null) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
   }
-  const res = await fetch(url, opts);
+
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (netErr) {
+    // Network-level failure (no response). Retry GETs only — POSTs/PATCHes may have reached QB.
+    if (_attempt < MAX_RETRIES && method === 'GET') {
+      await new Promise(r => setTimeout(r, 1000 * (2 ** _attempt)));
+      return qbApiRequest(endpoint, method, body, _attempt + 1);
+    }
+    throw netErr;
+  }
+
+  // 429 Rate-limited — honour Retry-After, then retry regardless of method.
+  if (res.status === 429 && _attempt < MAX_RETRIES) {
+    const wait = parseInt(res.headers.get('Retry-After') || '5', 10) * 1000;
+    await new Promise(r => setTimeout(r, wait));
+    return qbApiRequest(endpoint, method, body, _attempt + 1);
+  }
+  // 5xx server error — retry GETs only.
+  if (res.status >= 500 && _attempt < MAX_RETRIES && method === 'GET') {
+    await new Promise(r => setTimeout(r, 2000 * (2 ** _attempt)));
+    return qbApiRequest(endpoint, method, body, _attempt + 1);
+  }
+
   if (!res.ok) {
     const rawBody = await res.text().catch(() => '');
     let parsed = {};
@@ -1027,6 +1106,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'LOGOUT': {
           log('LOGOUT');
+          _tenantIdCache = null;
           await clearSessionAndNotify();
           return { success: true };
         }
@@ -1153,11 +1233,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
           if (!backendUrl) return { documents: [] };
           try {
-            const res = await fetch(`${backendUrl}/api/jobs?limit=200&source=auto`, {
-              headers: { Authorization: `Bearer ${s.access_token}` },
-            });
-            if (!res.ok) throw new Error(`Backend /api/jobs returned ${res.status}`);
-            const data = await res.json();
+            const ctrl = new AbortController();
+            const timeoutId = setTimeout(() => ctrl.abort(), 60000);
+            let data;
+            try {
+              const res = await fetch(`${backendUrl}/api/jobs?limit=200&source=auto`, {
+                headers: { Authorization: `Bearer ${s.access_token}` },
+                signal: ctrl.signal,
+              });
+              if (!res.ok) throw new Error(`Backend /api/jobs returned ${res.status}`);
+              data = await res.json();
+            } finally {
+              clearTimeout(timeoutId);
+            }
             const docs = (data.jobs || []).map(j => ({
               id: j.id,
               job_id: j.job_id,
@@ -1182,12 +1270,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
           if (!backendUrl) return { checks: [] };
           try {
-            // Fetch all jobs then extract checks from job.checks array
-            const res = await fetch(`${backendUrl}/api/jobs?limit=200&source=auto`, {
-              headers: { Authorization: `Bearer ${s.access_token}` },
-            });
-            if (!res.ok) throw new Error(`Backend /api/jobs returned ${res.status}`);
-            const data = await res.json();
+            // /api/jobs can take 5-30s on Railway cold starts and returns ~3MB.
+            // Use an explicit 60s AbortController so the SW gets a real timeout
+            // error rather than being killed mid-fetch with a generic "Failed to fetch".
+            const ctrl = new AbortController();
+            const timeoutId = setTimeout(() => ctrl.abort(), 60000);
+            let data;
+            try {
+              const res = await fetch(`${backendUrl}/api/jobs?limit=200&source=auto`, {
+                headers: { Authorization: `Bearer ${s.access_token}` },
+                signal: ctrl.signal,
+              });
+              if (!res.ok) throw new Error(`Backend /api/jobs returned ${res.status}`);
+              data = await res.json();
+            } finally {
+              clearTimeout(timeoutId);
+            }
             const checks = [];
             for (const job of (data.jobs || [])) {
               // Backend returns 'checks' (parsed array), not 'checks_data' (raw JSON string)
@@ -1267,8 +1365,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const s = await getSession();
           if (!s) return { accounts: [] };
           const bootstrap = getBootstrapConfig();
-          const accounts = new Set();
-          // Try QB API first (live accounts list)
+          const accounts = []; // [{id, name}]
+          const seenIds = new Set();
+          const seenNames = new Set();
+          // Try QB API first (live accounts list — gives us {Id, Name})
           try {
             const { token, realmId } = await getValidQBToken();
             const qbRes = await fetch(
@@ -1278,26 +1378,37 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             if (qbRes.ok) {
               const qbData = await qbRes.json();
               (qbData?.QueryResponse?.Account || []).forEach(a => {
-                if (a.Name) accounts.add(a.Name);
+                if (!a?.Name) return;
+                const id = a.Id ? String(a.Id) : null;
+                if (id && seenIds.has(id)) return;
+                if (id) seenIds.add(id);
+                seenNames.add(a.Name);
+                accounts.push({ id, name: a.Name });
               });
-              log('GET_QB_ACCOUNTS: QB API ok', { count: accounts.size });
+              log('GET_QB_ACCOUNTS: QB API ok', { count: accounts.length });
             }
           } catch (qbErr) {
             log('GET_QB_ACCOUNTS: QB API unavailable, using transaction data fallback', qbErr.message);
           }
-          // Fallback: derive from already-synced qb_entries (filtered by tenant)
-          if (accounts.size === 0) {
+          // Fallback: derive from already-synced qb_entries (id unknown — name only)
+          if (accounts.length === 0) {
             try {
               const tenantId = await getTenantId(s.user.id).catch(() => null);
               const filter = tenantId ? `tenant_id=eq.${tenantId}&` : '';
               const entries = await supabaseRequest(
                 `qb_entries?${filter}select=account&order=date.desc&limit=500`
               ).catch(() => []);
-              (entries || []).forEach(e => { if (e.account) accounts.add(e.account); });
-              log('GET_QB_ACCOUNTS: fallback from qb_entries', { count: accounts.size, tenantId });
+              (entries || []).forEach(e => {
+                if (e.account && !seenNames.has(e.account)) {
+                  seenNames.add(e.account);
+                  accounts.push({ id: null, name: e.account });
+                }
+              });
+              log('GET_QB_ACCOUNTS: fallback from qb_entries', { count: accounts.length, tenantId });
             } catch (_) {}
           }
-          return { accounts: Array.from(accounts).sort() };
+          accounts.sort((a, b) => a.name.localeCompare(b.name));
+          return { accounts };
         }
         case 'DELETE_DOCUMENT': {
           log('DELETE_DOCUMENT', { jobId: msg.jobId });
@@ -1731,6 +1842,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     amount: bankAmt,
                     payee: qbTxn.payee || null,
                     txn_date: qbTxn.txn_date || null,
+                    account: qbTxn.account || null,
                     approved_at: new Date().toISOString(),
                     source: 'bank_feed_to_purchase',
                   };
@@ -1761,21 +1873,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           // Persist approved QB txn to local storage so content script can
           // auto-check the reconciliation page without another API round-trip.
           const storeKyriqApproved = async () => {
-            try {
-              const stored = await chrome.storage.local.get('kyriqApproved');
-              const map = stored.kyriqApproved || {};
-              map[String(qbIntuitId)] = {
-                intuit_id: String(qbIntuitId),
-                txn_type: txnType,
-                doc_number: qbTxn.doc_number || null,
-                amount: parseFloat(qbTxn.amount) || null,
-                payee: qbTxn.payee || null,
-                txn_date: qbTxn.txn_date || null,
-                approved_at: new Date().toISOString(),
-              };
-              await chrome.storage.local.set({ kyriqApproved: map });
-            } catch (e) {
-              logErr('storeKyriqApproved: storage write failed (non-critical)', e);
+            const entry = {
+              intuit_id: String(qbIntuitId),
+              txn_type: txnType,
+              doc_number: qbTxn.doc_number || null,
+              amount: parseFloat(qbTxn.amount) || null,
+              payee: qbTxn.payee || null,
+              txn_date: qbTxn.txn_date || null,
+              account: qbTxn.account || null,
+              approved_at: new Date().toISOString(),
+            };
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                const stored = await chrome.storage.local.get('kyriqApproved');
+                const map = (stored?.kyriqApproved && typeof stored.kyriqApproved === 'object')
+                  ? stored.kyriqApproved : {};
+                map[entry.intuit_id] = entry;
+                await chrome.storage.local.set({ kyriqApproved: map });
+                return; // success
+              } catch (e) {
+                logErr(`storeKyriqApproved: attempt ${attempt + 1} failed`, e);
+                if (attempt < 2) await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+              }
             }
           };
 
@@ -1824,6 +1943,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               logErr('APPROVE_AND_CLEAR: audit log write failed (non-critical)', auditErr);
             }
             await storeKyriqApproved();
+            // Tell any open QB tab to immediately click the C button for this row —
+            // no page reload or manual button click needed.
+            const approvalPayload = {
+              type: 'KYRIQ_APPROVAL_ADDED',
+              txn: {
+                intuit_id: String(qbIntuitId),
+                txn_type:  txnType,
+                doc_number: qbTxn.doc_number || null,
+                amount:    parseFloat(qbTxn.amount) || null,
+                payee:     qbTxn.payee  || null,
+                account:   qbTxn.account || null,
+              },
+            };
+            chrome.tabs.query({ url: 'https://*.intuit.com/*' }).then(tabs => {
+              for (const tab of tabs) {
+                chrome.tabs.sendMessage(tab.id, approvalPayload).catch(e => {
+                  log('KYRIQ_APPROVAL_ADDED: tab send failed', { tabId: tab.id, err: e?.message });
+                });
+              }
+            }).catch(e => logErr('KYRIQ_APPROVAL_ADDED: tabs.query failed', e));
             await saveCheckApproval(msg.checkId, msg.jobId);
             const { realmId: rId } = await getValidQBToken().catch(() => ({}));
             const qbUrl = rId ? qbTxnUrl(rId, txnType, qbIntuitId) : null;
@@ -1884,22 +2023,53 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           };
         }
 
-        // Open (or focus) the QB Online Reconcile page. Called by the sidepanel
-        // toast CTA and can be called from the content script overlay too.
+        // Open (or focus) the QB Online Reconcile page for a specific bank account.
+        // Called by the sidepanel toast CTA and can be called from the content script overlay too.
         case 'OPEN_QB_RECONCILE': {
-          const RECONCILE_URL = 'https://app.qbo.intuit.com/app/reconcile';
+          const accountId = msg.accountId || null;
+          // qbo.intuit.com is the canonical host; app.qbo.intuit.com 301-redirects there.
+          // We use the canonical form so chrome.tabs.update lands on a stable URL.
+          const targetUrl = accountId
+            ? `https://qbo.intuit.com/app/reconcileAccount?accountId=${encodeURIComponent(accountId)}&statements=true`
+            : 'https://qbo.intuit.com/app/banking';
           try {
-            // Focus an existing Reconcile tab if one is already open.
-            const tabs = await chrome.tabs.query({ url: 'https://app.qbo.intuit.com/app/reconcile*' });
+            // Match both qbo.intuit.com and app.qbo.intuit.com — users may have
+            // either form open from a stale shortcut.
+            const tabs = await chrome.tabs.query({
+              url: ['https://qbo.intuit.com/app/reconcile*', 'https://app.qbo.intuit.com/app/reconcile*'],
+            });
             if (tabs && tabs.length > 0) {
-              await chrome.tabs.update(tabs[0].id, { active: true });
+              await chrome.tabs.update(tabs[0].id, { active: true, url: targetUrl });
               if (tabs[0].windowId) await chrome.windows.update(tabs[0].windowId, { focused: true });
               return { success: true, focused: true, tabId: tabs[0].id };
             }
-            const tab = await chrome.tabs.create({ url: RECONCILE_URL });
+            const tab = await chrome.tabs.create({ url: targetUrl });
             return { success: true, focused: false, tabId: tab.id };
           } catch (e) {
             logErr('OPEN_QB_RECONCILE failed', e);
+            return { success: false, error: e?.message || String(e) };
+          }
+        }
+
+        // Open (or focus) the QB Online Bank Register page for a specific account.
+        case 'OPEN_QB_REGISTER': {
+          const accountId = msg.accountId || null;
+          const targetUrl = accountId
+            ? `https://qbo.intuit.com/app/register?accountId=${encodeURIComponent(accountId)}`
+            : 'https://qbo.intuit.com/app/banking';
+          try {
+            const tabs = await chrome.tabs.query({
+              url: ['https://qbo.intuit.com/app/register*', 'https://app.qbo.intuit.com/app/register*'],
+            });
+            if (tabs && tabs.length > 0) {
+              await chrome.tabs.update(tabs[0].id, { active: true, url: targetUrl });
+              if (tabs[0].windowId) await chrome.windows.update(tabs[0].windowId, { focused: true });
+              return { success: true, focused: true, tabId: tabs[0].id };
+            }
+            const tab = await chrome.tabs.create({ url: targetUrl });
+            return { success: true, focused: false, tabId: tab.id };
+          } catch (e) {
+            logErr('OPEN_QB_REGISTER failed', e);
             return { success: false, error: e?.message || String(e) };
           }
         }
@@ -1910,8 +2080,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         //         (2) all qb_entries whose intuit_id or check_number matches an approved check.
         case 'GET_KYRIQ_APPROVED': {
           // (1) Local approvals stored during this/previous sessions
-          const stored = await chrome.storage.local.get('kyriqApproved').catch(() => ({}));
-          const localMap = stored.kyriqApproved || {};
+          let localMap = {};
+          try {
+            const stored = await chrome.storage.local.get('kyriqApproved');
+            if (stored?.kyriqApproved && typeof stored.kyriqApproved === 'object') {
+              localMap = stored.kyriqApproved;
+            }
+          } catch (storageErr) {
+            logErr('GET_KYRIQ_APPROVED: storage read failed, using empty map', storageErr);
+          }
 
           // (2) Pull qb_entries for the active tenant so we can cross-ref with cached checks
           const s = await getSession();
@@ -1958,6 +2135,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 amount: parseFloat(e.amount) || null,
                 payee: e.payee || null,
                 txn_date: e.date || null,
+                account: e.account || null,
                 approved_at: matched.check_date || null,
               };
             }
@@ -2033,7 +2211,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
   };
 
-  handler().then(sendResponse);
+  handler().then(sendResponse).catch(e => {
+    logErr(`Message handler uncaught [${msg?.type}]`, e);
+    try { sendResponse({ error: e?.message || String(e) }); } catch (_) {}
+  });
   return true; // keep message channel open for async
 });
 
