@@ -31,9 +31,11 @@ function parseCheckDate(d) {
   const s = String(d).trim();
   // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s + 'T12:00:00');
-  // MM/DD/YYYY or M/D/YYYY
+  // MM/DD/YYYY or M/D/YYYY — only when first part is a valid month (≤12)
   const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (mdy) return new Date(+mdy[3], +mdy[1] - 1, +mdy[2], 12);
+  if (mdy && +mdy[1] <= 12) return new Date(+mdy[3], +mdy[1] - 1, +mdy[2], 12);
+  // DD/MM/YYYY — first part > 12 means it must be a day
+  if (mdy && +mdy[1] > 12) return new Date(+mdy[3], +mdy[2] - 1, +mdy[1], 12);
   // MM-DD-YYYY
   const mdyd = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
   if (mdyd) return new Date(+mdyd[3], +mdyd[1] - 1, +mdyd[2], 12);
@@ -43,6 +45,26 @@ function parseCheckDate(d) {
   // Month DD YYYY ("Jan 26 2026")
   const native = new Date(s);
   return isNaN(native.getTime()) ? null : native;
+}
+
+// Parse a date string entered by the user, respecting the active _dateFormat.
+// When format is dd/mm/yyyy, treat D/M/Y slashed pairs as day-first.
+function parseDateInput(s) {
+  if (!s) return null;
+  if (_dateFormat === 'dd/mm/yyyy' || _dateFormat === 'dd mmm yyyy') {
+    const dmy = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) return new Date(+dmy[3], +dmy[2] - 1, +dmy[1], 12);
+  }
+  return parseCheckDate(s);
+}
+
+// Convert any date string to YYYY-MM-DD (what QB API and Supabase expect).
+function toISODate(s) {
+  const dt = parseDateInput(s);
+  if (!dt || isNaN(dt.getTime())) return null;
+  const MM = String(dt.getMonth() + 1).padStart(2, '0');
+  const DD = String(dt.getDate()).padStart(2, '0');
+  return `${dt.getFullYear()}-${MM}-${DD}`;
 }
 // ── Date format (loaded from chrome.storage.local) ──
 let _dateFormat = 'dd/mm/yyyy'; // default: dd/mm/yyyy
@@ -657,6 +679,7 @@ async function loadChecksIntoMatches() {
       }
     }
     renderMatches();
+    await autoApproveCleared();
   })().finally(() => { _inflightChecksMatch = null; });
   return _inflightChecksMatch;
 }
@@ -865,6 +888,7 @@ function renderMatchRow(m, index) {
         <button class="btn-sm btn-ghost" data-action="review" data-idx="${index}">👁 Review</button>
         ${m.status === 'unmatched' ? `<button class="btn-sm btn-ghost" data-action="search" data-idx="${index}">🔍 Find</button>` : ''}
         ${['matched', 'pending', 'discrepancy'].includes(m.status) ? `<button class="btn-sm btn-green" data-action="approve" data-idx="${index}">✅ Approve &amp; Clear</button>` : ''}
+        ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-amber" data-action="fix" data-idx="${index}" title="Push the cheque amount to QB to resolve the discrepancy">🔧 Fix in QB</button>` : ''}
         ${m.status === 'approved' ? `<button class="btn-sm btn-ghost" data-action="undo" data-idx="${index}">↩ Undo</button>` : ''}
         ${m.status !== 'approved' ? `<button class="btn-sm btn-ghost" data-action="flag" data-idx="${index}">🚩</button>` : ''}
       </div>
@@ -901,6 +925,7 @@ function bindMatchEvents() {
       const match = matches[idx];
       if (!match) return;
       if (action === 'approve') { showApproveConfirm(idx); }
+      else if (action === 'fix') { fixDiscrepancyInQB(idx); }
       else if (action === 'review') { openReviewModal(match.check, match); }
       else if (action === 'undo') { match.status = match.score >= 95 ? 'matched' : 'pending'; renderMatches(); }
       else if (action === 'flag') { match.status = 'flagged'; renderMatches(); }
@@ -981,7 +1006,7 @@ function hideApproveConfirm() {
   const okBtn   = $('#approve-confirm-ok');
   if (titleEl) titleEl.textContent = '✅ Approve & Clear in QuickBooks?';
   if (descEl)  descEl.innerHTML = `This will mark the QuickBooks transaction as <strong>Cleared</strong> (reconciliation status) and stamp a verification note. This does <strong>not</strong> delete anything.`;
-  if (okBtn)   okBtn.textContent = '✅ Confirm & Approve';
+  if (okBtn)   okBtn.textContent = '✅Approve';
 }
 
 function approveAndClear(idx) {
@@ -1029,13 +1054,116 @@ function approveAndClear(idx) {
         case 'inactive_entity':
           dbg('QB note skipped — linked entity inactive', 'warn'); showQBConfirmation(res); break;
         case 'failed':
-          dbg(`QB update failed: ${res.warning}`, 'error'); break;
+          dbg(`QB update failed: ${res.warning}`, 'error');
+          showErrorDialog('QB Approve Failed', res.warning || 'QuickBooks rejected the update.', res.qbRaw || res.qbFault || null);
+          break;
         default:
           if (res.warning) dbg(`QB: ${res.warning}`, 'warn');
           else { dbg('QB updated ✓', 'success'); showQBConfirmation(res); }
       }
     })
     .catch((e) => dbg(`SW exception: ${e?.message}`, 'error'));
+}
+
+// When runFullMatch tags rows with needsAutoApprove (QB intuit_id appears in
+// audit_logs / kyriqApproved but the Kyriq check isn't 'approved' yet), fire
+// APPROVE_AND_CLEAR in parallel for each. The SW broadcasts KYRIQ_APPROVAL_ADDED
+// to open QB tabs so the content script ticks the C box, and persists to
+// Supabase via the now-fixed saveCheckApproval. Returns when every promise settles.
+async function autoApproveCleared() {
+  // Status was already pre-flipped to 'approved' in runFullMatch for tagged
+  // rows so they render in Done immediately. We just need to persist the
+  // approval to Supabase + broadcast KYRIQ_APPROVAL_ADDED so the QB tab ticks
+  // the C box. No loading overlay — this runs silently in the background.
+  const pending = matches.filter(m => m.needsAutoApprove && m.qbTxn);
+  if (pending.length === 0) return 0;
+
+  dbg(`⚡ Background sync: ${pending.length} cleared cheque${pending.length === 1 ? '' : 's'}`, 'info');
+
+  const settled = await Promise.allSettled(pending.map(m =>
+    sendMsg({
+      type: 'APPROVE_AND_CLEAR',
+      qbTxn: m.qbTxn,
+      check: m.check || null,
+      checkId: m.check?.id,
+      jobId: m.check?.job_id,
+    }).then(res => ({ m, res }))
+  ));
+
+  let ok = 0, fail = 0, persistFail = 0;
+  for (const r of settled) {
+    if (r.status !== 'fulfilled') { fail++; continue; }
+    const { m, res } = r.value;
+    if (res?.success) {
+      m.status = 'approved';
+      ok++;
+      if (res.persisted === false) persistFail++;
+    } else {
+      fail++;
+      dbg(`Background sync failed for #${m.check?.check_number || '?'}: ${res?.error || 'no response'}`, 'error');
+    }
+  }
+
+  const parts = [`${ok} synced`];
+  if (fail > 0) parts.push(`${fail} failed`);
+  if (persistFail > 0) parts.push(`${persistFail} not persisted`);
+  dbg(`Background sync done: ${parts.join(', ')}`, (fail > 0 || persistFail > 0) ? 'error' : 'success');
+  return ok;
+}
+
+// Send a FIX_DISCREPANCY instruction to the active QB tab so the content script
+// can drive the inline editor and update the QB transaction's amount to match
+// the cheque's OCR'd amount. Discrepancy = OCR amount differs from QB amount.
+function fixDiscrepancyInQB(idx) {
+  const match = matches[idx];
+  if (!match || !match.qbTxn) return;
+  ensureDebugPanelOpen();
+
+  const refNo = match.qbTxn.doc_number || match.check?.check_number || null;
+  const ocrAmount = parseFloat(match.check?.amount);
+  const qbAmount = parseFloat(match.qbTxn.amount);
+  if (!refNo) {
+    showErrorBanner('Cannot fix — no reference number on QB transaction.');
+    return;
+  }
+  if (!isFinite(ocrAmount) || ocrAmount <= 0) {
+    showErrorBanner('Cannot fix — cheque amount is missing or invalid.');
+    return;
+  }
+
+  const corrections = {};
+  if (Math.abs(ocrAmount - qbAmount) > 0.01) {
+    corrections.payment = ocrAmount.toFixed(2);
+  }
+  if (Object.keys(corrections).length === 0) {
+    showWarningBanner('Nothing to fix — amounts already match.');
+    return;
+  }
+
+  dbg(`▶ Fix QB #${refNo}: ${JSON.stringify(corrections)}`);
+  sendMsg({ type: 'FIX_DISCREPANCY', refNo: String(refNo), corrections, qbTxn: match.qbTxn })
+    .then((res) => {
+      if (!res) { dbg('SW: no response from FIX_DISCREPANCY', 'error'); return; }
+      if (res.error) {
+        dbg(`Fix failed: ${res.error}`, 'error');
+        showErrorDialog('Fix Discrepancy Failed', res.error, res.detail || null);
+        return;
+      }
+      const tabResult = res.result || {};
+      if (tabResult.status === 'saved' || tabResult.status === 'saved_unverified') {
+        dbg(`✓ QB row #${refNo} updated to ${corrections.payment}`, 'success');
+        showSuccessBanner(`Fixed QB #${refNo}: payment set to $${corrections.payment}`);
+        // Flip the local match to matched so it leaves the discrepancy bucket
+        match.status = 'matched';
+        if (match.qbTxn) match.qbTxn.amount = ocrAmount;
+        renderMatches();
+      } else {
+        const detail = tabResult.status || 'no QB tab responded';
+        dbg(`Fix result: ${detail}`, 'warn');
+        showWarningBanner(`Fix did not complete: ${detail}. Open the Reconcile page in QB and try again.`);
+      }
+    })
+    .catch((e) => dbg(`Fix SW exception: ${e?.message}`, 'error'));
 }
 
 function showBanner(msg, type = 'warn', autoHideMs = 8000) {
@@ -1718,7 +1846,7 @@ function openReviewModal(check, match = null) {
   // Populate Extracted inputs
   const setInp = (id, val) => { const el = m.querySelector(id); if (el) el.value = val != null ? String(val) : ''; };
   setInp('#rmi-amount',   check.amount != null ? check.amount : '');
-  setInp('#rmi-date',     check.check_date || '');
+  setInp('#rmi-date',     check.check_date ? fmtDate(check.check_date) : '');
   setInp('#rmi-payee',    check.payee || '');
   setInp('#rmi-checknum', check.check_number || '');
 
@@ -1732,7 +1860,7 @@ function openReviewModal(check, match = null) {
 
   if (txn) {
     setInp('#rmq-amount',   txn.amount != null ? txn.amount : '');
-    setInp('#rmq-date',     txn.txn_date || '');
+    setInp('#rmq-date',     txn.txn_date ? fmtDate(txn.txn_date) : '');
     setInp('#rmq-payee',    txn.payee || '');
     setInp('#rmq-checknum', txn.doc_number || '');
   } else {
@@ -1818,7 +1946,7 @@ function updateModalDiffs(m) {
   // Date
   if (!extDate || !qbDate) { setDiff('#rmd-date', '—', 'na'); }
   else {
-    const d1 = parseCheckDate(extDate), d2 = parseCheckDate(qbDate);
+    const d1 = parseDateInput(extDate), d2 = parseDateInput(qbDate);
     if (!d1 || !d2) setDiff('#rmd-date', '—', 'na');
     else {
       const days = Math.round((d1 - d2) / 86400000);
@@ -1838,6 +1966,11 @@ function updateModalDiffs(m) {
     const c2 = qbCN.replace(/\D/g,'').replace(/^0+/,'');
     setDiff('#rmd-checknum', c1 === c2 ? '✓ Match' : '≠ Diff', c1 === c2 ? 'match' : 'diff');
   }
+
+  // Show "Fix All Discrepancies" only when at least one field differs and QB data exists
+  const hasDiffs = !!m.querySelector('.rm-diff.diff');
+  const fixBtn = m.querySelector('#rm-fix-all');
+  if (fixBtn) fixBtn.style.display = hasDiffs ? '' : 'none';
 }
 
 // ── History (approved checks from Supabase) ─────────────
@@ -2128,6 +2261,7 @@ function bindEvents() {
     renderMatches();
     hideLoading();
     dbg(`Company switch complete: ${realmId}`, 'success');
+    await autoApproveCleared();
   });
 
   // ── Sync QB ──
@@ -2181,9 +2315,13 @@ function bindEvents() {
       showLoading(`Matching ${extractedChecks.length} cheques…`);
       const matchRes = await sendMsg({ type: 'RUN_MATCHING', checks: extractedChecks });
       hideLoading();
-      if (matchRes?.matches) { matches = matchRes.matches; dbg(`Matches: ${matches.length}`, 'success'); }
+      if (matchRes?.matches) {
+        matches = matchRes.matches;
+        dbg(`Matches: ${matches.length}`, 'success');
+      }
     }
     renderMatches();
+    await autoApproveCleared();
   });
 
   // ── Bulk approve ──
@@ -2192,8 +2330,14 @@ function bindEvents() {
     if (toApprove.length === 0) return;
     showBulkApproveConfirm(toApprove.length, async () => {
       let approved = 0, failed = 0, localOnly = 0;
-      for (const m of toApprove) {
-        const res = await sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: m.qbTxn, check: m.check || null, checkId: m.check?.id, jobId: m.check?.job_id });
+
+      const results = await Promise.all(toApprove.map(m =>
+        sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: m.qbTxn, check: m.check || null, checkId: m.check?.id, jobId: m.check?.job_id })
+          .then(res => ({ m, res }))
+          .catch(err => ({ m, res: { success: false, error: err?.message || String(err) } }))
+      ));
+
+      for (const { m, res } of results) {
         if (res?.success) {
           m.status = 'approved';
           approved++;
@@ -2264,6 +2408,7 @@ function bindEvents() {
       dbg(`Matches: ${matches.length}`, 'success');
       switchTab('matches');
       renderMatches();
+      await autoApproveCleared();
     }
   });
 
@@ -2412,7 +2557,54 @@ function bindEvents() {
   };
   $('#rm-approve')?.addEventListener('click', () => reviewAction('approved'));
   $('#rm-reject')?.addEventListener('click',  () => reviewAction('rejected'));
-  $('#rm-undo')?.addEventListener('click',    () => reviewAction('pending_review'));
+  $('#rm-undo')?.addEventListener('click', async () => {
+    if (!_reviewCheck) return;
+    const m = matches.find(x => x.check?.id === _reviewCheck.id);
+    const intuitId = m?.qbTxn?.intuit_id;
+    if (intuitId) {
+      try {
+        await sendMsg({
+          type: 'UNDO_QB_TICK',
+          intuitId,
+          checkId:   _reviewCheck.id,
+          txnType:   m.qbTxn.txn_type   || null,
+          docNumber: m.qbTxn.doc_number || null,
+          amount:    m.qbTxn.amount     || null,
+          payee:     m.qbTxn.payee      || null,
+          account:   m.qbTxn.account    || null,
+        });
+      } catch (e) {
+        dbg(`Undo QB untick failed (continuing with status revert): ${e?.message || e}`, 'error');
+      }
+    }
+    reviewAction('pending_review');
+  });
+
+  // "Fix All Discrepancies" — copy extracted values to QB fields for any diff, then save
+  $('#rm-fix-all')?.addEventListener('click', () => {
+    const m = $('#review-modal');
+    if (!m) return;
+    const fields = [
+      { ext: '#rmi-amount',  qb: '#rmq-amount',  diff: '#rmd-amount'  },
+      { ext: '#rmi-date',    qb: '#rmq-date',     diff: '#rmd-date'    },
+      { ext: '#rmi-payee',   qb: '#rmq-payee',    diff: '#rmd-payee'   },
+      { ext: '#rmi-checknum',qb: '#rmq-checknum', diff: '#rmd-checknum'},
+    ];
+    let fixed = 0;
+    for (const f of fields) {
+      const diffEl = m.querySelector(f.diff);
+      const isDiff = diffEl?.classList.contains('diff');
+      if (!isDiff) continue;
+      const extVal = m.querySelector(f.ext)?.value.trim();
+      const qbEl   = m.querySelector(f.qb);
+      if (extVal && qbEl) { qbEl.value = extVal; qbEl.dispatchEvent(new Event('input', { bubbles: true })); fixed++; }
+    }
+    if (fixed === 0) { showSuccessBanner('No discrepancies to fix.'); return; }
+    updateModalDiffs(m);
+    // Auto-save after filling
+    $('#rm-save')?.click();
+  });
+
   $('#rm-save')?.addEventListener('click', async () => {
     if (!_reviewCheck) return;
     const btn = $('#rm-save');
@@ -2421,13 +2613,13 @@ function bindEvents() {
 
     const checkFields = {
       amount:       parseFloat($('#rmi-amount').value.replace(/[^0-9.-]/g, '')) || null,
-      check_date:   $('#rmi-date').value.trim() || null,
+      check_date:   toISODate($('#rmi-date').value.trim()) || $('#rmi-date').value.trim() || null,
       payee:        $('#rmi-payee').value.trim() || null,
       check_number: $('#rmi-checknum').value.trim() || null,
     };
     const qbFields = {
       amount:     parseFloat($('#rmq-amount').value.replace(/[^0-9.-]/g, '')) || null,
-      txn_date:   $('#rmq-date').value.trim() || null,
+      txn_date:   toISODate($('#rmq-date').value.trim()) || null,
       payee:      $('#rmq-payee').value.trim() || null,
       doc_number: $('#rmq-checknum').value.trim() || null,
     };

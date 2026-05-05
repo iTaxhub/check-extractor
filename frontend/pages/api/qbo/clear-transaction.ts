@@ -199,7 +199,12 @@ function isAlreadyCleared(entity: any): string | null {
  */
 function requiredExtras(txnType: string, entity: any): Record<string, any> {
   const extra: Record<string, any> = {};
-  if (txnType === 'Purchase')    extra.PaymentType        = entity.PaymentType;
+  if (txnType === 'Purchase') {
+    // QB rejects sparse update with code 2020 ("PaymentType is missing") if the
+    // GET response omits PaymentType. Default to 'Check' since this entity is
+    // only ever clearing cheque-type transactions in Kyriq.
+    extra.PaymentType = entity.PaymentType || 'Check';
+  }
   if (txnType === 'Payment')     extra.CustomerRef        = entity.CustomerRef;
   if (txnType === 'Deposit')     extra.DepositToAccountRef = entity.DepositToAccountRef;
   if (txnType === 'BillPayment') {

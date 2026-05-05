@@ -258,7 +258,7 @@
     applyOverlayVisibility();
   }
 
-  chrome.runtime.onMessage.addListener((msg) => {
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === 'KYRIQ_UI_STATE') {
       _uiState.sidepanelOpen = !!msg.sidepanelOpen;
       _uiState.overlayMode   = msg.overlayMode || 'whenOpen';
@@ -271,6 +271,18 @@
       _approvedFetchedAt = 0;
       // Immediately click the C button for this row on any open reconcile/register page.
       handleNewApproval(msg.txn);
+    }
+    if (msg?.type === 'KYRIQ_APPROVAL_REMOVED' && msg.txn) {
+      console.log('[Kyriq] received KYRIQ_APPROVAL_REMOVED', msg.txn);
+      _approvedCache = null;
+      _approvedFetchedAt = 0;
+      handleRemovedApproval(msg.txn);
+    }
+    if (msg?.type === 'KYRIQ_FIX_DISCREPANCY' && msg.refNo && msg.corrections) {
+      fixDiscrepancy(msg.refNo, msg.corrections)
+        .then((status) => sendResponse({ status }))
+        .catch((e) => sendResponse({ status: 'error', error: e?.message || String(e) }));
+      return true; // keep port open for async sendResponse
     }
   });
 
@@ -286,6 +298,56 @@
       await _handleNewApprovalImpl(newTxn);
     } finally {
       _newApprovalInFlight = false;
+    }
+  }
+
+  let _removeApprovalInFlight = false;
+  async function handleRemovedApproval(oldTxn) {
+    if (_removeApprovalInFlight) {
+      setTimeout(() => handleRemovedApproval(oldTxn), 600);
+      return;
+    }
+    _removeApprovalInFlight = true;
+    try {
+      const pt = getPageType();
+      const tag = `${oldTxn.payee || ''} #${oldTxn.doc_number || ''} $${oldTxn.amount || ''}`.trim();
+      pipeToSidepanel(`Undo received: ${tag} — page=${pt}`, 'info');
+      if (pt !== 'reconcile' && pt !== 'register') return;
+
+      await new Promise(r => setTimeout(r, 300));
+      const lookup = buildLookup([oldTxn]);
+      let unticked = 0;
+
+      if (pt === 'register' && isDgridRegister()) {
+        const rows = findDgridRegisterRows();
+        for (const row of rows) {
+          const match = matchDgridRegisterRow(row, lookup);
+          if (!match) continue;
+          if (!isDgridRowCleared(row)) continue;
+          const result = await setDgridClearState(row, '');
+          if (result === 'cleared' || result === 'noop') { unticked++; break; }
+        }
+        pipeToSidepanel(`Undo (dgrid): ${unticked} row(s) unticked`, unticked ? 'success' : 'warn');
+        return;
+      }
+
+      const rows = pt === 'reconcile' ? findReconcilePageRows() : findReconRows();
+      const matchRow = pt === 'reconcile' ? matchReconcileRow : matchReconRow;
+      for (const row of rows) {
+        const match = matchRow(row, lookup);
+        if (!match) continue;
+        const btn = row.querySelector('button[data-testid="clear-state-cell"]');
+        if (!btn) continue;
+        if (btn.getAttribute('aria-pressed') !== 'true') continue;
+        btn.click();
+        highlightRow(row, '#9ca3af');
+        unticked++;
+        pipeToSidepanel(`✓ Unticked C on row #${match.doc_number}`, 'success');
+        break;
+      }
+      if (!unticked) pipeToSidepanel(`Undo: no matching ticked row found for ${tag}`, 'warn');
+    } finally {
+      _removeApprovalInFlight = false;
     }
   }
 
@@ -1506,6 +1568,76 @@
       html.kyriq-overlay-hidden .kyriq-badge { display: none !important; }
     `;
     document.documentElement.appendChild(s);
+  }
+
+  // ── Discrepancy fix: push OCR'd amount into QB reconcile inline editor ────────
+  function setNativeValue(el, value) {
+    const proto  = Object.getPrototypeOf(el);
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    setter ? setter.call(el, value) : (el.value = value);
+  }
+
+  async function fixDiscrepancy(refNo, corrections) {
+    if (getPageType() !== 'reconcile') return 'wrong_page';
+
+    const rows = findReconcilePageRows();
+    let target = null;
+    for (const row of rows) {
+      const refText = row.cells[3]?.textContent?.trim() || '';
+      if (refText === String(refNo)) { target = row; break; }
+    }
+    if (!target) return 'not_found';
+
+    // Click the date cell (cells[1]) to open QB's inline edit overlay —
+    // same column that setDgridClearState uses; QB reconcile React rows respond
+    // the same way and surface a div.table.overlay above the row.
+    const clickCell = target.cells[1] || target.cells[0];
+    if (!clickCell) return 'no_editor';
+    pipeToSidepanel(`Fix: opening inline editor for row #${refNo}…`, 'info');
+    clickCell.click();
+
+    // Wait for the edit overlay and the amount input inside it.
+    const overlay = await waitForEl('div.table.overlay', 4000);
+    if (!overlay) return 'editor_not_open';
+
+    const input = overlay.querySelector('input[name="row_amount"]')
+               || overlay.querySelector('input[name="row_payment"]')
+               || overlay.querySelector('input[type="number"], input[type="text"]');
+    if (!input) return 'editor_not_open';
+
+    if (corrections.payment != null) {
+      pipeToSidepanel(`Fix: setting amount to ${corrections.payment}`, 'info');
+      setNativeValue(input, String(corrections.payment));
+      input.dispatchEvent(new Event('input',  { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    }
+
+    // Save button lives inside the overlay (same as setDgridClearState:1079).
+    const saveBtn = overlay.querySelector('button.primary')
+                 || overlay.querySelector('button[data-testid="save"]')
+                 || overlay.querySelector('button[type="submit"]');
+    if (!saveBtn) {
+      // Close overlay without saving rather than leave it dangling.
+      const cancelBtn = overlay.querySelector('button:not(.primary)');
+      cancelBtn?.click();
+      return 'save_not_found';
+    }
+    pipeToSidepanel(`Fix: clicking Save for row #${refNo}`, 'info');
+    saveBtn.click();
+
+    // Wait for the overlay to close, then verify.
+    await new Promise(r => setTimeout(r, 800));
+    const after = findReconcilePageRows().find(r => r.cells[3]?.textContent?.trim() === String(refNo));
+    if (after && corrections.payment != null) {
+      const amtText = (after.cells[8]?.textContent || '').replace(/[$,()]/g, '').trim();
+      if (amtText && Math.abs(parseFloat(amtText) - parseFloat(corrections.payment)) < 0.01) {
+        pipeToSidepanel(`Fix: row #${refNo} verified at $${corrections.payment}`, 'success');
+        return 'saved';
+      }
+    }
+    pipeToSidepanel(`Fix: save clicked for row #${refNo} — could not verify amount in DOM`, 'warn');
+    return 'saved_unverified';
   }
 
   function init() {

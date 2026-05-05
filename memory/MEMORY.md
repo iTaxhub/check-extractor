@@ -1,0 +1,1 @@
+- [Already-cleared auto-approve threshold](feedback_already_cleared_threshold.md) — needs score≥80 + intuit_id dedup or it bucket-collides 40% matches into Done

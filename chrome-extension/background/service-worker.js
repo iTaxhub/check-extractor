@@ -602,7 +602,7 @@ function qbAlreadyCleared(entity) {
 
 function qbRequiredExtras(txnType, entity) {
   const extra = {};
-  if (txnType === 'Purchase')    extra.PaymentType         = entity.PaymentType;
+  if (txnType === 'Purchase')    extra.PaymentType         = entity.PaymentType || 'Check';
   if (txnType === 'Payment')     extra.CustomerRef         = entity.CustomerRef;
   if (txnType === 'Deposit')     extra.DepositToAccountRef = entity.DepositToAccountRef;
   if (txnType === 'BillPayment') {
@@ -1011,6 +1011,35 @@ async function runFullMatch(extractedChecks) {
   });
   // #endregion
 
+  // Build a set of intuit_ids already cleared/stamped, drawn from two sources:
+  // 1. chrome.storage.local.kyriqApproved — approvals from this/prior sessions on this browser.
+  // 2. audit_logs.metadata.intuit_id — cross-device record of every APPROVE_AND_CLEAR call.
+  const [localApproved, auditRows] = await Promise.all([
+    chrome.storage.local.get('kyriqApproved')
+      .then(s => (s?.kyriqApproved && typeof s.kyriqApproved === 'object') ? s.kyriqApproved : {})
+      .catch(() => ({})),
+    supabaseRequest(
+      `audit_logs?tenant_id=eq.${tenantId}` +
+      `&action=in.(qb_already_cleared,qb_queued_for_reconcile,qb_manual_required)` +
+      `&select=metadata&limit=10000`,
+      { method: 'GET' }
+    ).catch(() => []),
+  ]);
+  const clearedIntuitIds = new Set(Object.keys(localApproved));
+  for (const r of (auditRows || [])) {
+    const id = r?.metadata?.intuit_id;
+    if (id) clearedIntuitIds.add(String(id));
+  }
+  // Subtract any intuit_ids explicitly undone by the user so they don't get re-auto-approved.
+  const undoneRows = await supabaseRequest(
+    `audit_logs?tenant_id=eq.${tenantId}&action=eq.qb_undone&select=metadata&limit=10000`,
+    { method: 'GET' }
+  ).catch(() => []);
+  for (const r of (undoneRows || [])) {
+    const id = r?.metadata?.intuit_id;
+    if (id) clearedIntuitIds.delete(String(id));
+  }
+
   // Build fast-lookup indices to avoid O(n²) brute-force over 1000+ entries
   const byCheckNum = new Map();   // normalised check# → array of qbTxns indices
   const byAmtBucket = new Map();  // Math.floor(cents/1000) i.e. $10 bucket → array of indices
@@ -1061,19 +1090,51 @@ async function runFullMatch(extractedChecks) {
     }
 
     if (bestScore >= 40 && bestMatch && bestResult) {
+      const matchedIntuitId = bestMatch.intuit_id ? String(bestMatch.intuit_id) : null;
+      // No score gate — if a QB txn has already been cleared and a Kyriq cheque
+      // best-matches it (any score >=40), treat it as cleared. The user does
+      // not want these surfacing in pending/matched/discrepancy tabs.
+      const alreadyCleared = !!matchedIntuitId && clearedIntuitIds.has(matchedIntuitId);
+
+      // Pre-flip status to 'approved' for any cleared row so it lands in the
+      // Done tab on the first render — no flicker through pending/matched/disc.
+      let finalStatus = persistedStatus || statusFromScore(bestScore, bestResult.flags);
+      if (alreadyCleared && !TERMINAL.includes(finalStatus)) finalStatus = 'approved';
+
       results.push({
         check,
         qbTxn: bestMatch,
         score: bestScore,
         reasons: bestResult.reasons,
         flags: bestResult.flags,
-        status: persistedStatus || statusFromScore(bestScore, bestResult.flags),
+        status: finalStatus,
         amtDiff: bestResult.amtDiff,
+        qbAlreadyCleared: alreadyCleared,
+        needsAutoApprove: alreadyCleared && !persistedStatus,
       });
     } else {
       results.push({ check, qbTxn: null, score: 0, reasons: {}, flags: [], status: persistedStatus || 'unmatched', amtDiff: 0 });
     }
   }
+
+  // Dedup APPROVE_AND_CLEAR firings: when several Kyriq cheques bucket-collide
+  // on the same already-cleared QB intuit_id, only the highest-scoring one
+  // actually fires the APPROVE_AND_CLEAR (that's all the QB tab needs — one
+  // tick per row). The losers stay tagged + status='approved' for display, so
+  // the user still sees them in Done, we just don't waste API calls re-firing.
+  const bestIdxByIntuitId = new Map();
+  results.forEach((r, idx) => {
+    if (!r.needsAutoApprove) return;
+    const id = r.qbTxn?.intuit_id ? String(r.qbTxn.intuit_id) : '';
+    if (!id) return;
+    if (!bestIdxByIntuitId.has(id) || results[bestIdxByIntuitId.get(id)].score < r.score) {
+      bestIdxByIntuitId.set(id, idx);
+    }
+  });
+  const winners = new Set(bestIdxByIntuitId.values());
+  results.forEach((r, idx) => {
+    if (r.needsAutoApprove && !winners.has(idx)) r.needsAutoApprove = false;
+  });
 
   return results;
 }
@@ -1525,6 +1586,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                       Id: entity.Id,
                       SyncToken: entity.SyncToken,
                       sparse: true,
+                      ...qbRequiredExtras(txnType, entity),
                       ...updates,
                     });
                     log('SAVE_QB_TXN: QB entity updated', { txnType, qbIntuitId });
@@ -1589,10 +1651,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const s = await getSession();
           if (!s?.access_token) return { error: 'Not logged in' };
 
-          // Patch in-memory cache immediately so subsequent RUN_MATCHING calls are consistent
+          // Patch in-memory cache AND persist to chrome.storage so subsequent RUN_MATCHING
+          // calls survive SW idle eviction (MV3 reloads _swChecksCache from kyriqChecksCache).
           if (_swChecksCache && msg.checkId && msg.status) {
             const cached = _swChecksCache.find(c => c.id === msg.checkId || c.check_id === msg.checkId);
-            if (cached) cached.status = msg.status;
+            if (cached) {
+              cached.status = msg.status;
+              chrome.storage.local.set({ kyriqChecksCache: _swChecksCache }).catch(() => {});
+            }
           }
 
           const bootstrap = getBootstrapConfig();
@@ -1731,6 +1797,33 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           // #endregion
           return { success: true, matches };
         }
+        case 'FIX_DISCREPANCY': {
+          const { refNo, corrections } = msg;
+          if (!refNo || !corrections || Object.keys(corrections).length === 0) {
+            return { error: 'No reference number or corrections provided' };
+          }
+          const fixTabs = await chrome.tabs.query({
+            url: ['*://*.intuit.com/*', '*://*.qbo.intuit.com/*'],
+          });
+          if (!fixTabs.length) {
+            return { error: 'Open QuickBooks → Reconcile in a tab, then click Fix again.' };
+          }
+          let lastResult = null;
+          for (const t of fixTabs) {
+            try {
+              const r = await chrome.tabs.sendMessage(t.id, {
+                type: 'KYRIQ_FIX_DISCREPANCY',
+                refNo,
+                corrections,
+              });
+              if (r) {
+                lastResult = r;
+                if (r.status === 'saved' || r.status === 'saved_unverified') break;
+              }
+            } catch (_) { /* tab has no content script — skip */ }
+          }
+          return { result: lastResult || { status: 'no_qb_tab' } };
+        }
         case 'APPROVE_AND_CLEAR': {
           const { qbTxn } = msg;
           if (!qbTxn) return { success: false, error: 'No QB transaction provided' };
@@ -1774,32 +1867,43 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
           // Save approval status via Next.js status route (handles jobs.checks_data JSON)
           const saveCheckApproval = async (checkId, jobId) => {
-            if (!checkId) return;
+            if (!checkId) return { ok: false, reason: 'no_check_id' };
 
-            // Immediately patch the in-memory cache so RUN_MATCHING sees 'approved'
-            // without waiting for a full re-fetch from the backend.
+            // Patch the in-memory cache AND persist to chrome.storage so the
+            // approval survives service-worker idle eviction (MV3 unloads after ~30s,
+            // then reloads _swChecksCache from kyriqChecksCache — if we don't write
+            // back, we lose the approval and the row reappears as pending).
             if (_swChecksCache) {
               const cached = _swChecksCache.find(c => c.id === checkId || c.check_id === checkId);
-              if (cached) cached.status = 'approved';
+              if (cached) {
+                cached.status = 'approved';
+                chrome.storage.local.set({ kyriqChecksCache: _swChecksCache }).catch(() => {});
+              }
             }
 
             const s2 = await getSession();
-            if (!s2?.access_token) return;
+            if (!s2?.access_token) return { ok: false, reason: 'no_session' };
             const bootstrap2 = getBootstrapConfig();
             const approvalHost = (bootstrap2.frontendUrl || bootstrap2.backendUrl || '').replace(/\/$/, '');
-            if (approvalHost && jobId) {
-              try {
-                await fetch(`${approvalHost}/api/jobs/${jobId}/checks/${checkId}/status`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s2.access_token}` },
-                  body: JSON.stringify({ status: 'approved' }),
-                });
-              } catch (dbErr) {
-                logErr('APPROVE_AND_CLEAR: status route failed (non-critical)', dbErr);
+            if (!approvalHost || !jobId) {
+              logErr('APPROVE_AND_CLEAR: jobId/host missing, approval not persisted', { checkId, jobId, approvalHost });
+              return { ok: false, reason: 'missing_job_or_host' };
+            }
+            try {
+              const res = await fetch(`${approvalHost}/api/jobs/${jobId}/checks/${checkId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s2.access_token}` },
+                body: JSON.stringify({ status: 'approved' }),
+              });
+              if (!res.ok) {
+                const txt = await res.text().catch(() => '');
+                logErr(`APPROVE_AND_CLEAR: PATCH ${res.status} — approval NOT persisted`, { checkId, jobId, body: txt.slice(0, 300) });
+                return { ok: false, reason: `patch_${res.status}`, detail: txt.slice(0, 300) };
               }
-            } else {
-              // jobId missing — check_0182 IDs are in jobs.checks_data JSON, not in checks table
-              logErr('APPROVE_AND_CLEAR: jobId missing, approval status not persisted to DB', { checkId });
+              return { ok: true };
+            } catch (dbErr) {
+              logErr('APPROVE_AND_CLEAR: status route failed', dbErr);
+              return { ok: false, reason: 'fetch_failed', detail: dbErr?.message || String(dbErr) };
             }
           };
 
@@ -1971,7 +2075,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 });
               }
             }).catch(e => logErr('KYRIQ_APPROVAL_ADDED: tabs.query failed', e));
-            await saveCheckApproval(msg.checkId, msg.jobId);
+            const persistResult = await saveCheckApproval(msg.checkId, msg.jobId);
             const { realmId: rId } = await getValidQBToken().catch(() => ({}));
             const qbUrl = rId ? qbTxnUrl(rId, txnType, qbIntuitId) : null;
             chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: didClear, qbStatus }).catch(() => {});
@@ -1991,6 +2095,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               confirmedNote,
               noteStamped,
               warning,
+              persisted: persistResult?.ok === true,
+              persistError: persistResult?.ok ? null : (persistResult?.reason || null),
             };
           } catch (e) {
             logErr('APPROVE_AND_CLEAR QB clear failed — approving locally only', e);
@@ -2010,6 +2116,76 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             return { success: true, cleared: false, qbStatus: 'failed', warning: `QB not cleared: ${e.message}`, qbRaw: e.qbRaw || null, qbHttpStatus: e.qbStatus || null };
           }
         }
+        case 'UNDO_QB_TICK': {
+          const intuitId = msg.intuitId ? String(msg.intuitId) : null;
+          if (!intuitId) return { success: false, error: 'intuit_id missing' };
+
+          let entry = null;
+          try {
+            const stored = await chrome.storage.local.get('kyriqApproved');
+            entry = stored?.kyriqApproved?.[intuitId] || null;
+          } catch (_) {}
+
+          const removalPayload = {
+            type: 'KYRIQ_APPROVAL_REMOVED',
+            txn: entry || {
+              intuit_id: intuitId,
+              txn_type:   msg.txnType   || null,
+              doc_number: msg.docNumber || null,
+              amount:     msg.amount    || null,
+              payee:      msg.payee     || null,
+              account:    msg.account   || null,
+            },
+          };
+          chrome.tabs.query({ url: 'https://*.intuit.com/*' }).then(tabs => {
+            for (const tab of tabs) {
+              chrome.tabs.sendMessage(tab.id, removalPayload).catch(e => {
+                log('KYRIQ_APPROVAL_REMOVED: tab send failed', { tabId: tab.id, err: e?.message });
+              });
+            }
+          }).catch(e => logErr('KYRIQ_APPROVAL_REMOVED: tabs.query failed', e));
+
+          try {
+            const stored2 = await chrome.storage.local.get('kyriqApproved');
+            const map = (stored2?.kyriqApproved && typeof stored2.kyriqApproved === 'object')
+              ? stored2.kyriqApproved : {};
+            if (map[intuitId]) {
+              delete map[intuitId];
+              await chrome.storage.local.set({ kyriqApproved: map });
+            }
+          } catch (e) { logErr('UNDO_QB_TICK: kyriqApproved cleanup failed', e); }
+
+          if (_swChecksCache && msg.checkId) {
+            const cached = _swChecksCache.find(c => c.id === msg.checkId || c.check_id === msg.checkId);
+            if (cached) {
+              cached.status = 'pending_review';
+              chrome.storage.local.set({ kyriqChecksCache: _swChecksCache }).catch(() => {});
+            }
+          }
+
+          try {
+            const { tenantId: undoTenantId } = await getActiveConnection();
+            const undoSession = await getSession();
+            if (undoTenantId && undoSession?.access_token) {
+              await supabaseRequest('audit_logs', {
+                method: 'POST',
+                body: JSON.stringify({
+                  tenant_id: undoTenantId,
+                  action: 'qb_undone',
+                  metadata: {
+                    intuit_id: intuitId,
+                    check_id: msg.checkId || null,
+                    check_number: entry?.doc_number || msg.docNumber || null,
+                    undone_at: new Date().toISOString(),
+                  },
+                }),
+              });
+            }
+          } catch (e) { logErr('UNDO_QB_TICK: audit log failed', e); }
+
+          return { success: true };
+        }
+
         case 'SEARCH_QB': {
           const { tenantId: tid2 } = await getActiveConnection();
           // qb_entries is the canonical store (written by /api/qbo/pull-checks); qb_transactions is empty
