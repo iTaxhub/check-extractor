@@ -7,6 +7,9 @@ const CONFIG_CACHE_TTL = 3600000; // 1 hour in ms
 
 // In-memory checks cache — avoids round-tripping 1000+ check objects through sendMessage
 let _swChecksCache = null;
+chrome.storage.local.get('kyriqChecksCache')
+  .then(({ kyriqChecksCache }) => { if (kyriqChecksCache) _swChecksCache = kyriqChecksCache; })
+  .catch(() => {});
 
 let _tenantIdCache = null; // { userId, tenantId, cachedAt }
 
@@ -41,21 +44,25 @@ function logErr(msg, err) {
 }
 
 // #region agent log
-/** NDJSON debug ingest (session 76c285) — no secrets / no PII */
+// Off by default. Enable via:
+//   chrome.storage.local.set({ kyriqDebugIngest: { url: 'http://127.0.0.1:7415/ingest/f682ae64-23f5-470b-ad66-bf3be254098b', sessionId: '76c285' } })
+let _debugIngestConfig = null;
+chrome.storage.local.get('kyriqDebugIngest')
+  .then(({ kyriqDebugIngest }) => { _debugIngestConfig = kyriqDebugIngest || null; })
+  .catch(() => {});
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.kyriqDebugIngest) {
+    _debugIngestConfig = changes.kyriqDebugIngest.newValue || null;
+  }
+});
+
 function debugAgentLog(payload) {
-  const body = {
-    sessionId: '76c285',
-    runId: 'ext-audit',
-    timestamp: Date.now(),
-    ...payload,
-  };
-  // Mirror to SW console when NDJSON ingest is unavailable (copy from DevTools → Service worker)
-  try {
-    log('[AGENT_DEBUG]', body);
-  } catch (_) {}
-  fetch('http://127.0.0.1:7415/ingest/f682ae64-23f5-470b-ad66-bf3be254098b', {
+  const body = { sessionId: _debugIngestConfig?.sessionId || '76c285', runId: 'ext-audit', timestamp: Date.now(), ...payload };
+  try { log('[AGENT_DEBUG]', body); } catch (_) {}
+  if (!_debugIngestConfig?.url) return;
+  fetch(_debugIngestConfig.url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '76c285' },
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': _debugIngestConfig.sessionId || '76c285' },
     body: JSON.stringify(body),
   }).catch(() => {});
 }
@@ -1340,6 +1347,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
             log('GET_CHECKS result', { count: checks.length });
             _swChecksCache = checks;
+            chrome.storage.local.set({ kyriqChecksCache: checks }).catch(() => {});
             return { checks };
           } catch (e) {
             logErr('GET_CHECKS failed', e);

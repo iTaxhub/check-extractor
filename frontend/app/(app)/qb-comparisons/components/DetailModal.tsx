@@ -47,16 +47,19 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
     }
   }, [row]);
 
-  // #region agent log
+  // #region agent log (off by default; enable via localStorage.setItem('kyriqDebugIngest', JSON.stringify({ url, sessionId })))
   useEffect(() => {
     if (!row?.qbData) return;
+    let cfg: { url: string; sessionId: string } | null = null;
+    try { cfg = JSON.parse(localStorage.getItem('kyriqDebugIngest') || 'null'); } catch {}
+    if (!cfg?.url) return;
     const a = row.date ?? '';
     const b = row.qbData.date ?? '';
-    fetch('http://127.0.0.1:7415/ingest/f682ae64-23f5-470b-ad66-bf3be254098b', {
+    fetch(cfg.url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '76c285' },
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': cfg.sessionId || '76c285' },
       body: JSON.stringify({
-        sessionId: '76c285',
+        sessionId: cfg.sessionId || '76c285',
         runId: 'ext-audit',
         hypothesisId: 'H-UI',
         location: 'DetailModal.tsx:dateCompare',

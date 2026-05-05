@@ -51,6 +51,21 @@
         try { _navObserver?.disconnect(); } catch {}
         clearTimeout(_navDebounceTimer);
         log('Extension reloaded — reload this QB page to reconnect Kyriq.');
+        // Show a persistent in-page banner so the user doesn't need DevTools to notice
+        if (!document.getElementById('kyriq-reload-banner')) {
+          const banner = document.createElement('div');
+          banner.id = 'kyriq-reload-banner';
+          banner.style.cssText = [
+            'position:fixed', 'top:12px', 'right:12px', 'z-index:2147483647',
+            'background:#d97706', 'color:#fff', 'font-family:system-ui,sans-serif',
+            'font-size:13px', 'font-weight:600', 'padding:10px 14px',
+            'border-radius:8px', 'box-shadow:0 4px 12px rgba(0,0,0,0.25)',
+            'display:flex', 'align-items:center', 'gap:10px', 'max-width:340px',
+          ].join(';');
+          banner.innerHTML = '⚠ Kyriq extension updated &mdash; refresh this tab to reconnect. <button id="kyriq-reload-btn" style="background:#fff;color:#d97706;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-weight:700;font-size:12px;">Refresh</button>';
+          document.body.appendChild(banner);
+          document.getElementById('kyriq-reload-btn')?.addEventListener('click', () => location.reload());
+        }
       } else if (e?.message === 'sendMessage timeout') {
         warn('safeSendMessage timed out for', msg?.type);
       }
