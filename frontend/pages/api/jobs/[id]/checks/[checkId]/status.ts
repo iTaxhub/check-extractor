@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { createAuthenticatedClient, createServiceClient } from '@/lib/supabase/api';
 import { clearQBTransactionServer, type QBClearStatus } from '@/pages/api/qbo/clear-transaction';
 
 type QBSync = { status: QBClearStatus; message?: string; readOnlyClearedStatus?: string | null };
@@ -41,17 +41,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
+    // Service client for writes — auth already verified above. RLS on check_jobs / checks /
+    // matches silently drops writes from the anon+JWT client, which is why approvals were
+    // not persisting on refresh.
+    const db = createServiceClient();
+
     // Fetch job — try job_id TEXT column first; only attempt integer PK if jobId is purely numeric.
     // IMPORTANT: live DB uses INTEGER primary key. Passing a hex string like "0396c0e1" to
     // .eq('id', ...) causes: "invalid input syntax for type integer" from PostgreSQL.
-    let { data: job } = await supabase
+    let { data: job } = await db
       .from('check_jobs')
       .select('id, job_id, checks_data')
       .eq('job_id', jobId)
       .maybeSingle();
 
     if (!job && /^\d+$/.test(jobId)) {
-      const { data: jobById, error: jobByIdErr } = await supabase
+      const { data: jobById, error: jobByIdErr } = await db
         .from('check_jobs')
         .select('id, job_id, checks_data')
         .eq('id', parseInt(jobId, 10))
@@ -69,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const mappedStatus = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : null;
         if (mappedStatus) {
-          await supabase.from('checks').update({ status: mappedStatus }).eq('check_id', checkId);
+          await db.from('checks').update({ status: mappedStatus }).eq('check_id', checkId);
         }
       } catch (_) { /* non-critical */ }
 
@@ -107,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const check = { ...checksData[checkIdx], status, updated_at: new Date().toISOString() };
     checksData[checkIdx] = check;
 
-    const { error: patchErr } = await supabase
+    const { error: patchErr } = await db
       .from('check_jobs')
       .update({ [checksCol]: checksData, updated_at: new Date().toISOString() })
       .eq('id', job.id);
@@ -122,20 +127,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const terminalStatus = ['approved', 'rejected'].includes(status) ? status : null;
     if (terminalStatus) {
       try {
-        await supabase
+        await db
           .from('checks')
           .update({ status: terminalStatus })
           .eq('check_id', checkId);
 
         // If a matches row exists for this check, approve it too so the web app
         // match page stops showing the "Approve" button.
-        const { data: checkRow } = await supabase
+        const { data: checkRow } = await db
           .from('checks')
           .select('id')
           .eq('check_id', checkId)
           .maybeSingle();
         if (checkRow?.id) {
-          await supabase
+          await db
             .from('matches')
             .update({ status: terminalStatus, approved_at: terminalStatus === 'approved' ? new Date().toISOString() : null })
             .eq('check_id', checkRow.id)
@@ -148,8 +153,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Best-effort audit log — check_id must be UUID; use metadata for text check_id
     try {
-      await supabase.from('audit_logs').insert({
-        tenant_id: (await supabase.from('user_profiles').select('tenant_id').eq('id', user.id).maybeSingle()).data?.tenant_id,
+      await db.from('audit_logs').insert({
+        tenant_id: (await db.from('user_profiles').select('tenant_id').eq('id', user.id).maybeSingle()).data?.tenant_id,
         action: status,
         entity_type: 'check',
         user_id: user.id,

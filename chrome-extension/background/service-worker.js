@@ -2023,10 +2023,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           };
         }
 
+        // Helper — extract accountId from any open Intuit tab URL so we never have
+        // to fall back to /app/banking when the user hasn't selected an account.
+        // Returns null if no Intuit tab carries an accountId in its URL.
+        // (Defined inline here because OPEN_QB_RECONCILE / OPEN_QB_REGISTER both need it.)
+        // eslint-disable-next-line no-inner-declarations
+        // (case-statement scope shenanigans — declare via const inside the case)
+
         // Open (or focus) the QB Online Reconcile page for a specific bank account.
         // Called by the sidepanel toast CTA and can be called from the content script overlay too.
         case 'OPEN_QB_RECONCILE': {
-          const accountId = msg.accountId || null;
+          const findAccountIdFromTabs = async () => {
+            try {
+              const tabs = await chrome.tabs.query({ url: 'https://*.intuit.com/*' });
+              for (const t of tabs) {
+                const m = t.url?.match(/[?&]accountId=([^&]+)/);
+                if (m) return decodeURIComponent(m[1]);
+              }
+            } catch {}
+            return null;
+          };
+
+          let accountId = msg.accountId || null;
+          if (!accountId) accountId = await findAccountIdFromTabs();
+
           let _reconRealmId = null;
           try { ({ realmId: _reconRealmId } = await getValidQBToken()); } catch (_) {}
           const _reconCompany = _reconRealmId ? `&company=${encodeURIComponent(_reconRealmId)}` : '';
@@ -2034,7 +2054,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           // We use the canonical form so chrome.tabs.update lands on a stable URL.
           const targetUrl = accountId
             ? `https://qbo.intuit.com/app/reconcileAccount?accountId=${encodeURIComponent(accountId)}&statements=true${_reconCompany}`
-            : `https://qbo.intuit.com/app/banking${_reconRealmId ? `?company=${encodeURIComponent(_reconRealmId)}` : ''}`;
+            // No accountId anywhere — open the chart of accounts so the user can pick one,
+            // not the bank-feed page.
+            : `https://qbo.intuit.com/app/chartofaccounts${_reconRealmId ? `?company=${encodeURIComponent(_reconRealmId)}` : ''}`;
           try {
             // Match both qbo.intuit.com and app.qbo.intuit.com — users may have
             // either form open from a stale shortcut.
@@ -2056,13 +2078,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // Open (or focus) the QB Online Bank Register page for a specific account.
         case 'OPEN_QB_REGISTER': {
-          const accountId = msg.accountId || null;
+          const findAccountIdFromTabs = async () => {
+            try {
+              const tabs = await chrome.tabs.query({ url: 'https://*.intuit.com/*' });
+              for (const t of tabs) {
+                const m = t.url?.match(/[?&]accountId=([^&]+)/);
+                if (m) return decodeURIComponent(m[1]);
+              }
+            } catch {}
+            return null;
+          };
+
+          let accountId = msg.accountId || null;
+          if (!accountId) accountId = await findAccountIdFromTabs();
+
           let _regRealmId = null;
           try { ({ realmId: _regRealmId } = await getValidQBToken()); } catch (_) {}
           const _regCompany = _regRealmId ? `&company=${encodeURIComponent(_regRealmId)}` : '';
           const targetUrl = accountId
             ? `https://qbo.intuit.com/app/register?accountId=${encodeURIComponent(accountId)}${_regCompany}`
-            : `https://qbo.intuit.com/app/banking${_regRealmId ? `?company=${encodeURIComponent(_regRealmId)}` : ''}`;
+            : `https://qbo.intuit.com/app/chartofaccounts${_regRealmId ? `?company=${encodeURIComponent(_regRealmId)}` : ''}`;
           try {
             const tabs = await chrome.tabs.query({
               url: ['https://qbo.intuit.com/app/register*', 'https://app.qbo.intuit.com/app/register*'],
