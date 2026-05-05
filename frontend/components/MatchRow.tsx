@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Flag, FileText, ChevronDown, ChevronUp, Search, Plus, Undo2, AlertTriangle, Pencil } from 'lucide-react';
+import { Check, Flag, FileText, ChevronDown, ChevronUp, Search, Plus, Undo2, AlertTriangle, Pencil, CheckCircle2 } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string; border: string }> = {
   matched:     { bg: 'bg-emerald-50', text: 'text-emerald-800', dot: 'bg-emerald-500', border: 'border-emerald-500' },
@@ -106,6 +106,7 @@ export default function MatchRow({
           {check ? (
             <>
               <div className="flex items-center gap-2">
+                {status === 'approved' && <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
                 <span className="text-sm font-bold text-gray-900">#{check.check_number || '—'}</span>
                 <span className="text-sm font-bold text-gray-900">{fmt(check.amount)}</span>
               </div>
@@ -190,9 +191,15 @@ export default function MatchRow({
             </>
           )}
           {status === 'approved' && (
-            <button onClick={onUndoApproval} className="px-2.5 py-1 text-xs font-semibold bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center gap-1">
-              <Undo2 className="w-3 h-3" /> Undo
-            </button>
+            <>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                Approved
+              </div>
+              <button onClick={onUndoApproval} className="px-2.5 py-1 text-xs font-semibold bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center gap-1">
+                <Undo2 className="w-3 h-3" /> Undo
+              </button>
+            </>
           )}
           {status === 'flagged' && (
             <>

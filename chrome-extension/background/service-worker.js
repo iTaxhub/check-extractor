@@ -502,7 +502,7 @@ const QB_TXN_PATH = {
 
 function qbTxnUrl(realmId, txnType, intuitId) {
   const path = QB_TXN_PATH[txnType] || 'transaction';
-  return `https://app.qbo.intuit.com/app/${path}?txnId=${intuitId}`;
+  return `https://app.qbo.intuit.com/app/${path}?txnId=${intuitId}&company=${encodeURIComponent(realmId)}`;
 }
 
 /**
@@ -2027,11 +2027,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // Called by the sidepanel toast CTA and can be called from the content script overlay too.
         case 'OPEN_QB_RECONCILE': {
           const accountId = msg.accountId || null;
+          let _reconRealmId = null;
+          try { ({ realmId: _reconRealmId } = await getValidQBToken()); } catch (_) {}
+          const _reconCompany = _reconRealmId ? `&company=${encodeURIComponent(_reconRealmId)}` : '';
           // qbo.intuit.com is the canonical host; app.qbo.intuit.com 301-redirects there.
           // We use the canonical form so chrome.tabs.update lands on a stable URL.
           const targetUrl = accountId
-            ? `https://qbo.intuit.com/app/reconcileAccount?accountId=${encodeURIComponent(accountId)}&statements=true`
-            : 'https://qbo.intuit.com/app/banking';
+            ? `https://qbo.intuit.com/app/reconcileAccount?accountId=${encodeURIComponent(accountId)}&statements=true${_reconCompany}`
+            : `https://qbo.intuit.com/app/banking${_reconRealmId ? `?company=${encodeURIComponent(_reconRealmId)}` : ''}`;
           try {
             // Match both qbo.intuit.com and app.qbo.intuit.com — users may have
             // either form open from a stale shortcut.
@@ -2054,9 +2057,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // Open (or focus) the QB Online Bank Register page for a specific account.
         case 'OPEN_QB_REGISTER': {
           const accountId = msg.accountId || null;
+          let _regRealmId = null;
+          try { ({ realmId: _regRealmId } = await getValidQBToken()); } catch (_) {}
+          const _regCompany = _regRealmId ? `&company=${encodeURIComponent(_regRealmId)}` : '';
           const targetUrl = accountId
-            ? `https://qbo.intuit.com/app/register?accountId=${encodeURIComponent(accountId)}`
-            : 'https://qbo.intuit.com/app/banking';
+            ? `https://qbo.intuit.com/app/register?accountId=${encodeURIComponent(accountId)}${_regCompany}`
+            : `https://qbo.intuit.com/app/banking${_regRealmId ? `?company=${encodeURIComponent(_regRealmId)}` : ''}`;
           try {
             const tabs = await chrome.tabs.query({
               url: ['https://qbo.intuit.com/app/register*', 'https://app.qbo.intuit.com/app/register*'],

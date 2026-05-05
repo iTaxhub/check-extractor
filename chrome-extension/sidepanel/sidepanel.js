@@ -2339,11 +2339,32 @@ function bindEvents() {
     if (!_reviewCheck) return;
     const btn = status === 'approved' ? $('#rm-approve') : status === 'rejected' ? $('#rm-reject') : $('#rm-undo');
     if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
+
+    // For "approved" — if there is a linked QB txn, route through the full
+    // APPROVE_AND_CLEAR flow so it broadcasts KYRIQ_APPROVAL_ADDED and ticks
+    // the cleared checkbox on whatever QB tab is open.
+    if (status === 'approved' && _reviewMatch?.qbTxn) {
+      hide('#review-modal');
+      const matchIdx = matches.findIndex(m => m === _reviewMatch);
+      if (matchIdx !== -1) {
+        if (btn) { btn.disabled = false; btn.textContent = '✅ Approve'; }
+        await approveAndClear(matchIdx);
+        // Sync checks list cache so the check shows as approved.
+        if (_cachedChecks) {
+          const ci = _cachedChecks.findIndex(c => c.id === _reviewCheck.id);
+          if (ci !== -1) { _cachedChecks[ci].status = 'approved'; }
+        }
+        renderChecksList(_cachedChecks || []);
+        _cachedHistory = null;
+        return;
+      }
+    }
+
+    // Fallback: no qbTxn, or rejected/undo — update Supabase status only.
     const undoStatus = status === 'pending_review' ? status : null;
     const newStatus = undoStatus || status;
     const res = await sendMsg({ type: 'UPDATE_CHECK_STATUS', checkId: _reviewCheck.id, jobId: _reviewCheck.job_id, status: newStatus });
     if (res?.success) {
-      // Update cache
       if (_cachedChecks) {
         const idx = _cachedChecks.findIndex(c => c.id === _reviewCheck.id);
         if (idx !== -1) { _cachedChecks[idx].status = newStatus; }
@@ -2351,7 +2372,7 @@ function bindEvents() {
       _reviewCheck.status = newStatus;
       hide('#review-modal');
       renderChecksList(_cachedChecks || []);
-      if (status === 'approved') { _cachedHistory = null; } // invalidate history cache
+      if (status === 'approved') { _cachedHistory = null; }
     } else {
       const origLabel = status === 'approved' ? '✅ Approve' : status === 'rejected' ? '❌ Reject' : '↩ Undo';
       if (btn) {

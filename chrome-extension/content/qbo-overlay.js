@@ -190,6 +190,11 @@
     return 'other';
   }
 
+  // True when the register page is using QBO's older Dojo dgrid instead of React.
+  function isDgridRegister() {
+    return !!document.querySelector('[id^="dgrid_1-row-"]');
+  }
+
   // ─── Overlay visibility (driven by sidepanel liveness + user setting) ──────
   //
   // The service worker tracks two things:
@@ -270,18 +275,48 @@
       return;
     }
 
-    // Give React a moment to render before we query rows.
+    // Give the page a moment to render before querying rows.
     await new Promise(r => setTimeout(r, 500));
 
     const lookup = buildLookup([newTxn]);
-    const rows   = findReconRows();
-    console.log(`[Kyriq] handleNewApproval — scanning ${rows.length} rows for intuit_id=${newTxn.intuit_id}`);
     let cleared  = 0;
-    let didClear = false; // only clear the first matching uncleared row per approval
+    let didClear = false;
+
+    // ── Dojo dgrid register path ───────────────────────────────────────────────
+    if (pt === 'register' && isDgridRegister()) {
+      console.log(`[Kyriq] handleNewApproval — dgrid register, scanning rows for intuit_id=${newTxn.intuit_id}`);
+      const rows = findDgridRegisterRows();
+      for (const row of rows) {
+        if (didClear) break;
+        const match = matchDgridRegisterRow(row, lookup);
+        if (!match) continue;
+        if (isDgridRowCleared(row)) {
+          console.log('[Kyriq] handleNewApproval — dgrid row already cleared, skipping');
+          continue;
+        }
+        console.log('[Kyriq] handleNewApproval — dgrid row matched!', { intuit_id: match.intuit_id, doc_number: match.doc_number });
+        const result = await setDgridClearState(row, 'C');
+        console.log(`[Kyriq] handleNewApproval — setDgridClearState result: ${result}`);
+        if (result === 'cleared' || result === 'noop') {
+          highlightRow(row, '#059669');
+          cleared++;
+          didClear = true;
+        }
+      }
+      console.log(`[Kyriq] handleNewApproval — done (dgrid): ${cleared} row(s) cleared`);
+      _currentPage = null;
+      runPageAutomation();
+      return;
+    }
+
+    // ── React table path (reconcile + React register) ────────────────────────
+    const rows    = pt === 'reconcile' ? findReconcilePageRows() : findReconRows();
+    const matchRow = pt === 'reconcile' ? matchReconcileRow : matchReconRow;
+    console.log(`[Kyriq] handleNewApproval — scanning ${rows.length} rows for intuit_id=${newTxn.intuit_id}`);
 
     for (const row of rows) {
       if (didClear) break;
-      const match = matchReconRow(row, lookup);
+      const match = matchRow(row, lookup);
       if (!match) continue;
       console.log('[Kyriq] handleNewApproval — row matched!', { intuit_id: match.intuit_id, doc_number: match.doc_number });
       const btn = row.querySelector('button[data-testid="clear-state-cell"]');
@@ -298,7 +333,6 @@
     }
 
     console.log(`[Kyriq] handleNewApproval — done: ${cleared} row(s) cleared`);
-    // Refresh the pill button so the count reflects the new state.
     _currentPage = null;
     runPageAutomation();
   }
@@ -415,6 +449,67 @@
   //  1. RECONCILIATION PAGE
   // ═══════════════════════════════════════════════════════════════
 
+  // ─── Reconcile-page row finder (table.mainTable, confirmed column map) ───────
+  //
+  // Confirmed DOM: col 0=date, 1=clearedDate, 2=type, 3=refNo, 4=account,
+  //                5=payee, 6=memo, 7=olb-source, 8=payment, 9=deposit, 10=clearState
+  //
+  // Only used for /app/reconcile* — register uses findReconRows() below.
+
+  function findReconcilePageRows() {
+    const table = document.querySelector('table.mainTable');
+    if (!table) return [];
+    return Array.from(table.querySelectorAll('tbody tr')).filter(row =>
+      row.cells?.length >= 11 &&
+      row.cells[10]?.querySelector('button[data-testid="clear-state-cell"]')
+    );
+  }
+
+  function matchReconcileRow(row, lookup) {
+    const cells = row.cells;
+    if (!cells || cells.length < 11) return null;
+
+    // A. intuit_id from refNo cell link — most reliable
+    const refLink = cells[3]?.querySelector('a[href]');
+    if (refLink) {
+      const id = txnIdFromHref(refLink.getAttribute('href'));
+      if (id && lookup.byId[id]) return lookup.byId[id];
+    }
+
+    const refNo  = normNum(cells[3]?.textContent.trim());
+    const payee  = normPayee(cells[5]?.textContent.trim());
+    const payAmt = normAmt((cells[8]?.textContent || '').replace(/[$,()]/g, '').trim());
+
+    // B. refNo + (payee AND amount), then refNo + amount, then refNo + payee
+    if (refNo) {
+      const cands = lookup.byNum[refNo];
+      if (cands?.length) {
+        for (const c of cands) {
+          const cp = normPayee(c.payee);
+          const ca = normAmt(c.amount);
+          if (cp && payee && (payee.includes(cp) || cp.includes(payee)) &&
+              ca && payAmt && ca === payAmt) return c;
+        }
+        if (payAmt) for (const c of cands) { if (normAmt(c.amount) === payAmt) return c; }
+        if (payee)  for (const c of cands) {
+          const cp = normPayee(c.payee);
+          if (cp && (payee.includes(cp) || cp.includes(payee))) return c;
+        }
+      }
+    }
+
+    // C. amount + payee fallback
+    if (payAmt && payee) {
+      const c = lookup.byAmt[payAmt];
+      if (c) {
+        const cp = normPayee(c.payee);
+        if (cp && (payee.includes(cp) || cp.includes(payee))) return c;
+      }
+    }
+    return null;
+  }
+
+  // ─── Generic row finder (register + legacy reconcile fallback) ────────────
   /**
    * Strategy to find reconciliation table rows:
    *  A. Link href contains txnId= → most reliable, extract intuit_id directly
@@ -742,31 +837,30 @@
   }
 
   async function initReconcilePage() {
-    // Wait for QB's transaction table to render — retry up to 3 times
-    const ROW_SEL = 'table tbody tr, [class*="reconRow"],[class*="ReconRow"],[class*="reconcileRow"]';
+    // Wait for the confirmed reconcile table root — retried up to 3 times
     let rowsReady = false;
     for (let t = 0; t < 3 && !rowsReady; t++) {
       try {
-        await waitForEl(ROW_SEL, 8000);
+        await waitForEl('table.mainTable', 10000);
         rowsReady = true;
       } catch {
         if (t < 2) {
-          log(`Reconcile: table not ready yet (attempt ${t + 1}) — retrying in 2 s`);
+          log(`Reconcile: table.mainTable not ready yet (attempt ${t + 1}) — retrying in 2 s`);
           await new Promise(r => setTimeout(r, 2000));
         } else {
-          log('Reconcile: no transaction rows found after 3 attempts — will retry on next mutation');
+          log('Reconcile: table.mainTable not found after 3 attempts — will retry on next mutation');
         }
       }
     }
 
     const lookup = await getApproved();
-    const allRows = findReconRows();
+    const allRows = findReconcilePageRows();
     const matched = []; // { row, txn }
     const seenTxnIds = new Set();
 
     for (const row of allRows) {
       if (isAlreadyCleared(row)) continue; // already checked — skip
-      const txn = matchReconRow(row, lookup);
+      const txn = matchReconcileRow(row, lookup);
       if (!txn) continue;
       const key = txn.intuit_id || `${txn.doc_number}|${txn.amount}`;
       if (seenTxnIds.has(key)) continue; // same approval already claimed a row
@@ -854,6 +948,112 @@
   //  The "C" cell is the second-to-last <td> per row.
   // ═══════════════════════════════════════════════════════════════
 
+  // ─── Dojo dgrid register support ────────────────────────────────────────────
+  //
+  // When QB renders the register as a Dojo dgrid (older QBO accounts) rather than
+  // its React table, rows look like:
+  //   <tr id="dgrid_1-row-{txnId}:0">
+  //     <td><table class="dgrid-row-table"><tr>
+  //       [0]=date [1]=refNo [2]=payee [3]=memo [4]=? [5]=? [6]=payment [7]=deposit [8]=clearState
+  //     </tr></table></td>
+  //   </tr>
+  // Clicking the date cell opens an inline overlay with a clearStateButton (cycles
+  // "" → C → R → "") and a button.primary Save that persists via the QBO save API.
+
+  function findDgridRegisterRows() {
+    return Array.from(document.querySelectorAll('[id^="dgrid_1-row-"]'));
+  }
+
+  function matchDgridRegisterRow(row, lookup) {
+    // A. txnId encoded in the row id attribute — most reliable
+    const rawId = row.id.replace(/^dgrid_1-row-/, '').split(':')[0];
+    if (rawId && lookup.byId[rawId]) return lookup.byId[rawId];
+
+    // B. Column-based fallback using the inner dgrid-row-table
+    const innerRow = row.querySelector('table.dgrid-row-table tr');
+    if (!innerRow) return null;
+    const cells = innerRow.cells;
+    if (!cells || cells.length < 7) return null;
+
+    const refNo  = normNum(cells[1]?.textContent.trim());
+    const payee  = normPayee(cells[2]?.textContent.trim());
+    const payAmt = normAmt((cells[6]?.textContent || '').replace(/[$,()]/g, '').trim()) ||
+                   normAmt((cells[7]?.textContent || '').replace(/[$,()]/g, '').trim());
+
+    if (refNo) {
+      const cands = lookup.byNum[refNo];
+      if (cands?.length) {
+        for (const c of cands) {
+          const cp = normPayee(c.payee);
+          const ca = normAmt(c.amount);
+          if (cp && payee && (payee.includes(cp) || cp.includes(payee)) && ca && payAmt && ca === payAmt) return c;
+        }
+        if (payAmt) for (const c of cands) { if (normAmt(c.amount) === payAmt) return c; }
+        if (payee)  for (const c of cands) { const cp = normPayee(c.payee); if (cp && (payee.includes(cp) || cp.includes(payee))) return c; }
+      }
+    }
+    if (payAmt && payee) {
+      const c = lookup.byAmt[payAmt];
+      if (c) { const cp = normPayee(c.payee); if (cp && (payee.includes(cp) || cp.includes(payee))) return c; }
+    }
+    return null;
+  }
+
+  function isDgridRowCleared(row) {
+    const innerRow = row.querySelector('table.dgrid-row-table tr');
+    if (!innerRow) return false;
+    const cells = innerRow.cells;
+    if (!cells || cells.length < 9) return false;
+    const txt = (cells[8]?.textContent || '').trim();
+    return txt === 'C' || txt === 'R';
+  }
+
+  async function setDgridClearState(row, target /* 'C' | 'R' */) {
+    try {
+      // Check current state to avoid unnecessary click-cycling
+      const innerRow = row.querySelector('table.dgrid-row-table tr');
+      const cells = innerRow?.cells;
+      if (cells && cells.length >= 9 && (cells[8]?.textContent || '').trim() === target) {
+        return 'noop';
+      }
+
+      // Click the date cell to open the inline editor overlay
+      const dateCell = cells?.[0];
+      if (!dateCell) return 'failed';
+      dateCell.click();
+
+      // Wait for the overlay to appear
+      const clearStateBtn = await waitForEl('div.table.overlay button.clearStateButton', 4000);
+
+      // Cycle the button until it shows the target (max 3 clicks: "" → C → R → "")
+      for (let i = 0; i < 3; i++) {
+        if (clearStateBtn.textContent.trim() === target) break;
+        clearStateBtn.click();
+        await new Promise(r => setTimeout(r, 150));
+      }
+
+      if (clearStateBtn.textContent.trim() !== target) {
+        // Couldn't reach target — close without saving
+        const overlay = document.querySelector('div.table.overlay');
+        const cancelBtn = overlay?.querySelector('button:not(.primary):not(.clearStateButton)');
+        cancelBtn?.click();
+        return 'failed';
+      }
+
+      // Click Save
+      const saveBtn = document.querySelector('div.table.overlay button.primary');
+      if (!saveBtn) return 'failed';
+      saveBtn.click();
+
+      // Wait for overlay to close
+      await new Promise(r => setTimeout(r, 600));
+      return 'cleared';
+    } catch (e) {
+      warn('setDgridClearState failed:', e?.message);
+      return 'failed';
+    }
+  }
+
   /**
    * Find the cleared-status cell in a register row.
    * QB renders it as a clickable <td> that cycles: blank → C → R → blank.
@@ -883,21 +1083,35 @@
   }
 
   async function initRegisterPage() {
-    let rowsReady = false;
-    for (let t = 0; t < 3 && !rowsReady; t++) {
+    // Detect which DOM variant is in use after waiting for either row type to render.
+    // We race between dgrid rows and React table rows so whichever loads wins.
+    let detectedDgrid = null;
+    for (let t = 0; t < 3 && detectedDgrid === null; t++) {
       try {
-        await waitForEl('table tbody tr', 8000);
-        rowsReady = true;
+        // Race: dgrid rows appear first → dgrid; React table rows → React
+        detectedDgrid = await Promise.race([
+          waitForEl('[id^="dgrid_1-row-"]', 5000).then(() => true),
+          waitForEl('table tbody tr', 5000).then(() => false),
+        ]);
       } catch {
         if (t < 2) {
-          log(`Register: table not ready yet (attempt ${t + 1}) — retrying in 2 s`);
+          log(`Register: rows not ready yet (attempt ${t + 1}) — retrying in 2 s`);
           await new Promise(r => setTimeout(r, 2000));
         } else {
-          log('Register: no transaction rows found after 3 attempts — will retry on next mutation');
+          log('Register: no rows found after 3 attempts — will retry on next mutation');
           return;
         }
       }
     }
+
+    if (detectedDgrid === null) return;
+
+    // ── Dojo dgrid variant ────────────────────────────────────────────────────
+    if (detectedDgrid) {
+      return initDgridRegisterPage();
+    }
+
+    // ── React table variant (default) ─────────────────────────────────────────
 
     const lookup = await getApproved();
     if (!lookup.list.length) return;
@@ -978,6 +1192,82 @@
     // Auto-click after 1.5 s — navigating to the register page is enough.
     console.log(`[Kyriq] Register: auto-clicking ${regMatchedFinal.length} matched rows in 1.5 s`);
     setTimeout(() => runRegisterClear(null, null), 1500);
+  }
+
+  async function initDgridRegisterPage() {
+    // Wait for dgrid rows to appear
+    let rowsReady = false;
+    for (let t = 0; t < 3 && !rowsReady; t++) {
+      try {
+        await waitForEl('[id^="dgrid_1-row-"]', 8000);
+        rowsReady = true;
+      } catch {
+        if (t < 2) {
+          log(`DgridRegister: rows not ready yet (attempt ${t + 1}) — retrying in 2 s`);
+          await new Promise(r => setTimeout(r, 2000));
+        } else {
+          log('DgridRegister: no dgrid rows found after 3 attempts — will retry on next mutation');
+          return;
+        }
+      }
+    }
+
+    const lookup = await getApproved();
+    if (!lookup.list.length) return;
+
+    const allRows = findDgridRegisterRows();
+    const matched = [];
+    const seenTxnIds = new Set();
+
+    for (const row of allRows) {
+      if (isDgridRowCleared(row)) continue;
+      const txn = matchDgridRegisterRow(row, lookup);
+      if (!txn) continue;
+      const key = txn.intuit_id || `${txn.doc_number}|${txn.amount}`;
+      if (seenTxnIds.has(key)) continue;
+      seenTxnIds.add(key);
+      matched.push({ row, txn });
+    }
+
+    log(`DgridRegister: ${allRows.length} rows, ${lookup.list.length} approved, ${matched.length} to mark cleared`);
+    if (!matched.length) return;
+
+    // Dgrid requires sequential overlay interaction — cannot parallelize.
+    async function runDgridClear() {
+      let cleared = 0;
+      let clearedTotal = 0;
+      unhighlightAll();
+      for (const { row, txn } of matched) {
+        const result = await setDgridClearState(row, 'C');
+        console.log(`[Kyriq] dgrid row ${txn.intuit_id} (${txn.doc_number}) — result: ${result}`);
+        if (result === 'cleared' || result === 'noop') {
+          highlightRow(row, '#059669');
+          cleared++;
+          clearedTotal += Math.abs(parseFloat(txn.amount || 0));
+        }
+      }
+      if (dgridAutoBtn) {
+        dgridAutoBtn.textContent = `Marked ${cleared}`;
+        dgridAutoBtn.className = 'kyriq-recon-action-btn done';
+        dgridAutoBtn.disabled = true;
+      }
+      dismissEl(dgridWrap, 5000);
+      log(`DgridRegister: marked cleared on ${cleared} rows, total=$${clearedTotal.toFixed(2)}`);
+    }
+
+    const { wrap: dgridWrap, autoBtn: dgridAutoBtn } = injectReconButton(
+      matched.length,
+      lookup.list.length,
+      (_b, _d) => { runDgridClear(); },
+      () => {
+        const highlighted = document.querySelectorAll('[data-kyriq-highlighted]');
+        if (highlighted.length) { unhighlightAll(); return; }
+        for (const { row } of matched) highlightRow(row, '#f59e0b');
+      }
+    );
+
+    console.log(`[Kyriq] DgridRegister: auto-clearing ${matched.length} matched rows in 1.5 s`);
+    setTimeout(() => runDgridClear(), 1500);
   }
 
   // ═══════════════════════════════════════════════════════════════

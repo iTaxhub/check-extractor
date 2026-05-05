@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAuthContext, getActiveRealm } from '@/lib/match-helpers';
+import { createServiceClient } from '@/lib/supabase/api';
 
 /**
  * POST /api/matches/bulk-approve
@@ -35,22 +36,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const checkIds = toApprove.map((m: any) => m.check_id);
     const now = new Date().toISOString();
 
-    await supabase
+    // Service client for writes — bypasses RLS (auth already verified above)
+    const db = createServiceClient();
+
+    await db
       .from('matches')
       .update({ status: 'approved', approved_by: userId, approved_at: now })
-      .in('id', ids);
+      .in('id', ids)
+      .eq('tenant_id', tenantId);
 
     // Sync parent checks so the matching algorithm won't re-process them.
     const validCheckIds = checkIds.filter(Boolean);
     if (validCheckIds.length) {
-      await supabase
+      await db
         .from('checks')
         .update({ status: 'approved' })
-        .in('id', validCheckIds);
+        .in('id', validCheckIds)
+        .eq('tenant_id', tenantId);
     }
 
     // Audit log
-    await supabase.from('match_audit_log').insert(
+    await db.from('match_audit_log').insert(
       ids.map((id: string) => ({
         match_id: id,
         user_id: userId,
@@ -58,6 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         old_status: 'matched',
         new_status: 'approved',
         details: { minConfidence },
+        tenant_id: tenantId,
       }))
     );
 
