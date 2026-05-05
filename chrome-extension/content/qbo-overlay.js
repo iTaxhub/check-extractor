@@ -330,8 +330,6 @@
         }
       }
       pipeToSidepanel(`Done (dgrid): ${cleared} row(s) cleared`, cleared ? 'success' : 'warn');
-      _currentPage = null;
-      runPageAutomation();
       return;
     }
 
@@ -366,8 +364,6 @@
     if (!didClear) {
       pipeToSidepanel(`No matching row found on this page for ${tag}`, 'warn');
     }
-    _currentPage = null;
-    runPageAutomation();
   }
 
   // ─── Service-worker bridge ────────────────────────────────────
