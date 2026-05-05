@@ -58,6 +58,13 @@
     }
   }
 
+  // Pipe a one-line log up to the sidepanel debug panel so the user can see
+  // approval/click activity without opening the page DevTools console.
+  function pipeToSidepanel(msg, level = 'info') {
+    const page = getPageType();
+    safeSendMessage({ type: 'KYRIQ_CONTENT_LOG', msg, level, page }).catch(() => {});
+  }
+
   /** Wait for an element matching `selector` to appear in the DOM. */
   function waitForEl(selector, timeoutMs = 8000) {
     return new Promise((resolve, reject) => {
@@ -269,9 +276,13 @@
 
   async function _handleNewApprovalImpl(newTxn) {
     const pt = getPageType();
+    const tag = `${newTxn.payee || ''} #${newTxn.doc_number || ''} $${newTxn.amount || ''}`.trim();
     console.log('[Kyriq] handleNewApproval — pageType:', pt, 'txn:', newTxn);
+    pipeToSidepanel(`Approval received: ${tag} — page=${pt}`, 'info');
+
     if (pt !== 'reconcile' && pt !== 'register') {
       console.log('[Kyriq] handleNewApproval — not on reconcile/register, skipping click');
+      pipeToSidepanel(`Not on reconcile/register page (got: ${pt}). Open QB Reconcile to auto-tick.`, 'warn');
       return;
     }
 
@@ -284,26 +295,26 @@
 
     // ── Dojo dgrid register path ───────────────────────────────────────────────
     if (pt === 'register' && isDgridRegister()) {
-      console.log(`[Kyriq] handleNewApproval — dgrid register, scanning rows for intuit_id=${newTxn.intuit_id}`);
       const rows = findDgridRegisterRows();
+      pipeToSidepanel(`Dgrid register: scanning ${rows.length} rows for ${tag}`, 'info');
       for (const row of rows) {
         if (didClear) break;
         const match = matchDgridRegisterRow(row, lookup);
         if (!match) continue;
         if (isDgridRowCleared(row)) {
-          console.log('[Kyriq] handleNewApproval — dgrid row already cleared, skipping');
+          pipeToSidepanel(`Row already cleared, skipping`, 'info');
           continue;
         }
-        console.log('[Kyriq] handleNewApproval — dgrid row matched!', { intuit_id: match.intuit_id, doc_number: match.doc_number });
+        pipeToSidepanel(`Row matched #${match.doc_number} — opening dgrid overlay…`, 'info');
         const result = await setDgridClearState(row, 'C');
-        console.log(`[Kyriq] handleNewApproval — setDgridClearState result: ${result}`);
+        pipeToSidepanel(`Dgrid result: ${result}`, result === 'cleared' || result === 'noop' ? 'success' : 'error');
         if (result === 'cleared' || result === 'noop') {
           highlightRow(row, '#059669');
           cleared++;
           didClear = true;
         }
       }
-      console.log(`[Kyriq] handleNewApproval — done (dgrid): ${cleared} row(s) cleared`);
+      pipeToSidepanel(`Done (dgrid): ${cleared} row(s) cleared`, cleared ? 'success' : 'warn');
       _currentPage = null;
       runPageAutomation();
       return;
@@ -312,27 +323,34 @@
     // ── React table path (reconcile + React register) ────────────────────────
     const rows    = pt === 'reconcile' ? findReconcilePageRows() : findReconRows();
     const matchRow = pt === 'reconcile' ? matchReconcileRow : matchReconRow;
-    console.log(`[Kyriq] handleNewApproval — scanning ${rows.length} rows for intuit_id=${newTxn.intuit_id}`);
+    pipeToSidepanel(`Scanning ${rows.length} rows for ${tag}`, 'info');
+    if (!rows.length) {
+      pipeToSidepanel(`No rows found — table.mainTable not present yet`, 'warn');
+    }
 
     for (const row of rows) {
       if (didClear) break;
       const match = matchRow(row, lookup);
       if (!match) continue;
-      console.log('[Kyriq] handleNewApproval — row matched!', { intuit_id: match.intuit_id, doc_number: match.doc_number });
       const btn = row.querySelector('button[data-testid="clear-state-cell"]');
-      console.log('[Kyriq] handleNewApproval — clear button:', btn, 'aria-pressed:', btn?.getAttribute('aria-pressed'));
-      if (!btn || btn.getAttribute('aria-pressed') === 'true') {
-        console.log('[Kyriq] handleNewApproval — row already cleared or no button, skipping');
+      if (!btn) {
+        pipeToSidepanel(`Row matched #${match.doc_number} but no clear button found in DOM`, 'warn');
+        continue;
+      }
+      if (btn.getAttribute('aria-pressed') === 'true') {
+        pipeToSidepanel(`Row #${match.doc_number} already cleared`, 'info');
         continue;
       }
       btn.click();
       highlightRow(row, '#059669');
       cleared++;
       didClear = true;
-      console.log(`[Kyriq] handleNewApproval — ✓ clicked C for intuit_id=${newTxn.intuit_id}`);
+      pipeToSidepanel(`✓ Clicked C on row #${match.doc_number}`, 'success');
     }
 
-    console.log(`[Kyriq] handleNewApproval — done: ${cleared} row(s) cleared`);
+    if (!didClear) {
+      pipeToSidepanel(`No matching row found on this page for ${tag}`, 'warn');
+    }
     _currentPage = null;
     runPageAutomation();
   }

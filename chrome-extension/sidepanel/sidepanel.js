@@ -176,6 +176,13 @@ function dbg(msg, type = 'info') {
   log.appendChild(line);
   log.scrollTop = log.scrollHeight;
 }
+
+// Show the debug panel — used during approval flows so the user sees
+// real-time feedback from the QB content script.
+function ensureDebugPanelOpen() {
+  const panel = $('#debug-panel');
+  if (panel && panel.style.display === 'none') panel.style.display = '';
+}
 function escHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -340,6 +347,16 @@ chrome.runtime.onMessage.addListener((msg) => {
 
     case 'QB_OAUTH_COMPLETE': {
       handleQBOAuthComplete(msg);
+      return;
+    }
+
+    // Logs forwarded from the QB content script so the user can see what's
+    // happening on the page (e.g. row matching, click results) in the
+    // sidepanel debug panel.
+    case 'KYRIQ_CONTENT_LOG': {
+      ensureDebugPanelOpen();
+      const prefix = msg.page ? `[${msg.page}] ` : '[QB] ';
+      dbg(prefix + (msg.msg || ''), msg.level || 'info');
       return;
     }
   }
@@ -933,79 +950,58 @@ function hideApproveConfirm() {
   _pendingApproveIdx = null;
 }
 
-async function approveAndClear(idx) {
+function approveAndClear(idx) {
   const match = matches[idx];
   if (!match) return;
-  showLoading('Approving & clearing in QB...');
-  dbg(`Approving match[${idx}]`);
-  try {
-    const checkId = match.check?.id;
-    const jobId   = match.check?.job_id;
-    if (match.qbTxn) {
-      const res = await sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: match.qbTxn, check: match.check || null, checkId, jobId });
+
+  // Optimistic UI: flip status + render immediately. Keep the user moving.
+  ensureDebugPanelOpen();
+  const checkId = match.check?.id;
+  const jobId   = match.check?.job_id;
+  const label   = match.check?.payee || match.qbTxn?.payee || `match[${idx}]`;
+  dbg(`▶ Approve & Clear — ${label} (${match.qbTxn?.intuit_id || 'no qb id'})`);
+  match.status = 'approved';
+  renderMatches();
+
+  if (!match.qbTxn) {
+    if (checkId && jobId) {
+      sendMsg({ type: 'UPDATE_CHECK_STATUS', checkId, jobId, status: 'approved' }).catch(() => {});
+    }
+    showWarningBanner('⚠️ Approved — no QB transaction linked to this check');
+    dbg('Approved locally only (no QB txn linked)', 'warn');
+    return;
+  }
+
+  // Fire SW request in the background; surface results via dbg + toast only.
+  sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: match.qbTxn, check: match.check || null, checkId, jobId })
+    .then((res) => {
       if (!res) {
-        dbg('Approve failed: no response from service worker (timeout or crash)', 'error');
+        dbg('SW: no response (timeout or crash)', 'error');
         showErrorDialog('QB Approve Failed', 'The extension service worker did not respond. Try reloading the extension.', null);
-        hideLoading();
         return;
       }
       if (res.error) {
-        dbg(`Approve failed: ${res.error}`, 'error');
+        dbg(`SW error: ${res.error}`, 'error');
         showErrorDialog('QB Approve Failed', res.error, res.qbRaw || null);
-        hideLoading();
         return;
       }
-      match.status = 'approved';
-      // Truthful toast per qbStatus (already_cleared | queued_for_reconcile | manual_required | failed)
-      switch (res?.qbStatus) {
+      switch (res.qbStatus) {
         case 'already_cleared':
-          dbg('Approved — QB already has this cleared ✓', 'success');
-          showQBConfirmation(res);
-          break;
+          dbg('QB already cleared ✓', 'success'); showQBConfirmation(res); break;
         case 'queued_for_reconcile':
-          dbg('Approved — queued for QB Reconcile overlay', 'success');
-          showQBConfirmation(res);
-          break;
+          dbg('QB queued for Reconcile overlay — waiting for content script', 'info'); showQBConfirmation(res); break;
         case 'manual_required':
-          dbg(`Approved — ${res.warning || 'mark manually in QB reconciliation'}`, 'warn');
-          showErrorDialog(
-            'Mark Cleared Manually in QB',
-            res.warning || 'Bill Payment cleared-status cannot be set via the QuickBooks API. Open QB Reconciliation and tick the Cleared box for this transaction.',
-            null
-          );
-          break;
+          dbg(`Manual: ${res.warning}`, 'warn'); break;
         case 'inactive_entity':
-          dbg('Approved in Kyriq ✓ — QB note skipped: linked entity is inactive', 'warn');
-          showQBConfirmation(res);
-          break;
+          dbg('QB note skipped — linked entity inactive', 'warn'); showQBConfirmation(res); break;
         case 'failed':
-          dbg(`Approved locally only: ${res.warning || 'QB update failed'}`, 'error');
-          showErrorDialog(
-            'QB PrivateNote Stamp Failed',
-            `Approved in Kyriq — but QB was not updated:\n\n${res.warning || 'unknown error'}`,
-            res.qbRaw || null
-          );
-          break;
+          dbg(`QB update failed: ${res.warning}`, 'error'); break;
         default:
-          if (res?.warning) {
-            dbg(`Approved: ${res.warning}`, 'warn');
-            showErrorDialog('QB Approval', res.warning, res.qbRaw || null);
-          } else {
-            dbg('Approved in Kyriq', 'success');
-            showQBConfirmation(res);
-          }
+          if (res.warning) dbg(`QB: ${res.warning}`, 'warn');
+          else { dbg('QB updated ✓', 'success'); showQBConfirmation(res); }
       }
-    } else {
-      // No QB txn — persist status to DB then update UI
-      match.status = 'approved';
-      if (checkId && jobId) {
-        sendMsg({ type: 'UPDATE_CHECK_STATUS', checkId, jobId, status: 'approved' }).catch(() => {});
-      }
-      showWarningBanner('⚠️ Approved — no QB transaction linked to this check');
-      dbg('Approved locally only (no QB txn linked)', 'warn');
-    }
-    renderMatches();
-  } finally { hideLoading(); }
+    })
+    .catch((e) => dbg(`SW exception: ${e?.message}`, 'error'));
 }
 
 function showBanner(msg, type = 'warn', autoHideMs = 8000) {
