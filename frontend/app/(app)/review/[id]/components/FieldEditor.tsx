@@ -20,21 +20,86 @@ export default function FieldEditor({ check }: Props) {
     bank_name: check.bank_name || '',
   });
   const [saving, setSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
+
+  // Track originals so we can compute the diff to push to QB.
+  const original = {
+    payee: check.payee || '',
+    amount: check.amount?.toString() || '',
+    check_date: check.check_date || '',
+    check_number: check.check_number || '',
+    bank_name: check.bank_name || '',
+  };
 
   const handleFieldChange = (field: string, value: string) => {
     setFields(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
-    setSaving(true);
+  /**
+   * After saving locally, look up the linked QB transaction (matches.qb_txn_id)
+   * and push only the fields that actually changed to QuickBooks.
+   * Returns a human-readable status string for the inline banner.
+   */
+  const pushChangesToQB = async (changed: Record<string, any>): Promise<{ ok: boolean; message: string }> => {
     try {
       const supabase = createClient();
-      
+      const { data: match } = await supabase
+        .from('matches')
+        .select('qb_txn_id')
+        .eq('check_id', check.id)
+        .maybeSingle();
+      if (!match?.qb_txn_id) {
+        return { ok: false, message: 'No linked QuickBooks transaction — saved locally only.' };
+      }
+
+      // Map check fields to update-transaction.ts payload
+      const apiFields: Record<string, any> = {};
+      if (changed.amount != null)        apiFields.amount    = changed.amount;
+      if (changed.check_date)            apiFields.txnDate   = changed.check_date;
+      if (changed.check_number != null)  apiFields.docNumber = String(changed.check_number);
+      if (Object.keys(apiFields).length === 0) {
+        return { ok: true, message: 'No QB-relevant fields changed.' };
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch('/api/qbo/update-transaction', {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ qbTxnId: match.qb_txn_id, fields: apiFields }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, message: data?.error || `QB sync failed (${res.status})` };
+      }
+      return { ok: true, message: `QuickBooks updated: ${Object.keys(apiFields).join(', ')}` };
+    } catch (e: any) {
+      return { ok: false, message: e?.message || 'QB sync failed (network error)' };
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setStatusMessage(null);
+    try {
+      const supabase = createClient();
+
+      // Compute changed fields vs originals
+      const parsedAmount = parseFloat(fields.amount);
+      const changed: Record<string, any> = {};
+      if (fields.payee !== original.payee)               changed.payee = fields.payee;
+      if (fields.amount !== original.amount && !isNaN(parsedAmount)) changed.amount = parsedAmount;
+      if (fields.check_date !== original.check_date)     changed.check_date = fields.check_date;
+      if (fields.check_number !== original.check_number) changed.check_number = fields.check_number;
+      if (fields.bank_name !== original.bank_name)       changed.bank_name = fields.bank_name;
+
       const { error } = await supabase
         .from('checks')
         .update({
           payee: fields.payee,
-          amount: parseFloat(fields.amount),
+          amount: isNaN(parsedAmount) ? null : parsedAmount,
           check_date: fields.check_date,
           check_number: fields.check_number,
           bank_name: fields.bank_name,
@@ -55,11 +120,21 @@ export default function FieldEditor({ check }: Props) {
         body: JSON.stringify({ fields }),
       });
 
+      // Push the diff to QuickBooks (non-blocking — we still show local save success on QB failure)
+      if (Object.keys(changed).length > 0) {
+        const qb = await pushChangesToQB(changed);
+        if (qb.ok) {
+          setStatusMessage({ type: 'success', text: `Saved ✓ — ${qb.message}` });
+        } else {
+          setStatusMessage({ type: 'warning', text: `Saved locally ✓ — ⚠ ${qb.message}` });
+        }
+      } else {
+        setStatusMessage({ type: 'success', text: 'Saved ✓ — no changes detected.' });
+      }
       router.refresh();
-      alert('Changes saved successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save error:', error);
-      alert('Failed to save changes');
+      setStatusMessage({ type: 'error', text: error?.message || 'Failed to save changes.' });
     } finally {
       setSaving(false);
     }
@@ -172,13 +247,24 @@ export default function FieldEditor({ check }: Props) {
           />
         </div>
 
+        {/* Inline status banner */}
+        {statusMessage && (
+          <div className={`text-sm rounded-lg px-3 py-2 border ${
+            statusMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+            statusMessage.type === 'warning' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                                              'bg-red-50 text-red-800 border-red-200'
+          }`}>
+            {statusMessage.text}
+          </div>
+        )}
+
         {/* Save Button */}
         <button
           onClick={handleSave}
           disabled={saving}
           className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
         >
-          {saving ? 'Saving...' : 'Save Changes'}
+          {saving ? 'Saving...' : 'Save Changes (& push to QB if linked)'}
         </button>
       </div>
     </div>

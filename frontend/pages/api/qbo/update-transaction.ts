@@ -95,25 +95,31 @@ function requiredExtras(txnType: string, entity: any): Record<string, any> {
 /**
  * PATCH /api/qbo/update-transaction
  *
- * Sparse-updates editable scalar fields on a QB transaction (TxnDate, DocNumber,
- * PrivateNote/memo). Amount and payee changes are out of scope for this endpoint
- * because TotalAmt requires rebuilding Line items and EntityRef requires a vendor
- * lookup flow.
+ * Sparse-updates editable fields on a QB transaction (TxnDate, DocNumber,
+ * PrivateNote/memo, and TotalAmt for single-line Purchase entities).
  *
- * Body:
- *   qbTxnId  — UUID in the qb_transactions Supabase table
- *   fields   — { txnDate?: string, docNumber?: string, memo?: string }
+ * Body — accepts EITHER form:
+ *   { qbTxnId, fields }                              (legacy — qb_transactions UUID)
+ *   { intuitId, qbType, fields }                     (preferred — direct QB id + type)
+ *   { qbEntryId, fields }                            (qb_entries composite id like "purchase-123")
+ *
+ * fields: { txnDate?, docNumber?, memo?, amount? }
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { qbTxnId, fields } = req.body || {};
-  if (!qbTxnId) return res.status(400).json({ error: 'qbTxnId is required' });
+  const { qbTxnId, qbEntryId, intuitId: bodyIntuitId, qbType: bodyQbType, fields } = req.body || {};
   if (!fields || typeof fields !== 'object') return res.status(400).json({ error: 'fields object is required' });
 
-  const { txnDate, docNumber, memo } = fields as { txnDate?: string; docNumber?: string; memo?: string };
-  if (!txnDate && !docNumber && !memo) {
-    return res.status(400).json({ error: 'At least one of txnDate, docNumber, or memo must be provided' });
+  const { txnDate, docNumber, memo, amount } = fields as {
+    txnDate?: string; docNumber?: string; memo?: string; amount?: number | string;
+  };
+  const amountNum = amount != null && amount !== '' ? Number(amount) : null;
+  if (amount != null && (amountNum == null || !isFinite(amountNum) || amountNum <= 0)) {
+    return res.status(400).json({ error: 'amount must be a positive number' });
+  }
+  if (!txnDate && !docNumber && !memo && amountNum == null) {
+    return res.status(400).json({ error: 'At least one of txnDate, docNumber, memo, or amount must be provided' });
   }
 
   try {
@@ -121,20 +127,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
-    // Fetch the QB transaction row for identifiers.
-    const { data: qbTxn, error: txnErr } = await supabase
-      .from('qb_transactions')
-      .select('txn_id, txn_type, realm_id, tenant_id')
-      .eq('id', qbTxnId)
-      .single();
+    // Resolve { txnType, txnId, realmId } from any of the three input shapes.
+    let txnType: string | null = null;
+    let txnId:   string | null = null;
+    let realmId: string | null = null;
 
-    if (txnErr || !qbTxn) return res.status(404).json({ error: 'QB transaction not found' });
-    if (!qbTxn.txn_id || !qbTxn.txn_type) {
-      return res.status(400).json({ error: 'QB transaction is missing intuit ID or type' });
+    if (bodyIntuitId && bodyQbType) {
+      txnType = String(bodyQbType);
+      txnId   = String(bodyIntuitId);
+      // Realm comes from the active QB connection
+      const { data: conn } = await supabase
+        .from('qb_connections')
+        .select('realm_id')
+        .eq('is_active', true)
+        .order('connected_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      realmId = conn?.realm_id || null;
+    } else if (qbEntryId) {
+      const { data: entry } = await supabase
+        .from('qb_entries')
+        .select('intuit_id, qb_type, tenant_id')
+        .eq('id', qbEntryId)
+        .maybeSingle();
+      if (!entry?.intuit_id || !entry?.qb_type) {
+        return res.status(404).json({ error: 'QB entry not found or missing intuit_id/qb_type' });
+      }
+      txnType = entry.qb_type;
+      txnId   = entry.intuit_id;
+      const { data: conn } = await supabase
+        .from('qb_connections')
+        .select('realm_id')
+        .eq('tenant_id', entry.tenant_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      realmId = conn?.realm_id || null;
+    } else if (qbTxnId) {
+      const { data: qbTxn, error: txnErr } = await supabase
+        .from('qb_transactions')
+        .select('txn_id, txn_type, realm_id')
+        .eq('id', qbTxnId)
+        .single();
+      if (txnErr || !qbTxn) return res.status(404).json({ error: 'QB transaction not found' });
+      txnType = qbTxn.txn_type;
+      txnId   = qbTxn.txn_id;
+      realmId = qbTxn.realm_id;
+    } else {
+      return res.status(400).json({ error: 'qbTxnId, qbEntryId, or {intuitId+qbType} is required' });
     }
+
+    if (!txnType || !txnId) return res.status(400).json({ error: 'QB transaction is missing intuit ID or type' });
 
     const tokens = await getTokens(supabase);
     if (!tokens) return res.status(400).json({ error: 'QuickBooks not connected' });
+    if (!realmId) realmId = tokens.realm_id;
 
     let accessToken = tokens.access_token;
     const isExpired = tokens.expires_at && new Date(tokens.expires_at) <= new Date(Date.now() + 60_000);
@@ -145,7 +191,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const useSandbox = process.env.QB_SANDBOX === 'true';
     const base = useSandbox ? QBO_SANDBOX : QBO_BASE;
-    const { txn_type: txnType, txn_id: txnId, realm_id: realmId } = qbTxn;
 
     // GET current entity to obtain SyncToken and required entity refs.
     const readUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}/${txnId}?minorversion=73`;
@@ -172,6 +217,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (docNumber) payload.DocNumber   = docNumber;
     if (memo)      payload.PrivateNote = memo;
 
+    // Amount update — Purchase / Check entities have a Line array; we rebuild
+    // it scaling each line's Amount proportionally to preserve the original split.
+    if (amountNum != null) {
+      if (txnType === 'BillPayment') {
+        return res.status(400).json({
+          error: 'Amount changes on BillPayment are not supported via API. Adjust the linked Bill, then re-pay.',
+        });
+      }
+      const lines: any[] = Array.isArray(entity.Line) ? entity.Line : [];
+      if (lines.length === 0) {
+        return res.status(400).json({ error: 'Cannot update amount: QB transaction has no Line items.' });
+      }
+      const currentTotal = Number(entity.TotalAmt) || lines.reduce((s, l) => s + (Number(l.Amount) || 0), 0);
+      if (currentTotal <= 0) {
+        return res.status(400).json({ error: 'Cannot update amount: original TotalAmt is zero.' });
+      }
+      const ratio = amountNum / currentTotal;
+      payload.Line = lines.map((l) => {
+        const next: any = { ...l };
+        if (typeof l.Amount === 'number' || (l.Amount != null && !isNaN(Number(l.Amount)))) {
+          next.Amount = Number((Number(l.Amount) * ratio).toFixed(2));
+        }
+        return next;
+      });
+      // Reconcile rounding: nudge the last line so the sum equals amountNum exactly.
+      const sum = payload.Line.reduce((s: number, l: any) => s + (Number(l.Amount) || 0), 0);
+      const drift = +(amountNum - sum).toFixed(2);
+      if (Math.abs(drift) >= 0.01 && payload.Line.length > 0) {
+        const last = payload.Line[payload.Line.length - 1];
+        last.Amount = Number(((Number(last.Amount) || 0) + drift).toFixed(2));
+      }
+      payload.TotalAmt = amountNum;
+    }
+
     // POST sparse update to QB IDS.
     const writeUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}?minorversion=73`;
     const writeRes = await fetch(writeUrl, {
@@ -196,17 +275,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Sync the local Supabase row so the UI reflects the change immediately.
-    const localPatch: Record<string, any> = {};
-    if (txnDate)   localPatch.txn_date  = txnDate;
-    if (docNumber) localPatch.doc_number = docNumber;
-    if (memo)      localPatch.memo       = memo;
-    await supabase.from('qb_transactions').update(localPatch).eq('id', qbTxnId);
+    // Sync the local Supabase rows so the UI reflects the change immediately.
+    const txnPatch: Record<string, any> = {};
+    if (txnDate)        txnPatch.txn_date   = txnDate;
+    if (docNumber)      txnPatch.doc_number = docNumber;
+    if (memo)           txnPatch.memo       = memo;
+    if (amountNum != null) txnPatch.amount  = amountNum;
+    if (qbTxnId) {
+      await supabase.from('qb_transactions').update(txnPatch).eq('id', qbTxnId);
+    }
+
+    // qb_entries (canonical for matching) — patch by intuit_id + qb_type
+    const entryPatch: Record<string, any> = {};
+    if (txnDate)        entryPatch.date         = txnDate;
+    if (docNumber)      entryPatch.check_number = docNumber;
+    if (memo)           entryPatch.memo         = memo;
+    if (amountNum != null) entryPatch.amount    = String(amountNum);
+    if (Object.keys(entryPatch).length > 0) {
+      await supabase
+        .from('qb_entries')
+        .update(entryPatch)
+        .eq('intuit_id', txnId)
+        .eq('qb_type', txnType);
+    }
 
     const updatedEntity = writeParsed?.[txnType] || writeParsed?.[Object.keys(writeParsed)[0]] || {};
     return res.status(200).json({
       updated: true,
-      fields: localPatch,
+      fields: { ...txnPatch },
       syncToken: updatedEntity.SyncToken || null,
     });
   } catch (error: any) {

@@ -148,11 +148,16 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="all">All QB Sources</option>
-            {qbSources.map((source) => (
-              <option key={source} value={source}>
-                {source}
-              </option>
-            ))}
+            {qbSources.map((source) => {
+              const label =
+                source === 'cheque_written'      ? '📝 Cheque Written'   :
+                source === 'bill_paid_by_cheque' ? '💸 Bill Paid'         :
+                source === 'cheque_received'     ? '✉️ Cheque Received'  :
+                source === 'payroll_check'       ? '💰 Payroll'           :
+                source === 'qbo_file_upload'     ? '📂 File Upload'       :
+                source;
+              return <option key={source} value={source}>{label}</option>;
+            })}
           </select>
         </div>
 

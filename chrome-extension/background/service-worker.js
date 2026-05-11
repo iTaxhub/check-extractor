@@ -870,12 +870,18 @@ async function pullQBTransactions() {
           payee   = t.PayeeRef?.name || t.EntityRef?.name || null;
           account = t.BankAccountRef?.name || t.AccountRef?.name || null;
         }
+        // Re-tag Purchase rows whose payee is an Employee as payroll cheques so they
+        // appear under the Payroll filter in matches.
+        let resolvedSource = source;
+        if (type === 'Purchase' && (t.EntityRef?.type === 'Employee' || /^employee/i.test(t.EntityRef?.type || ''))) {
+          resolvedSource = 'payroll_check';
+        }
         return {
           tenant_id: tenantId,
           realm_id: realmId,
           txn_id: `${type.toLowerCase()}-${t.Id}`,
           txn_type: type,
-          qb_source: source,
+          qb_source: resolvedSource,
           txn_date: t.TxnDate,
           payee,
           amount: t.TotalAmt,

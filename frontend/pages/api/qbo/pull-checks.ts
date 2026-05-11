@@ -366,6 +366,13 @@ async function qboQueryAll(accessToken: string, realmId: string, baseQuery: stri
 
 function normalizePurchaseCheck(purchase: any): any {
 
+  // Re-tag Purchase rows whose EntityRef is an Employee as payroll cheques.
+  // QBO Payroll Paychecks are not exposed via the Accounting API; manual
+  // "Write Cheque" entries to employees come through here as Purchase.
+  const entityType = purchase.EntityRef?.type || '';
+  const isEmployee = entityType === 'Employee' || /^employee/i.test(entityType);
+  const qb_source = isEmployee ? 'payroll_check' : 'cheque_written';
+
   return {
 
     id: `purchase-${purchase.Id}`,
@@ -374,7 +381,7 @@ function normalizePurchaseCheck(purchase: any): any {
 
     qb_type: 'Purchase',
 
-    qb_source: 'cheque_written',
+    qb_source,
 
     check_number: purchase.DocNumber || '',
 

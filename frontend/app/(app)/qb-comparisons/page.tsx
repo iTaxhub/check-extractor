@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, Wrench } from 'lucide-react';
+import { applyFixesToQB, computeCorrections } from './utils/fixDiscrepancy';
 import { QBCompanySwitcher } from '@/components/QBCompanySwitcher';
 import Link from 'next/link';
 import { useComparisonData } from './hooks/useComparisonData';
@@ -85,6 +86,9 @@ export default function QBComparisonsPage() {
   const [toast, setToast] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
   const [vouchDialog, setVouchDialog] = useState<{ row: ComparisonRow } | null>(null);
   const [vouchingToQB, setVouchingToQB] = useState(false);
+  const [fixingAll, setFixingAll] = useState(false);
+  const [fixAllProgress, setFixAllProgress] = useState<{ done: number; total: number } | null>(null);
+  const [showFixAllConfirm, setShowFixAllConfirm] = useState(false);
 
   const showToast = useCallback((type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ type, message });
@@ -225,6 +229,12 @@ export default function QBComparisonsPage() {
         showToast('warning', `Approved in Kyriq ⚠ QB stamp failed: ${qbSync.message || 'unknown error'}`);
         break;
       case 'skipped':
+        showToast('warning',
+          qbEntryId
+            ? `Approved in Kyriq ✓ — QB sync skipped: ${qbSync?.message || 'unknown reason'}`
+            : 'Approved in Kyriq ✓ — no QuickBooks transaction linked, so it cannot be cleared in QB. Use "Find in QB" to link first.'
+        );
+        break;
       default:
         showToast('success', 'Check approved ✓');
     }
@@ -255,6 +265,41 @@ export default function QBComparisonsPage() {
 
     console.log('✅ Check rejected:', checkId);
     await refreshData();
+  };
+
+  const handleFixAllDiscrepancies = async () => {
+    const candidates = comparisonData.filter((r) => {
+      if (r.matchStatus !== 'mismatch' || !r.qbData) return false;
+      return Object.keys(computeCorrections(r)).length > 0;
+    });
+    if (candidates.length === 0) {
+      showToast('warning', 'No discrepancies with actionable differences to fix.');
+      setShowFixAllConfirm(false);
+      return;
+    }
+    setFixingAll(true);
+    setFixAllProgress({ done: 0, total: candidates.length });
+    try {
+      const result = await applyFixesToQB(candidates, (done, total) => {
+        setFixAllProgress({ done, total });
+      });
+      const parts: string[] = [];
+      if (result.fixed > 0)   parts.push(`${result.fixed} fixed in QB`);
+      if (result.skipped > 0) parts.push(`${result.skipped} skipped (no diffs)`);
+      if (result.failed > 0)  parts.push(`${result.failed} failed`);
+      const msg = parts.join(' · ') || 'No changes made';
+      const type: 'success' | 'warning' | 'error' =
+        result.failed > 0 ? 'error' : (result.fixed > 0 ? 'success' : 'warning');
+      showToast(type, msg);
+      if (result.errors.length > 0) console.warn('Fix-All errors:', result.errors);
+      await refreshData();
+    } catch (e: any) {
+      showToast('error', e?.message || 'Fix-All failed');
+    } finally {
+      setFixingAll(false);
+      setFixAllProgress(null);
+      setShowFixAllConfirm(false);
+    }
   };
 
   const handleAutoSync = async () => {
@@ -835,6 +880,76 @@ export default function QBComparisonsPage() {
         missingInExtraction={statistics.missingInExtraction}
       />
 
+      {/* Fix All Discrepancies action bar — shown when there are mismatches with actionable diffs */}
+      {statistics.mismatched > 0 && (() => {
+        const fixableCount = comparisonData.filter(r =>
+          r.matchStatus === 'mismatch' && r.qbData && Object.keys(computeCorrections(r)).length > 0
+        ).length;
+        if (fixableCount === 0) return null;
+        return (
+          <div className="mx-4 mt-2 flex items-center gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+            <AlertTriangle size={16} className="text-amber-600 flex-shrink-0" />
+            <div className="flex-1 text-sm text-amber-900">
+              <strong>{fixableCount}</strong> discrepanc{fixableCount === 1 ? 'y has' : 'ies have'} differences that can be pushed to QuickBooks
+              (amount, date, or check#).
+            </div>
+            {fixingAll && fixAllProgress && (
+              <span className="text-xs font-medium text-amber-700">
+                {fixAllProgress.done}/{fixAllProgress.total}…
+              </span>
+            )}
+            <button
+              onClick={() => setShowFixAllConfirm(true)}
+              disabled={fixingAll}
+              className="flex items-center gap-2 px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
+            >
+              {fixingAll ? <Loader2 size={14} className="animate-spin" /> : <Wrench size={14} />}
+              {fixingAll ? 'Fixing…' : `Fix All (${fixableCount})`}
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Fix All confirmation modal */}
+      {showFixAllConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={() => !fixingAll && setShowFixAllConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4">
+              <h2 className="text-white font-bold text-lg flex items-center gap-2">
+                <Wrench size={20} /> Fix All Discrepancies in QuickBooks?
+              </h2>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-gray-700">
+                This will push the cheque extraction values (amount, date, check #) to QuickBooks
+                for every mismatched row that has actual differences. Rows with no diffs will be skipped.
+              </p>
+              <p className="text-xs text-gray-500">
+                Note: BillPayment amounts cannot be changed via the QuickBooks API. Those rows will be reported as failed
+                — adjust the linked Bill in QuickBooks instead.
+              </p>
+            </div>
+            <div className="bg-gray-50 px-6 py-3 flex justify-end gap-2">
+              <button
+                onClick={() => setShowFixAllConfirm(false)}
+                disabled={fixingAll}
+                className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFixAllDiscrepancies}
+                disabled={fixingAll}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
+              >
+                {fixingAll ? <Loader2 size={14} className="animate-spin" /> : <Wrench size={14} />}
+                {fixingAll ? `Fixing ${fixAllProgress?.done || 0}/${fixAllProgress?.total || 0}…` : 'Fix All'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ComparisonControlsBar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -907,6 +1022,7 @@ export default function QBComparisonsPage() {
         onSave={(checkId, updates) => handleSaveCheck(checkId, updates, selectedRow?.extractionData?.job_id)}
         onApprove={(checkId: string) => handleApproveCheck(checkId, selectedRow?.extractionData?.job_id, selectedRow?.qbData?.id, selectedRow?.extractionData)}
         onReject={(checkId: string) => handleRejectCheck(checkId, selectedRow?.extractionData?.job_id)}
+        onFixed={() => { refreshData(); }}
       />
       
       <ColumnSettings

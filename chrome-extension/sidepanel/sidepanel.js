@@ -767,13 +767,13 @@ function renderMatches() {
   if (_docFilter) {
     filtered = filtered.filter(m => (m.check || {}).job_id === _docFilter);
   }
-  // Account filter
+  // Account filter — skip for unmatched rows (no qbTxn means no account to compare against)
   if (_accountFilter) {
-    filtered = filtered.filter(m => (m.qbTxn?.account || '') === _accountFilter);
+    filtered = filtered.filter(m => !m.qbTxn || (m.qbTxn.account || '') === _accountFilter);
   }
-  // Source type filter (QB transaction type)
+  // Source type filter (QB transaction type) — skip for unmatched rows
   if (_matchSourceFilter) {
-    filtered = filtered.filter(m => getQBSource(m.qbTxn) === _matchSourceFilter);
+    filtered = filtered.filter(m => !m.qbTxn || getQBSource(m.qbTxn) === _matchSourceFilter);
   }
   // Search filter
   if (_matchSearch) {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, FileCheck, DollarSign, Edit2, Save, XCircle, CheckCircle2, Ban, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, AlertCircle, FileCheck, DollarSign, Edit2, Save, XCircle, CheckCircle2, Ban, Loader2, Wrench } from 'lucide-react';
 import {
   ComparisonRow,
   formatCurrency,
@@ -8,6 +8,7 @@ import {
   areDatesSameCalendarDay,
   normalizeCheckNum,
 } from '../utils/comparisonUtils';
+import { applyFixToQB, computeCorrections } from '../utils/fixDiscrepancy';
 
 interface DetailModalProps {
   row: ComparisonRow | null;
@@ -15,15 +16,18 @@ interface DetailModalProps {
   onSave?: (checkId: string, updates: any) => Promise<void>;
   onApprove?: (checkId: string) => Promise<void>;
   onReject?: (checkId: string) => Promise<void>;
+  onFixed?: () => void;
 }
 
-export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, onApprove, onReject }) => {
+export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, onApprove, onReject, onFixed }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isFixing, setIsFixing] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
   const [approveSuccess, setApproveSuccess] = useState(false);
+  const [fixMessage, setFixMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [editedData, setEditedData] = useState({
     checkNumber: '',
     date: '',
@@ -92,6 +96,35 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
       setApproveError(error.message || 'Failed to approve check. Please try again.');
     } finally {
       setIsApproving(false);
+    }
+  };
+
+  const corrections = useMemo(() => row ? computeCorrections(row) : {}, [row]);
+  const correctionCount = Object.keys(corrections).length;
+
+  const handleFixInQB = async () => {
+    if (!row) return;
+    setFixMessage(null);
+    if (correctionCount === 0) {
+      setFixMessage({ type: 'info', text: 'Nothing to fix — extraction and QuickBooks values already match.' });
+      return;
+    }
+    setIsFixing(true);
+    try {
+      const result = await applyFixToQB(row);
+      if (result.skipped) {
+        setFixMessage({ type: 'info', text: result.reason || 'Skipped — no changes' });
+      } else if (result.ok) {
+        const parts = Object.entries(result.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+        setFixMessage({ type: 'success', text: `Fixed in QuickBooks ✓ ${parts ? `(${parts})` : ''}` });
+        onFixed?.();
+      } else {
+        setFixMessage({ type: 'error', text: result.reason || 'Fix failed' });
+      }
+    } catch (e: any) {
+      setFixMessage({ type: 'error', text: e?.message || 'Fix failed' });
+    } finally {
+      setIsFixing(false);
     }
   };
 
@@ -594,18 +627,42 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                 <span>Approved! Closing…</span>
               </div>
             )}
-            <div className="flex items-center gap-3">
+            {fixMessage && (
+              <div className={`mb-3 flex items-start gap-2 text-sm border rounded-lg px-4 py-2 ${
+                fixMessage.type === 'success' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
+                fixMessage.type === 'error'   ? 'text-red-700 bg-red-50 border-red-200' :
+                                                'text-blue-700 bg-blue-50 border-blue-200'
+              }`}>
+                <span>{fixMessage.type === 'success' ? '✓' : fixMessage.type === 'error' ? '⚠' : 'ℹ'}</span>
+                <span>{fixMessage.text}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-gray-500 font-medium mr-auto">Actions for Check #{row.checkNumber || row.extractionData.check_id}</span>
+              {row.matchStatus === 'mismatch' && row.qbData && (
+                <button
+                  onClick={handleFixInQB}
+                  disabled={isApproving || isRejecting || isFixing || approveSuccess || correctionCount === 0}
+                  title={correctionCount === 0
+                    ? 'No differences to push'
+                    : `Push ${correctionCount} field${correctionCount === 1 ? '' : 's'} to QuickBooks: ${Object.keys(corrections).join(', ')}`}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
+                >
+                  {isFixing ? <Loader2 size={16} className="animate-spin" /> : <Wrench size={16} />}
+                  {isFixing ? 'Fixing…' : `Fix in QB${correctionCount > 0 ? ` (${correctionCount})` : ''}`}
+                </button>
+              )}
               {onApprove && (
                 <button
                   onClick={handleApprove}
                   disabled={isApproving || isRejecting || approveSuccess}
+                  title={row.qbData ? 'Approve and stamp Cleared note in QuickBooks' : 'Approve in Kyriq only — no QB transaction linked'}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 text-white ${
                     approveSuccess ? 'bg-emerald-400 cursor-default' : 'bg-emerald-600 hover:bg-emerald-700'
                   }`}
                 >
                   {isApproving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                  {isApproving ? 'Approving…' : approveSuccess ? '✓ Approved' : 'Approve'}
+                  {isApproving ? 'Approving…' : approveSuccess ? '✓ Approved' : (row.qbData ? 'Approve & Clear' : 'Approve')}
                 </button>
               )}
               {onReject && (
