@@ -25,6 +25,20 @@ function fmt(amount) {
   if (amount == null) return '—';
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
+async function runWithLimit(items, limit, worker) {
+  const out = new Array(items.length);
+  let i = 0;
+  const workers = Array(Math.min(limit, items.length)).fill(0).map(async () => {
+    while (i < items.length) {
+      const idx = i++;
+      try { out[idx] = await worker(items[idx], idx); }
+      catch (e) { out[idx] = { error: e }; }
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
 function parseCheckDate(d) {
   if (!d) return null;
   if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
@@ -1080,7 +1094,7 @@ async function autoApproveCleared() {
 
   dbg(`⚡ Background sync: ${pending.length} cleared cheque${pending.length === 1 ? '' : 's'}`, 'info');
 
-  const settled = await Promise.allSettled(pending.map(m =>
+  const rawResults = await runWithLimit(pending, 3, m =>
     sendMsg({
       type: 'APPROVE_AND_CLEAR',
       qbTxn: m.qbTxn,
@@ -1088,7 +1102,8 @@ async function autoApproveCleared() {
       checkId: m.check?.id,
       jobId: m.check?.job_id,
     }).then(res => ({ m, res }))
-  ));
+  );
+  const settled = rawResults.map(r => r?.error ? { status: 'rejected', reason: r.error } : { status: 'fulfilled', value: r });
 
   let ok = 0, fail = 0, persistFail = 0;
   for (const r of settled) {
@@ -2331,11 +2346,11 @@ function bindEvents() {
     showBulkApproveConfirm(toApprove.length, async () => {
       let approved = 0, failed = 0, localOnly = 0;
 
-      const results = await Promise.all(toApprove.map(m =>
+      const results = await runWithLimit(toApprove, 3, m =>
         sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: m.qbTxn, check: m.check || null, checkId: m.check?.id, jobId: m.check?.job_id })
           .then(res => ({ m, res }))
           .catch(err => ({ m, res: { success: false, error: err?.message || String(err) } }))
-      ));
+      );
 
       for (const { m, res } of results) {
         if (res?.success) {

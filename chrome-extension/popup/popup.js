@@ -25,6 +25,20 @@ function sendMsg(msg) {
   return new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 }
 
+async function runWithLimit(items, limit, worker) {
+  const out = new Array(items.length);
+  let i = 0;
+  const workers = Array(Math.min(limit, items.length)).fill(0).map(async () => {
+    while (i < items.length) {
+      const idx = i++;
+      try { out[idx] = await worker(items[idx], idx); }
+      catch (e) { out[idx] = { error: e }; }
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
 function scoreClass(s) {
   if (s >= 90) return 'score-high';
   if (s >= 60) return 'score-mid';
@@ -438,18 +452,31 @@ function bindEvents() {
 
   // Bulk approve
   $('#btn-bulk-approve').addEventListener('click', async () => {
-    let approved = 0;
-    matches.forEach(m => {
-      if (['matched', 'pending'].includes(m.status) && m.score >= 95) {
+    const toApprove = matches.filter(m => ['matched', 'pending'].includes(m.status) && m.score >= 95);
+    if (toApprove.length === 0) {
+      alert('No matches with ≥95% confidence to auto-approve');
+      return;
+    }
+    const results = await runWithLimit(toApprove, 3, m =>
+      (m.qbTxn
+        ? sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: m.qbTxn })
+        : Promise.resolve({ success: false, error: 'no QB transaction' })
+      ).then(res => ({ m, res })).catch(err => ({ m, res: { success: false, error: err?.message || String(err) } }))
+    );
+    let approved = 0, failed = 0;
+    for (const r of results) {
+      if (r?.error) { failed++; continue; }
+      const { m, res } = r;
+      if (res?.success) {
         m.status = 'approved';
         approved++;
-        // Fire and forget the QB clear
-        if (m.qbTxn) sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: m.qbTxn });
+      } else {
+        failed++;
       }
-    });
+    }
     renderMatches();
-    if (approved > 0) alert(`✅ Auto-approved & cleared ${approved} matches in QB`);
-    else alert('No matches with ≥95% confidence to auto-approve');
+    if (approved > 0) alert(`✅ Auto-approved & cleared ${approved} matches in QB${failed > 0 ? ` (${failed} failed — see extension logs)` : ''}`);
+    else alert('No matches could be approved — check extension logs');
   });
 
   // Upload

@@ -8,6 +8,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Knowledge Graph (graphify)
+
+A persistent knowledge graph of this codebase lives at `graphify-out/`. It covers `frontend/`, `backend/` (excluding Poppler), `chrome-extension/`, and `supabase/`.
+
+**Stats (last built 2026-05-16):** 1,312 nodes · 2,177 edges · 156 communities
+
+**Always do this before answering architecture questions or touching unfamiliar code:**
+1. Read `graphify-out/GRAPH_REPORT.md` — god nodes, community map, surprising cross-cutting links
+2. Run `/graphify query "<your question>"` for targeted graph traversal instead of reading many files
+
+**Always do this after completing any code change:**
+```
+/graphify . --update
+```
+This re-extracts only changed files (incremental — cheap on tokens) and rebuilds `graph.json` + `GRAPH_REPORT.md`. Run it at the end of every task so the graph stays current and the next session starts with full context.
+
+**Key god nodes to know:**
+- `createAuthenticatedClient()` (57 edges) — every API route uses this; `frontend/lib/supabase/api.ts`
+- `getAuthContext()` (26 edges) — shared auth+tenant resolver for all match API routes; `frontend/lib/match-helpers.ts`
+- `CheckExtractorApp` (20 edges) — core OCR orchestrator; `backend/check_extractor.py`
+- `tenants Table` (17 edges) — multi-tenant anchor across all layers
+
+**Python for graphify:** `C:\Users\inkno\AppData\Local\Python\bin\python.exe`
+
+---
+
 ## Development Commands
 
 ### Run Both Services

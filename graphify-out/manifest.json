@@ -1,0 +1,1018 @@
+{
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\next-env.d.ts": {
+    "mtime": 1774241686.859844,
+    "hash": "a7a05ce830bd5ce3ccbddef840af8fdd"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\next.config.js": {
+    "mtime": 1772483330.113481,
+    "hash": "d1c899e0eb6af448ac39a743179c0509"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\postcss.config.js": {
+    "mtime": 1770872141.2588005,
+    "hash": "762a94d1749c8e97eebf3f94102e8eb2"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\proxy.ts": {
+    "mtime": 1772482083.2888863,
+    "hash": "782ba666ed3fba9a4e0265022ce0e6eb"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\tailwind.config.js": {
+    "mtime": 1773933869.5183532,
+    "hash": "9668bb1437ed33e7eea58eb9155887ee"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\layout.tsx": {
+    "mtime": 1775075851.1960218,
+    "hash": "0b0b67f46e16acb57a17c47ff91241d3"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\not-found.tsx": {
+    "mtime": 1772480841.4788063,
+    "hash": "84e3b93f2e0c70e4244ffe33bfabbe0c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\page.tsx": {
+    "mtime": 1773904331.6385686,
+    "hash": "6db1c8415bb0c4c8490611af236ab7ae"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(admin)\\layout.tsx": {
+    "mtime": 1773941390.2694223,
+    "hash": "5ab7dcd92f4bc9b2559fa9b945ad52ed"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(admin)\\admin\\page.tsx": {
+    "mtime": 1773939697.3976302,
+    "hash": "553b2ce298cc11607971d9579002a20e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(admin)\\admin\\revenue\\page.tsx": {
+    "mtime": 1773939989.235538,
+    "hash": "b2b0cd9293c520b32ac511836b4962d3"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(admin)\\admin\\tenants\\page.tsx": {
+    "mtime": 1773939763.654588,
+    "hash": "c45adaaa3f5100b261540918b7369f71"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(admin)\\admin\\tenants\\[id]\\page.tsx": {
+    "mtime": 1773939858.0813065,
+    "hash": "5a9ea90e13136660de9de2bf51e3aa57"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(admin)\\admin\\users\\page.tsx": {
+    "mtime": 1773939367.0629025,
+    "hash": "30ad7ded5e2e85486fb83d79944a5e17"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\layout.tsx": {
+    "mtime": 1775083603.7115073,
+    "hash": "e97689dd1bc6b9c7a62f2fd699879913"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\analytics\\page.tsx": {
+    "mtime": 1770932088.1277258,
+    "hash": "4512f60a8ae890fc878d99d0daaf304c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\billing\\page.tsx": {
+    "mtime": 1773784196.8046458,
+    "hash": "91dff2e98c6b9b274c733a389e47290c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\dashboard\\layout.tsx": {
+    "mtime": 1770934867.0527117,
+    "hash": "aeb58e4dd33c12af57bd037d4a5dafd6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\dashboard\\loading.tsx": {
+    "mtime": 1770872141.1760077,
+    "hash": "80eb782980a8d262de2655dc48d3fc9c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\dashboard\\page.tsx": {
+    "mtime": 1773985222.7497635,
+    "hash": "06d5e78ceb58a70e09e55e9a6db9e0b2"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\dashboard\\components\\ChequeDialog.tsx": {
+    "mtime": 1773983805.966407,
+    "hash": "b9289f416c63066484149ecf6f368dc5"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\dashboard\\components\\ConfigureExtractionDialog.tsx": {
+    "mtime": 1773981386.9915712,
+    "hash": "7dbf0372e066dd911417980532412c37"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\dashboard\\components\\DocumentSidebar.tsx": {
+    "mtime": 1773982147.847664,
+    "hash": "c955ce094fb7562d7cb55ef75d20c678"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\export\\page.tsx": {
+    "mtime": 1770932036.7206025,
+    "hash": "75f9fab689ebe9eabd67a8a2ed671f27"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\firm-dashboard\\page.tsx": {
+    "mtime": 1775031905.7417345,
+    "hash": "d4acd4fa96d84e82c304ce74a0d91c90"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\process\\[id]\\page.tsx": {
+    "mtime": 1773984694.7491488,
+    "hash": "3aa8aa5103de4a668abcc5991190736a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\process\\[id]\\components\\ConfidenceMatrix.tsx": {
+    "mtime": 1770872141.1835124,
+    "hash": "da3018b324c300e967ae8ed618000e8b"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\process\\[id]\\components\\ExtractionComparison.tsx": {
+    "mtime": 1770872141.1845863,
+    "hash": "cb80ac38461965405d362b393ad0e60e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\process\\[id]\\components\\PreprocessPreview.tsx": {
+    "mtime": 1770872141.1845863,
+    "hash": "c2ae1acccd235f9c2028e2cc9e672dda"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\process\\[id]\\components\\ProcessTimeline.tsx": {
+    "mtime": 1770872141.1845863,
+    "hash": "3a05f00470bd50782f0a155b18da385a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\process\\[id]\\components\\SegmentationView.tsx": {
+    "mtime": 1770872141.1859057,
+    "hash": "07cb1952b0c8636d9dda9f90702674ec"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\process\\[id]\\components\\StageIndicator.tsx": {
+    "mtime": 1770872141.1869104,
+    "hash": "be31f5c92ffa9f5f3537f3031550f2f3"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\page.old.tsx": {
+    "mtime": 1771585709.7266684,
+    "hash": "3c4f2faae99c883f1ca2de1fd143d0a1"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\page.tsx": {
+    "mtime": 1778533080.3053238,
+    "hash": "77468e9a0b8ad612d9866f5c56ff0880"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\components\\ColumnSettings.tsx": {
+    "mtime": 1773396709.73569,
+    "hash": "79a4b7d403871e47e5c664186991f59e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\components\\ComparisonControlsBar.tsx": {
+    "mtime": 1778533150.201198,
+    "hash": "31cee4f03e0d1abc2328b67372b49cae"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\components\\ComparisonTable.tsx": {
+    "mtime": 1773978487.1922233,
+    "hash": "6577de00fd13a92ebcce0bc50acbfa89"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\components\\DetailModal.tsx": {
+    "mtime": 1778533100.3180058,
+    "hash": "a2b9f93e8f7581351843b4f0966d019c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\components\\Pagination.tsx": {
+    "mtime": 1773208571.5449686,
+    "hash": "1b6275a16fc65ab6f47645e573d57c25"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\components\\QBConnectionModal.tsx": {
+    "mtime": 1771882882.9490376,
+    "hash": "22bec6175de629b9251dd8488e2f4e1a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\components\\StatisticsPanel.tsx": {
+    "mtime": 1771649038.1581464,
+    "hash": "f6024f65172ed65c01a347f3635401d7"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\hooks\\useBackgroundExtraction.ts": {
+    "mtime": 1773161743.3595486,
+    "hash": "041ace06fc59f170eb687ab3cf92d89d"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\hooks\\useComparisonData.ts": {
+    "mtime": 1775474585.9024742,
+    "hash": "4a1d6b5dd3396ec6c69e4dd3e4980faa"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\hooks\\useComparisonState.ts": {
+    "mtime": 1773435732.5675533,
+    "hash": "00b2f4534a03d513b444d8f221e6a2c3"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\utils\\comparisonUtils.ts": {
+    "mtime": 1775474576.433311,
+    "hash": "1370c2e8ff4b4c64716775762367c474"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\utils\\exportUtils.ts": {
+    "mtime": 1771647918.7497916,
+    "hash": "2e76bd943b75be444901d7e3169121fa"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\utils\\fixDiscrepancy.ts": {
+    "mtime": 1778532775.9226136,
+    "hash": "f73da76682dd3c1286aa949c22e0736b"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-match\\page.tsx": {
+    "mtime": 1777087269.5891955,
+    "hash": "e3c482c817b70a3176384501863384bc"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\reconciliation\\page.tsx": {
+    "mtime": 1771868413.0869637,
+    "hash": "c3735fa84bb6e62ded1c310dba4710f3"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\page.tsx": {
+    "mtime": 1770872141.194334,
+    "hash": "8547741fd8b56af97a85a0d88ed723bf"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\components\\ApprovalActions.tsx": {
+    "mtime": 1770872141.1892402,
+    "hash": "3c3e5855ae73b6d700478e03e540d6f6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\components\\AuditHistory.tsx": {
+    "mtime": 1770872141.1892402,
+    "hash": "42ec410957e44359ac780cb269c951a1"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\components\\CheckImageViewer.tsx": {
+    "mtime": 1770872141.1902397,
+    "hash": "d94f2a399a7f4f13b807358517fb84bb"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\components\\ComparisonPanel.tsx": {
+    "mtime": 1770872141.1902397,
+    "hash": "d397045c0dfbb7edd857883b6c5cb82a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\components\\ConfidenceBadge.tsx": {
+    "mtime": 1770872141.1912398,
+    "hash": "aa4c8fe03e389efa7d264cbe3a93dfca"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\components\\FieldEditor.tsx": {
+    "mtime": 1778533032.4154668,
+    "hash": "7ca173140cfda01f4b99ded2d98a2f8b"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\components\\ReviewPanel.tsx": {
+    "mtime": 1770887620.7296224,
+    "hash": "1c3ac5fdc1fa066e0afc9b251fe2f476"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\review\\[id]\\components\\ValidationWarnings.tsx": {
+    "mtime": 1770872141.1932406,
+    "hash": "d483ac5a6e7ddbdbd62155388e37526f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\settings\\page.tsx": {
+    "mtime": 1775031791.3603842,
+    "hash": "5856c5b2a065239e53af405ff1454e51"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\settings\\team\\page.tsx": {
+    "mtime": 1770872141.1973395,
+    "hash": "0a7cf4ff4543bc5a69a46285374d2a3f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\super-admin\\page.tsx": {
+    "mtime": 1773937942.392776,
+    "hash": "5335d2842f9902f6325c53f525408576"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\upload\\page.tsx": {
+    "mtime": 1773984888.285364,
+    "hash": "6a3b63262e71364c6e1a92f7d5e79801"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\upload\\components\\DropzoneUpload.tsx": {
+    "mtime": 1770872141.1987357,
+    "hash": "761938e0ed14e2f341f6174dcc912065"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\upload\\components\\MultiFileQueue.tsx": {
+    "mtime": 1770872141.199739,
+    "hash": "29da617dea9dbda02f3b12be0430f66d"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\upload\\components\\UploadProgress.tsx": {
+    "mtime": 1770872141.200745,
+    "hash": "6ad39cfebc0dc316b517218cf3bd1abe"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(auth)\\layout.tsx": {
+    "mtime": 1773941367.5868728,
+    "hash": "0ce3cd00d39db7c883ed09896e7deb5a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(auth)\\forgot-password\\page.tsx": {
+    "mtime": 1772479655.0588124,
+    "hash": "88f398abc30c4c2641dd5f0991dbb7ec"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(auth)\\login\\page.tsx": {
+    "mtime": 1773941179.9994495,
+    "hash": "e3560481f0443f39bf4c31b5dd03b6c7"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(auth)\\reset-password\\page.tsx": {
+    "mtime": 1772479668.0411563,
+    "hash": "fddc4dd9a2ee8f0a812fe1d3b3b1ee11"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(auth)\\signup\\page.tsx": {
+    "mtime": 1773944371.0359554,
+    "hash": "849d1a1912381fdc5e71955b7a2d9ac3"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(public)\\legal\\eula\\page.tsx": {
+    "mtime": 1772455415.565355,
+    "hash": "acf5abb42c42e33a93fec0d5b8b537d9"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(public)\\legal\\privacy\\page.tsx": {
+    "mtime": 1772455170.2680087,
+    "hash": "d8e572669c06fbb647068caaa8bdc9d4"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(public)\\legal\\terms\\page.tsx": {
+    "mtime": 1772455287.7181382,
+    "hash": "f592dc31b3b7b216ff99cd14d1b0ad0c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(public)\\privacy\\page.tsx": {
+    "mtime": 1775075885.260862,
+    "hash": "ff5e75bac7c5aec7557da1166a407ae6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(public)\\terms\\page.tsx": {
+    "mtime": 1775075869.3696957,
+    "hash": "7cf643ea7dbd1669705c22aa4c41592e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\qb-oauth-complete\\page.tsx": {
+    "mtime": 1774965895.4524446,
+    "hash": "d5dcb60366d8d0d4fdefb3e1c2c8f1fb"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\AccountSwitcher.tsx": {
+    "mtime": 1775057505.0842633,
+    "hash": "118eee1724447c29625573ddefa85a3f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\AuthGuard.tsx": {
+    "mtime": 1772479975.7523427,
+    "hash": "37598c156ce1ca55b7c286b3480b1106"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\CompanySwitcher.tsx": {
+    "mtime": 1773865575.4965754,
+    "hash": "d21abe010709ab2f8f88b605cc63bf32"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\DeleteConfirmModal.tsx": {
+    "mtime": 1773978035.2553856,
+    "hash": "86d6bfa87f5b560c9b4e24eda638f2ed"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\LogoutButton.tsx": {
+    "mtime": 1772480045.3807151,
+    "hash": "37bc53d84be88ee7fdb34deb92e82dcb"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\MatchRow.tsx": {
+    "mtime": 1777955956.18366,
+    "hash": "d774810b52aae3dde446048084f4152b"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\QBCompanySelector.tsx": {
+    "mtime": 1773305109.7046454,
+    "hash": "602c35ac6d41da7b689b41fb54d42da3"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\QBCompanySwitcher.tsx": {
+    "mtime": 1774697880.3075,
+    "hash": "1cf02f3fbd60a8839bf339e0e1d913cf"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\QBConnectionStatus.tsx": {
+    "mtime": 1773305493.4655666,
+    "hash": "557cfa1dea135e2f4575d50743f36be0"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\QBDataPreview.tsx": {
+    "mtime": 1773681565.493725,
+    "hash": "6951eed50c6b6536fef38e1a2a16736d"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\QBProviderWrapper.tsx": {
+    "mtime": 1773865762.8120236,
+    "hash": "ce0b7e389f3b1ccffa4acce40766d5c3"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\QuickBooksFilters.tsx": {
+    "mtime": 1774965436.3262937,
+    "hash": "10f42844d6dcd0725c4638444b8b021c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\SearchQBModal.tsx": {
+    "mtime": 1773865701.4290216,
+    "hash": "e5437d66b1787ae42e49f06133e95a3f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\SidebarCompanySwitcher.tsx": {
+    "mtime": 1773865770.6182244,
+    "hash": "a7017796eda5f70a1844625530932771"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\SuperAdminLink.tsx": {
+    "mtime": 1773938707.0665495,
+    "hash": "12953cffc32f900011c9367ad70a24c2"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\UserProfile.tsx": {
+    "mtime": 1775036545.5164535,
+    "hash": "8f3582660785d9ff1ffe6bc80cb4900e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\common\\AIKeyWarning.tsx": {
+    "mtime": 1770872141.2149334,
+    "hash": "08f3344849fe553351f52a93d18fa83c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\landing\\LandingPage.tsx": {
+    "mtime": 1773943478.9297063,
+    "hash": "679ac34838451dd32b72d6fcf29cc4b7"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\providers\\ToastProvider.tsx": {
+    "mtime": 1770872141.2216504,
+    "hash": "5abd264f5c3d04895afbd0b0e536338d"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\ui\\border-beam.tsx": {
+    "mtime": 1773933695.7778983,
+    "hash": "b86be88167ee93fd260862936d32c5a4"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\ui\\marquee.tsx": {
+    "mtime": 1773933588.7283864,
+    "hash": "705e2d7325ba0e9939a8433f799f1786"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\ui\\number-ticker.tsx": {
+    "mtime": 1773933656.0713682,
+    "hash": "ed6b8d1a6490f3f81d7845519f9acac5"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\components\\ui\\shimmer-button.tsx": {
+    "mtime": 1773933810.6306858,
+    "hash": "0c719b6eecf2215469c8976773892434"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\hooks\\useMatches.ts": {
+    "mtime": 1777087172.1778946,
+    "hash": "ba533088eaf63bedb7bcf180b47f1516"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\hooks\\useQBConnections.tsx": {
+    "mtime": 1773865500.7395184,
+    "hash": "6541a6b0e20e4483827af66e749f93c5"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\match-helpers.ts": {
+    "mtime": 1773865916.6020758,
+    "hash": "702ee558bce2fa676bd5092d124f7692"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\matching-algorithm.ts": {
+    "mtime": 1777086800.756816,
+    "hash": "3a010d7f9aaa3a6f0ee605ce59695635"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\super-admin.ts": {
+    "mtime": 1773938117.7651172,
+    "hash": "19ae24b736f7ef164dea9d7f66113d75"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\toast.ts": {
+    "mtime": 1770872141.2376556,
+    "hash": "2eb68e6b94f9a09517df9a1b3e94bc2a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\utils.ts": {
+    "mtime": 1773933779.9538949,
+    "hash": "618d00bf4537ce84f9ba62c5b215fb30"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\hooks\\useCheckProcessing.ts": {
+    "mtime": 1773980534.231838,
+    "hash": "4d0eff3f143fe9cad980e27b74cfacdf"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\hooks\\useCheckReview.ts": {
+    "mtime": 1770872141.2336545,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\hooks\\useSupabaseAuth.ts": {
+    "mtime": 1770872141.2346559,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\hooks\\useWebSocket.ts": {
+    "mtime": 1770872141.2346559,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\store\\useJobsStore.ts": {
+    "mtime": 1773234526.0431037,
+    "hash": "1ca7850aeeae9ff1832b8cbc8f1d03d4"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\supabase\\api.ts": {
+    "mtime": 1773306852.161241,
+    "hash": "1e13f98ee1b6335337b4ea6125376b83"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\supabase\\client.ts": {
+    "mtime": 1770872141.2366548,
+    "hash": "9ff742f4cc4dbf609abba83b43dbc7a1"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\supabase\\proxy.ts": {
+    "mtime": 1773936211.2794347,
+    "hash": "f754d01b21a45ae903b8db1bca4b2d95"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\supabase\\server.ts": {
+    "mtime": 1772483317.1217,
+    "hash": "74a9e17e04cb7b84eb0234418856778f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\utils\\constants.ts": {
+    "mtime": 1770885289.4629924,
+    "hash": "3e0c7bd25e0aba731121ee684437f621"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\utils\\formatting.ts": {
+    "mtime": 1770872141.2396548,
+    "hash": "5869bb938e5ab5345bd88dac92eccdab"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\utils\\helpers.ts": {
+    "mtime": 1770872141.2396548,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\utils\\qboParser.ts": {
+    "mtime": 1771869439.341326,
+    "hash": "1b5faab0aa2e3995d1fa7f95d8358467"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\lib\\utils\\validation.ts": {
+    "mtime": 1770872141.240654,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\start-extraction.ts": {
+    "mtime": 1773977853.618037,
+    "hash": "0f5680a2834a20671d9e262f50b342e8"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\upload-analyze.ts": {
+    "mtime": 1773977864.0441136,
+    "hash": "80aabb453d3d107a612bb9ea0cee67a4"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\admin\\overview.ts": {
+    "mtime": 1773939577.1247408,
+    "hash": "59491c813b75d9e7152b46f2686dc0bb"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\admin\\stats.ts": {
+    "mtime": 1773938229.4133062,
+    "hash": "323ae73cbc3e65de2e2c5e1370acd8c1"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\admin\\tenants.ts": {
+    "mtime": 1773939612.0703263,
+    "hash": "db610480527a41488eac5eb662b46b8d"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\admin\\users.ts": {
+    "mtime": 1773938443.7298388,
+    "hash": "4919ea227e54e829da6178b22385c8e7"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\check-image\\[...path].ts": {
+    "mtime": 1773977997.0644026,
+    "hash": "31332a1cac10bf1ef3d3bc41ddb20a47"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\checks\\vouch.ts": {
+    "mtime": 1773310168.765178,
+    "hash": "abf3a2a89b64fcd179f2ac87964410b7"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\checks\\vouched.ts": {
+    "mtime": 1773310196.729755,
+    "hash": "71709c5b0a2ed665d021db89c3b1e1f0"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\checks\\[id]\\update.ts": {
+    "mtime": 1772487396.631222,
+    "hash": "cc24f82187d72a29e0b25872672ce724"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\debug\\qb-clear.ts": {
+    "mtime": 1776689262.3730354,
+    "hash": "195a7e8c31e05c0d0133c76c59c08692"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\extension\\config.ts": {
+    "mtime": 1774273781.4879699,
+    "hash": "ce628517e52caf0db8228378ade9349d"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\jobs\\index.ts": {
+    "mtime": 1773171949.5676737,
+    "hash": "c150e909ed79135d79e0c92c4c15ec1a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\jobs\\[id].ts": {
+    "mtime": 1773977818.798383,
+    "hash": "6475059312527525390967008ccaa1ab"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\jobs\\[id]\\export.ts": {
+    "mtime": 1773977898.7324786,
+    "hash": "856db588543677e1cd063d561c883222"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\jobs\\[id]\\retry-failed.ts": {
+    "mtime": 1773977872.8763328,
+    "hash": "5fc6ef78b6c8e14345d54fcae1602692"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\jobs\\[id]\\checks\\[checkId]\\fields.ts": {
+    "mtime": 1775713097.9572191,
+    "hash": "55c325321c06cdeeaefd967ac5877176"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\jobs\\[id]\\checks\\[checkId]\\status.ts": {
+    "mtime": 1777958038.7404737,
+    "hash": "c350ffb6673ac7572eb35dfef7c5b369"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\bulk-approve.ts": {
+    "mtime": 1777955896.3723702,
+    "hash": "b861ab7f0b11d83984eb9aa3a85de4f1"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\create-in-qb.ts": {
+    "mtime": 1773866061.7398062,
+    "hash": "6276a42f91a472b27cde0b15e936dc1a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\index.ts": {
+    "mtime": 1774026542.8607316,
+    "hash": "0130b508e3401dadb7b1cd25b962cbac"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\search-qb.ts": {
+    "mtime": 1773866052.0749161,
+    "hash": "ac8aa2a4b19fc77f40a72578d0c53d94"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\sync-qb.ts": {
+    "mtime": 1777955929.2078676,
+    "hash": "7e1b3c16a46f940b75dbc04675a5466b"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\[id]\\approve.ts": {
+    "mtime": 1777955882.5553658,
+    "hash": "6d882c4e0cd315159aa1982730a6e5fb"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\[id]\\audit.ts": {
+    "mtime": 1773866122.9603822,
+    "hash": "ca2975e881a4203b7cc2b7584112a74e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\[id]\\flag.ts": {
+    "mtime": 1773866080.317241,
+    "hash": "2468fbc8fd8bb0b4eed6c9757d9d8de2"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\[id]\\note.ts": {
+    "mtime": 1773866088.702566,
+    "hash": "87dfef29da84f5fd23b9bc9130761fa6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\[id]\\remap.ts": {
+    "mtime": 1773866106.92504,
+    "hash": "2841231ef036fd757c350d23edabcf23"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\[id]\\resolve-discrepancy.ts": {
+    "mtime": 1773866098.0606358,
+    "hash": "91ce364add3409eecc5dc0eb1796c3cd"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\matches\\[id]\\undo-approval.ts": {
+    "mtime": 1773866115.0884314,
+    "hash": "d08cf49de0bfa5f35252441a36dff68c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\page-image\\[...path].ts": {
+    "mtime": 1773978009.9522521,
+    "hash": "5f6370af10ab9d126e91fe2b7c4783b4"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\pdf-file\\[...path].ts": {
+    "mtime": 1773977841.1189718,
+    "hash": "c804a88b4f8b92ecef6e9c499b44be1e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qb\\active.ts": {
+    "mtime": 1773865152.0682986,
+    "hash": "1afda1b1405be523972a23ecfd8de7ae"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qb\\connections.ts": {
+    "mtime": 1773865127.7888281,
+    "hash": "487e34721f3487740e9c3a61fa13612f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qb\\switch.ts": {
+    "mtime": 1773865141.4334974,
+    "hash": "959b44bd0e56bc7f67f00e35c6d26ce0"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\accounts.ts": {
+    "mtime": 1773447166.4847994,
+    "hash": "8fab517a75af990113c9bc4d0f72c4a4"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\auth.ts": {
+    "mtime": 1775073473.7976952,
+    "hash": "ef855b3fa718e29d230f1d1a6f742206"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\callback.ts": {
+    "mtime": 1775082292.5590043,
+    "hash": "1fac4e03d3cc61da0ab542196798469f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\clear-transaction.ts": {
+    "mtime": 1777961678.6863341,
+    "hash": "b3bfa9911c5c63012ef2359c0b192410"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\company-info.ts": {
+    "mtime": 1773447147.2110481,
+    "hash": "0ec47bbe3ed05911e822902551a20a01"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\create-check.ts": {
+    "mtime": 1775887548.0461273,
+    "hash": "6502e52678a46dfaf1963428613efdca"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\diagnose.ts": {
+    "mtime": 1775881879.3924725,
+    "hash": "f74866395fe5e919a9e6fd5a25892ef8"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\disconnect.ts": {
+    "mtime": 1773865201.656745,
+    "hash": "49527e473a80b1b4dca245bcd12fae58"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\explore.ts": {
+    "mtime": 1773672629.4365077,
+    "hash": "8c1e1276847c327a773337f4f17d7067"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\preview.ts": {
+    "mtime": 1773681637.3817015,
+    "hash": "75735d73aa1e81b59459cb4684276414"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\pull-checks.ts": {
+    "mtime": 1778532630.7953668,
+    "hash": "f1d55249f94873e548c5d05e936c8349"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\update-transaction.ts": {
+    "mtime": 1778532752.8446786,
+    "hash": "31f208f4fcde310acb549e72ee6d6365"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\qbo\\upload-file.ts": {
+    "mtime": 1772487404.4471827,
+    "hash": "212dfaff0abd85b673062ef404378721"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\quickbooks\\delete-all.ts": {
+    "mtime": 1773978692.6148565,
+    "hash": "9226b6a681cbbe2f17c4bef470c505cf"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\quickbooks\\delete-entry.ts": {
+    "mtime": 1773978708.6101508,
+    "hash": "39523e4d260ce8419393a82ed62869f1"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\quickbooks\\entries.ts": {
+    "mtime": 1775474775.0134387,
+    "hash": "25ace2141f680813a191dc9316b8147c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\settings\\integrations.ts": {
+    "mtime": 1774283655.305252,
+    "hash": "16c213f9539ec9365db1e6dfe682fb23"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\pages\\api\\upload\\index.ts": {
+    "mtime": 1773977910.2108822,
+    "hash": "a7cca495a9ca13f60e736075f71956ed"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\types\\api.ts": {
+    "mtime": 1770872141.2608047,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\types\\check.ts": {
+    "mtime": 1770872141.2628045,
+    "hash": "440b929b7887a7dd83a08e5d826a23d2"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\types\\database.ts": {
+    "mtime": 1770872141.2628045,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\backend\\api_server.py": {
+    "mtime": 1774281438.7436423,
+    "hash": "558256c9a5946714bcfc7010c42fc92a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\backend\\check_env.py": {
+    "mtime": 1771655830.0894864,
+    "hash": "d6992736e808de7cb12a87218a5eaeda"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\backend\\check_extractor.py": {
+    "mtime": 1773984639.7983508,
+    "hash": "686ff7d112460448f004b919b530cb39"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\backend\\storage_sync.py": {
+    "mtime": 1773172496.8073802,
+    "hash": "0e7ffcd09a5f6cb322e2738f7f1dbdfd"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\backend\\test_openai_backup.py": {
+    "mtime": 1772065623.0036292,
+    "hash": "9f98a1ec86c7cebdda9cc6ad9168d6e6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\background\\service-worker.js": {
+    "mtime": 1778532607.417609,
+    "hash": "cfe550339fffe9a20aed6e7b343e11da"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\content\\qbo-overlay.js": {
+    "mtime": 1777967743.38186,
+    "hash": "2c1516507678d1aedd1450d53b7c7ce4"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\create-icons.js": {
+    "mtime": 1773896595.59606,
+    "hash": "62f55b0228b9e1dc3e435faed2a25eb9"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\gen.js": {
+    "mtime": 1774363809.940503,
+    "hash": "8e431c673dd1bb3e5ce95ade0fe6e623"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\popup\\popup.js": {
+    "mtime": 1774274305.3857546,
+    "hash": "03ba03f6903a613946b12aa5b3500c53"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\sidepanel\\sidepanel.js": {
+    "mtime": 1778532591.0113137,
+    "hash": "c92c5e1dba58719fa172470decb0e35c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\001_schema.sql": {
+    "mtime": 1771647283.6702025,
+    "hash": "82bb1119a92fc712157743f2af4e8c3f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\002_patches.sql": {
+    "mtime": 1770936159.4544723,
+    "hash": "cdc720e7eebef2d9851d0c30ee1f90f5"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\003_add_flatten_function.sql": {
+    "mtime": 1771647156.7687175,
+    "hash": "1b0fe86f733010cf23c5acb717a3c192"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\004_add_qb_entries_table.sql": {
+    "mtime": 1771868246.1325264,
+    "hash": "0897fdffe57e1f9205a042057ccfa707"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\004_create_integrations_table.sql": {
+    "mtime": 1771649521.245753,
+    "hash": "17cab132fa25292a637c767995350693"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\005_add_user_rls_policies.sql": {
+    "mtime": 1772480713.833522,
+    "hash": "c5604ef11c87ed1d54f1fabf8c864471"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\006_fix_signup_trigger.sql": {
+    "mtime": 1772483776.1500409,
+    "hash": "98b5769b837e76237e35dcf2dee6cd94"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\007_fix_table_name_mismatch.sql": {
+    "mtime": 1772484514.9373813,
+    "hash": "9a831799aeeda534facf40bd522973cf"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\008_add_company_name_to_integrations.sql": {
+    "mtime": 1773304825.7249043,
+    "hash": "c0df14b783501f5a95c6d65a02461b3a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\008_fix_rls_tenant_isolation.sql": {
+    "mtime": 1772487354.5669138,
+    "hash": "c4ac3b891b9bc9385d589f64a0486120"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\009_add_tenant_id_to_all_tables.sql": {
+    "mtime": 1772488273.9398484,
+    "hash": "c64daae780942e3bbd787f1ca4312a8e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\009_create_vouched_checks.sql": {
+    "mtime": 1773310865.614506,
+    "hash": "9857a905fbfd0bf02fb47cd06b4285c8"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\010_fix_user_profiles_rls_recursion.sql": {
+    "mtime": 1772655373.179195,
+    "hash": "43c1c245ead6d3ebb32000116fac2d13"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\011_fix_integrations_unique_constraint.sql": {
+    "mtime": 1772655555.356329,
+    "hash": "9775b4c6bb46b3a2beb487fc0dae1026"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\012_add_api_usage_tracking.sql": {
+    "mtime": 1773783841.9251723,
+    "hash": "a83f779b28382f864dfb11de8ed859fc"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\013_qb_multi_company_match.sql": {
+    "mtime": 1773865055.4410632,
+    "hash": "9fd73b9a67cf300eccc8c340f0119486"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\014_save_plan_on_signup.sql": {
+    "mtime": 1773938270.8533764,
+    "hash": "77e187f895dad19c230350d700394278"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\018_fix_flatten_checks_scalar_error.sql": {
+    "mtime": 1773985163.968389,
+    "hash": "609300cf787839f6cbb471e06ff58d34"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\020_align_checks_schema_with_live_db.sql": {
+    "mtime": 1774027033.9714725,
+    "hash": "62a6d0c89af4c48285da41a69c6b13b6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\021_add_qb_source_to_transactions.sql": {
+    "mtime": 1774967565.4220302,
+    "hash": "65094be7c427774c2a86f3eb510e7450"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\022_add_intuit_id_to_qb_entries.sql": {
+    "mtime": 1775082755.7212915,
+    "hash": "20aec7151c947ffccff16b39745ea22c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\023_fix_qb_entries_rls_and_checks_status.sql": {
+    "mtime": 1775084543.4897757,
+    "hash": "992b16828757c1f0fed0b8475c2d8954"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\supabase\\migrations\\024_add_cleared_status_to_qb_transactions.sql": {
+    "mtime": 1777955934.440117,
+    "hash": "6d0466b0db35bff291955006cebff3dc"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\ENV_SETUP.md": {
+    "mtime": 1772480028.884765,
+    "hash": "2c6b7515db681f655e695fd437c35b43"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\README.md": {
+    "mtime": 1770872141.1700816,
+    "hash": "9162add00befbcdb432430f405c4ad8d"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\FINAL_IMPLEMENTATION.md": {
+    "mtime": 1771648409.776415,
+    "hash": "531bf7ac7a23df3e5cef2675d484d95c"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\IMPLEMENTATION_SUMMARY.md": {
+    "mtime": 1771648072.772946,
+    "hash": "74fc65ab3efb3c214e4601722ed1836e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\app\\(app)\\qb-comparisons\\README.md": {
+    "mtime": 1771648013.6506782,
+    "hash": "c3d120ce20ddc72f4f7ced7f85fd4015"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\backend\\requirements.txt": {
+    "mtime": 1772065788.5415246,
+    "hash": "7f2d4db91b8b219b172e9d959258d09a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\ASSETS-GUIDE.md": {
+    "mtime": 1773986041.0864737,
+    "hash": "76f227da7280ccb7452deff8bba22122"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\BACKEND-INTEGRATION.md": {
+    "mtime": 1774267957.0051062,
+    "hash": "25b2952dac9760afde432d7cfe0613ca"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\QUICK-START-TEST.md": {
+    "mtime": 1773985983.45379,
+    "hash": "a7d02d2a57532dd3f842aa371379865f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\README.md": {
+    "mtime": 1776689736.4332876,
+    "hash": "ca5e603424492ce1ec87c8b348148759"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\SETUP.md": {
+    "mtime": 1774274377.9339674,
+    "hash": "826de26173051d541509911ddbc4622e"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\TESTING-GUIDE.md": {
+    "mtime": 1773985852.771494,
+    "hash": "e6a2319bbd024be69d1014f8ebb5b59a"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\TESTING-LOCAL.md": {
+    "mtime": 1774267875.215445,
+    "hash": "00b25b88a2dc0a2500bdbcd1e0200051"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\TESTING-PRODUCTION.md": {
+    "mtime": 1774267899.3413882,
+    "hash": "dccfc35e864b20511de1d7d82a7cc61f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\WEB-STORE-SUBMISSION.md": {
+    "mtime": 1773985961.1886723,
+    "hash": "1717e8ccdcc44f340cd09b91a0ce8b44"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\generate-icons.html": {
+    "mtime": 1773941178.145821,
+    "hash": "218997f5c5180f62fa904b2447e313f6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\options\\options.html": {
+    "mtime": 1774273756.98341,
+    "hash": "94ad697c7a4d69c1954c4f6eb7cdaf23"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\popup\\popup.html": {
+    "mtime": 1774274264.7223353,
+    "hash": "15ea175a7ec0cc66322a61366b8b1ec2"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\sidepanel\\sidepanel.html": {
+    "mtime": 1777964342.8759642,
+    "hash": "cccc86b7baa0adcb7a7579b95767f6f7"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\backend\\uploads\\01037053.pdf": {
+    "mtime": 1771883124.1593006,
+    "hash": "1e7499669ec2018f2ff80097c98bed9f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\logo.png": {
+    "mtime": 1772479310.4875743,
+    "hash": "a746a25b8709a2d946a72bf8a35cf078"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-1024.png": {
+    "mtime": 1773940972.4341059,
+    "hash": "b16531715a537cccb8543ace8185afdc"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-128.png": {
+    "mtime": 1773940972.4070196,
+    "hash": "cf52c640f9961a3195b1cea026c49b62"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-16.png": {
+    "mtime": 1773940972.3771296,
+    "hash": "1013dedd373657810444776caeaa4be4"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-256.png": {
+    "mtime": 1773940972.4563687,
+    "hash": "2e8f11b9947ca027c65d4624f66d2339"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-32.png": {
+    "mtime": 1773940972.4779649,
+    "hash": "47444e1f095a8a014fe9d2fc52f8284f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-512.png": {
+    "mtime": 1773940972.4199321,
+    "hash": "38b6673288d2a61b03721c0e1ba342fc"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-64.png": {
+    "mtime": 1773940972.3924682,
+    "hash": "ca888c795871e0093c4158d58b8dd632"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-light.svg": {
+    "mtime": 1773940972.42706,
+    "hash": "b24001ffb9215f002e57553a6c942c42"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon-transparent.svg": {
+    "mtime": 1773940972.4648833,
+    "hash": "6dd1bab1224c019eda8e16d391ebdd15"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-icon.svg": {
+    "mtime": 1773940972.4488585,
+    "hash": "1eff1153cd0f37dfcc804ab9f943423b"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-wordmark-1360.png": {
+    "mtime": 1773940972.385269,
+    "hash": "38b9649672725e98733df1b110af28cf"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-wordmark-340.png": {
+    "mtime": 1773940972.399775,
+    "hash": "9ed93f5f301aacaef0ff961a835fc72f"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-wordmark-680.png": {
+    "mtime": 1773940972.357063,
+    "hash": "e156a0bee47cac774c63cdc6ff8b6f59"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-wordmark-white-1360.png": {
+    "mtime": 1773940972.4714494,
+    "hash": "cb167ff36512338d9c6c00dea8f1aa1b"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-wordmark-white-680.png": {
+    "mtime": 1773940972.412162,
+    "hash": "ad2a4574c89936437378578ae0a14790"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-wordmark-white.svg": {
+    "mtime": 1773940972.3380678,
+    "hash": "d99117e8db9f4aa0cbbabb2e43bb4773"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\frontend\\public\\Kyriq_Logo_Files\\kyriq-wordmark.svg": {
+    "mtime": 1773940972.4423778,
+    "hash": "7d427699c45b7a56fb9908c782b180c6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\favicon.svg": {
+    "mtime": 1774362252.7086787,
+    "hash": "9b9f6c9354f409cfe4c1911e27657873"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\icon128.png": {
+    "mtime": 1774363820.6374104,
+    "hash": "0e37fe1086e5e891e4602e56c6e8412d"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\icon16.png": {
+    "mtime": 1774363820.569791,
+    "hash": "f30fded9d800ef28f19b08404a577f19"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\icon16.svg": {
+    "mtime": 1773896605.119287,
+    "hash": "c0e692b32c3913b9338f390caa3fd6e6"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\icon32.png": {
+    "mtime": 1774363820.6079292,
+    "hash": "005a096c708585e31e3a5f21e36b64a2"
+  },
+  "C:\\Users\\inkno\\Documents\\GitHub\\cheque-extractor\\chrome-extension\\icons\\icon48.png": {
+    "mtime": 1774363820.615907,
+    "hash": "65dc60e5791f680dbb89014d84f9df96"
+  }
+}

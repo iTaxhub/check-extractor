@@ -296,6 +296,30 @@ async function supabaseRequest(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+async function fetchWithRetry(url, opts, { maxRetries = 3, retryOn = [408, 429, 500, 502, 503, 504] } = {}) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let res;
+    try {
+      res = await fetch(url, opts);
+    } catch (netErr) {
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * (2 ** attempt) + Math.random() * 200));
+        continue;
+      }
+      throw netErr;
+    }
+    if (retryOn.includes(res.status) && attempt < maxRetries) {
+      const wait = res.status === 429
+        ? (parseInt(res.headers.get('Retry-After') || '5', 10) * 1000)
+        : (1000 * (2 ** attempt) + Math.random() * 200);
+      log(`fetchWithRetry: attempt ${attempt + 1}/${maxRetries} got ${res.status}, retrying in ${Math.round(wait)}ms`);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    return res;
+  }
+}
+
 async function supabaseAuth(endpoint, body) {
   const cfg = getBootstrapConfig();
   log(`supabaseAuth → ${endpoint}`);
@@ -1853,22 +1877,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             });
             // #endregion
             // Still persist approval to DB and notify UI even without QB link
+            let persistR = { ok: true }; // no checkId = nothing to persist = not a failure
             if (msg.checkId) {
               const s0 = await getSession();
-              if (s0?.access_token) {
+              if (!s0?.access_token) {
+                persistR = { ok: false, reason: 'no_session' };
+              } else {
                 const bs0 = getBootstrapConfig();
                 const h0 = (bs0.frontendUrl || bs0.backendUrl || '').replace(/\/$/, '');
                 if (h0 && msg.jobId) {
-                  fetch(`${h0}/api/jobs/${msg.jobId}/checks/${msg.checkId}/status`, {
+                  persistR = await fetchWithRetry(`${h0}/api/jobs/${msg.jobId}/checks/${msg.checkId}/status`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s0.access_token}` },
                     body: JSON.stringify({ status: 'approved' }),
-                  }).catch(() => {});
+                  }).then(r => ({ ok: r.ok, status: r.status })).catch(e => ({ ok: false, reason: e?.message }));
+                  if (!persistR.ok) {
+                    logErr(`APPROVE_AND_CLEAR: PATCH ${persistR.status} — approval NOT persisted (no QB link)`, { checkId: msg.checkId, jobId: msg.jobId });
+                  }
                 }
               }
             }
             chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false }).catch(() => {});
-            return { success: true, cleared: false, warning: 'QB transaction not linked — approved in Kyriq only' };
+            return { success: persistR.ok, cleared: false, persisted: persistR.ok, persistError: persistR.ok ? null : (persistR.reason || persistR.status || null), warning: 'QB transaction not linked — approved in Kyriq only' };
           }
 
           // Save approval status via Next.js status route (handles jobs.checks_data JSON)
@@ -1896,7 +1926,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               return { ok: false, reason: 'missing_job_or_host' };
             }
             try {
-              const res = await fetch(`${approvalHost}/api/jobs/${jobId}/checks/${checkId}/status`, {
+              const res = await fetchWithRetry(`${approvalHost}/api/jobs/${jobId}/checks/${checkId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s2.access_token}` },
                 body: JSON.stringify({ status: 'approved' }),
@@ -1916,9 +1946,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           // Skip QB API entirely for file-import entries — they have no Intuit record to update
           const isFileImport = (qbTxn.qb_type === 'FileImport' || qbTxn.txn_type === 'FileImport' || qbTxn.qb_source === 'qbo_file_upload');
           if (isFileImport) {
-            await saveCheckApproval(msg.checkId, msg.jobId);
+            const persistResult = await saveCheckApproval(msg.checkId, msg.jobId);
             chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false }).catch(() => {});
-            return { success: true, cleared: false, warning: 'File import entry — approval saved in Kyriq. No QB Online update needed.' };
+            return { success: persistResult?.ok === true, cleared: false, persisted: persistResult?.ok === true, persistError: persistResult?.ok ? null : (persistResult?.reason || null), warning: 'File import entry — approval saved in Kyriq. No QB Online update needed.' };
           }
 
           // BankTransaction (pending bank feed item) — create a Purchase in QB to confirm/categorize it.
@@ -1970,21 +2000,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 logErr('APPROVE_AND_CLEAR: failed to queue new Purchase for overlay', storeErr);
               }
 
-              await saveCheckApproval(msg.checkId, msg.jobId);
+              const persistResult = await saveCheckApproval(msg.checkId, msg.jobId);
               chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false, qbStatus: 'queued_for_reconcile' }).catch(() => {});
               return {
-                success: true,
+                success: persistResult?.ok === true,
                 cleared: false,
                 qbStatus: 'queued_for_reconcile',
                 txnType: 'Purchase',
                 newIntuitId,
+                persisted: persistResult?.ok === true,
+                persistError: persistResult?.ok ? null : (persistResult?.reason || null),
                 warning: 'Bank feed item converted to a Purchase in QB. Open QB Reconcile and click "Auto-Clear Kyriq Approved" to tick the C.',
               };
             } catch (e) {
               logErr('APPROVE_AND_CLEAR: BankTransaction -> Purchase creation failed', e);
-              await saveCheckApproval(msg.checkId, msg.jobId);
+              const persistResult = await saveCheckApproval(msg.checkId, msg.jobId);
               chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false, qbStatus: 'failed' }).catch(() => {});
-              return { success: true, cleared: false, qbStatus: 'failed', warning: `QB not updated: ${e.message}. Approved in Kyriq — manually categorize this bank transaction in QB.`, qbRaw: e.qbRaw || null };
+              return { success: persistResult?.ok === true, cleared: false, qbStatus: 'failed', persisted: persistResult?.ok === true, persistError: persistResult?.ok ? null : (persistResult?.reason || null), warning: `QB not updated: ${e.message}. Approved in Kyriq — manually categorize this bank transaction in QB.`, qbRaw: e.qbRaw || null };
             }
           }
 
@@ -2092,7 +2124,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               qbStatus === 'inactive_entity'      ? 'A linked vendor or account is inactive in QuickBooks. Reactivate it and re-approve to stamp the note.' :
               undefined;
             return {
-              success: true,
+              success: persistResult?.ok === true,
               cleared: didClear,
               qbStatus,
               readOnlyClearedStatus,
@@ -2117,9 +2149,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             // Local-only approve: record status in DB but warn user that QB was not cleared.
             // Still store in local map so the reconciliation page can auto-check the row.
             await storeKyriqApproved().catch(() => {});
-            await saveCheckApproval(msg.checkId, msg.jobId);
+            const persistResult = await saveCheckApproval(msg.checkId, msg.jobId);
             chrome.runtime.sendMessage({ type: 'CHECK_UPDATED', checkId: msg.checkId, jobId: msg.jobId, status: 'approved', cleared: false, qbStatus: 'failed' }).catch(() => {});
-            return { success: true, cleared: false, qbStatus: 'failed', warning: `QB not cleared: ${e.message}`, qbRaw: e.qbRaw || null, qbHttpStatus: e.qbStatus || null };
+            return { success: persistResult?.ok === true, cleared: false, qbStatus: 'failed', persisted: persistResult?.ok === true, persistError: persistResult?.ok ? null : (persistResult?.reason || null), warning: `QB not cleared: ${e.message}`, qbRaw: e.qbRaw || null, qbHttpStatus: e.qbStatus || null };
           }
         }
         case 'UNDO_QB_TICK': {
