@@ -91,7 +91,9 @@ export const stripeOn = (): boolean => Boolean(stripeConfig().secretKey);
 
 /** GET a Stripe list/object with the pinned REST helper. */
 export function stripeGet<T>(path: string, params?: Record<string, unknown>): Promise<T> {
-  return stripeRequest<T>(path, { method: 'GET', params });
+  // Callers pass resource paths ('/charges'); Stripe's API lives under /v1.
+  const versioned = path.startsWith('/v1/') ? path : `/v1${path.startsWith('/') ? '' : '/'}${path}`;
+  return stripeRequest<T>(versioned, { method: 'GET', params });
 }
 
 export const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined);

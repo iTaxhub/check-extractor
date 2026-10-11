@@ -38,12 +38,12 @@ export function SideNav({ collapsed, onToggle }: SideNavProps) {
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-40 flex h-screen flex-col border-r border-white/[0.06] bg-[#0d1117]",
+        "fixed top-0 left-0 z-40 flex h-screen flex-col glass-shell border-r text-shell-text",
         collapsed ? "w-16" : "w-60"
       )}
     >
       {/* Logo */}
-      <div className="flex h-14 items-center border-b border-white/[0.06] px-4">
+      <div className="flex h-14 items-center border-b border-glass-hairline-dark px-4">
         {!collapsed && (
           <span className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -55,7 +55,7 @@ export function SideNav({ collapsed, onToggle }: SideNavProps) {
           variant="ghost"
           size="icon"
           className={cn(
-            "ml-auto h-7 w-7 text-neutral-400 hover:text-white",
+            "ml-auto h-7 w-7 text-shell-muted hover:text-shell-text hover:bg-shell-text/[0.08]",
             collapsed && "mx-auto"
           )}
           onClick={onToggle}
@@ -77,10 +77,10 @@ export function SideNav({ collapsed, onToggle }: SideNavProps) {
             end={end}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "sidebar-item flex items-center gap-2.5 rounded-input px-2.5 py-[7px] text-[13px] font-medium transition-[color,background-color] duration-tap ease-settle",
                 isActive
-                  ? "bg-brand/10 text-brand-light"
-                  : "text-neutral-400 hover:bg-white/[0.04] hover:text-neutral-100"
+                  ? "active"
+                  : "text-shell-muted hover:bg-shell-text/[0.08] hover:text-shell-text"
               )
             }
           >
@@ -91,11 +91,11 @@ export function SideNav({ collapsed, onToggle }: SideNavProps) {
       </nav>
 
       {/* Footer */}
-      <div className="space-y-2 border-t border-white/[0.06] p-3">
+      <div className="space-y-2 border-t border-glass-hairline-dark p-3">
         <a
           href="/dashboard"
           className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-400 transition-colors hover:bg-white/[0.04] hover:text-neutral-100",
+            "flex items-center gap-3 rounded-input px-2.5 py-[7px] text-[13px] font-medium text-shell-muted transition-colors hover:bg-shell-text/[0.08] hover:text-shell-text",
             collapsed && "justify-center"
           )}
           title="Back to App"
@@ -104,7 +104,7 @@ export function SideNav({ collapsed, onToggle }: SideNavProps) {
           {!collapsed && <span>Back to App</span>}
         </a>
         {!collapsed && (
-          <div className="px-3 text-xs text-neutral-600">
+          <div className="px-3 text-[11px] text-shell-muted/70">
             Kyriq super admin
           </div>
         )}

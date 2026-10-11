@@ -18,8 +18,10 @@ const metrics: AdminFn = async (body, { db }) => {
     selectAll<TenantRow>((a, b) => db.from('tenants').select(TENANT_COLS).range(a, b)),
     selectAll<{ created_at: string }>((a, b) =>
       db.from('user_profiles').select('created_at').gte('created_at', from).lte('created_at', to).order('created_at').range(a, b)),
+    // The live check_jobs table has no user_id (it differs from 001_schema.sql);
+    // the usage ledger records who processed each check.
     selectAll<{ user_id: string | null }>((a, b) =>
-      db.from('check_jobs').select('user_id').gte('created_at', from).lte('created_at', to).range(a, b)),
+      db.from('usage_ledger').select('user_id').gte('occurred_at', from).lte('occurred_at', to).range(a, b)),
     selectAll<{ quantity: number }>((a, b) =>
       db.from('usage_ledger').select('quantity').eq('event_type', 'check_processed')
         .gte('occurred_at', from).lte('occurred_at', to).range(a, b)),

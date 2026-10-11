@@ -8,7 +8,6 @@ import {
   XAxis, YAxis, Tooltip as RechartsTooltip,
   CartesianGrid, ResponsiveContainer,
 } from "recharts";
-import { createClient } from "@supabase/supabase-js";
 import { RefreshCw, AlertTriangle, ArrowRight, Info, Calculator } from "lucide-react";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/admin-kit/_deps/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/admin-kit/_deps/components/ui/dialog";
@@ -16,7 +15,6 @@ import { PageHeader } from "../components/PageHeader";
 import { DataTable } from "../components/DataTable";
 import { TransactionDetailDrawer, type ChargeLike } from "../components/TransactionDetailDrawer";
 import { useAdminMetrics } from "../lib/queries";
-import { RUNPOD_COST_PER_SEC } from "../lib/pricing";
 import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/components/admin-kit/_deps/lib/pricing";
 import { callEdgeFn } from "../lib/api";
 import { formatCurrency, formatNumber, formatPct } from "../lib/formatters";
@@ -66,14 +64,6 @@ interface StripeBalance {
 }
 
 /* ─── Helpers ─── */
-const GPT_PROMPT_PER_M = 0.15;
-const GPT_COMPL_PER_M  = 0.60;
-const EL_COST_PER_CHAR = 0.00003;
-
-const supabaseClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
-);
 
 function getChargeEmail(c: StripeCharge): string {
   const expanded = typeof c.customer === "object" && c.customer !== null ? c.customer.email : null;
@@ -92,10 +82,10 @@ function groupChargesByDay(charges: StripeCharge[]): Array<{ day: string; revenu
 }
 
 const statusBadge: Record<string, string> = {
-  succeeded: "bg-emerald-500/10 text-emerald-400",
-  pending:   "bg-yellow-500/10 text-yellow-400",
-  failed:    "bg-red-500/10 text-red-400",
-  refunded:  "bg-orange-500/10 text-orange-400",
+  succeeded: "bg-success-bg text-success-text",
+  pending:   "bg-warning-bg text-warning-text",
+  failed:    "bg-error-bg text-error-text",
+  refunded:  "bg-warning-bg text-warning-text",
 };
 
 function buildColumns(charges: StripeCharge[]): ColumnDef<StripeCharge, unknown>[] {
@@ -115,17 +105,17 @@ function buildColumns(charges: StripeCharge[]): ColumnDef<StripeCharge, unknown>
         const initials = email !== "—" ? email.slice(0, 2).toUpperCase() : "?";
         return (
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-8 w-8 shrink-0 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300">
+            <div className="h-8 w-8 shrink-0 rounded-full bg-brand-wash border border-brand/30 flex items-center justify-center text-xs font-bold text-brand-deep">
               {initials}
             </div>
-            <span className="truncate text-sm text-neutral-200">{email}</span>
+            <span className="truncate text-sm text-ink-strong">{email}</span>
             {row.original.metadata?.label === "test" && (
-              <span className="rounded-full bg-neutral-700/50 border border-neutral-600/40 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 shrink-0">
+              <span className="rounded-full bg-surface-sunken border border-glass-hairline px-1.5 py-0.5 text-[10px] font-medium text-ink-soft shrink-0">
                 test
               </span>
             )}
             {count > 1 && (
-              <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400 shrink-0">
+              <span className="rounded-full bg-warning-bg px-1.5 py-0.5 text-[10px] font-semibold text-warning-text shrink-0">
                 ×{count}
               </span>
             )}
@@ -139,7 +129,7 @@ function buildColumns(charges: StripeCharge[]): ColumnDef<StripeCharge, unknown>
       id: "date",
       accessorFn: (row) => row.created,
       cell: ({ row }) => (
-        <span className="text-sm text-neutral-400">
+        <span className="text-sm text-ink-soft">
           {format(new Date(row.original.created * 1000), "MMM d, yyyy")}
         </span>
       ),
@@ -150,7 +140,7 @@ function buildColumns(charges: StripeCharge[]): ColumnDef<StripeCharge, unknown>
       id: "amount",
       accessorFn: (row) => row.amount,
       cell: ({ row }) => (
-        <span className="text-sm font-semibold text-white tabular-nums">
+        <span className="text-sm font-semibold text-ink-strong tabular-nums">
           {formatCurrency(row.original.amount / 100)}
         </span>
       ),
@@ -162,7 +152,7 @@ function buildColumns(charges: StripeCharge[]): ColumnDef<StripeCharge, unknown>
       cell: ({ row }) => {
         const s = row.original.refunded ? "refunded" : row.original.status;
         return (
-          <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", statusBadge[s] ?? "bg-white/[0.04] text-neutral-400")}>
+          <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", statusBadge[s] ?? "bg-surface-sunken text-ink-soft")}>
             {s}
           </span>
         );
@@ -188,24 +178,24 @@ function KpiCard({
   tooltip?: string;
 }) {
   if (loading) return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#0d1117] p-3.5">
-      <Skeleton className="h-3 w-16 bg-white/[0.06] mb-2.5" />
-      <Skeleton className="h-6 w-20 bg-white/[0.06]" />
+    <div className="glass-card rounded-card border border-glass-hairline shadow-contact p-3.5">
+      <Skeleton className="h-3 w-16 bg-surface-sunken mb-2.5" />
+      <Skeleton className="h-6 w-20 bg-surface-sunken" />
     </div>
   );
   return (
     <div className={cn(
-      "rounded-xl border bg-[#0d1117] p-3.5",
-      highlight === "emerald" ? "border-emerald-500/20" :
-      highlight === "red"     ? "border-red-500/20"     :
-      "border-white/[0.06]"
+      "rounded-xl border bg-surface p-3.5",
+      highlight === "emerald" ? "border-success-border" :
+      highlight === "red"     ? "border-error-border"     :
+      "border-glass-hairline"
     )}>
       <div className="flex items-center gap-1 mb-1.5">
-        <p className="text-[11px] text-neutral-500 uppercase tracking-wider truncate">{label}</p>
+        <p className="text-[11px] text-ink-soft uppercase tracking-wider truncate">{label}</p>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="h-3 w-3 text-neutral-600 hover:text-neutral-400 shrink-0 cursor-help" />
+              <Info className="h-3 w-3 text-ink-faint hover:text-ink-soft shrink-0 cursor-help" />
             </TooltipTrigger>
             <TooltipContent className="max-w-[200px] text-xs leading-snug">{tooltip}</TooltipContent>
           </Tooltip>
@@ -213,11 +203,11 @@ function KpiCard({
       </div>
       <p className={cn(
         "text-xl font-bold tabular-nums leading-none",
-        highlight === "emerald" ? "text-emerald-400" :
-        highlight === "red"     ? "text-red-400"     :
-        "text-white"
+        highlight === "emerald" ? "text-success-text" :
+        highlight === "red"     ? "text-error-text"     :
+        "text-ink-strong"
       )}>{value}</p>
-      {sub && <p className="mt-1 text-[11px] text-neutral-600 truncate">{sub}</p>}
+      {sub && <p className="mt-1 text-[11px] text-ink-faint truncate">{sub}</p>}
     </div>
   );
 }
@@ -226,9 +216,9 @@ function KpiCard({
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#0a0f1a] px-3 py-2 shadow-2xl">
-      <p className="text-xs text-neutral-500 mb-0.5">{label}</p>
-      <p className="text-sm font-bold text-white">{formatCurrency(payload[0].value)}</p>
+    <div className="rounded-card border border-glass-hairline bg-surface-sunken px-3 py-2 shadow-2xl">
+      <p className="text-xs text-ink-soft mb-0.5">{label}</p>
+      <p className="text-sm font-bold text-ink-strong">{formatCurrency(payload[0].value)}</p>
     </div>
   );
 }
@@ -250,18 +240,18 @@ function PlatformBreakdown() {
   const rows = data?.byPlatform ?? [];
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0d1117] p-5">
+    <div className="rounded-2xl border border-glass-hairline bg-surface p-5">
       <div className="mb-4">
-        <p className="text-sm font-semibold text-white">By platform</p>
-        <p className="text-xs text-neutral-500">Signups, paid customers, conversion and estimated MRR by signup platform. Revenue is estimated from plan price (web = Stripe; iOS/Android = RevenueCat, not in the charges table).</p>
+        <p className="text-sm font-semibold text-ink-strong">By platform</p>
+        <p className="text-xs text-ink-soft">Signups, paid customers, conversion and estimated MRR by signup platform. Revenue is estimated from plan price (web = Stripe; iOS/Android = RevenueCat, not in the charges table).</p>
       </div>
       {isLoading ? (
-        <p className="text-sm text-neutral-600 py-4">Loading…</p>
+        <p className="text-sm text-ink-faint py-4">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-neutral-600 py-4">No signup-platform data yet.</p>
+        <p className="text-sm text-ink-faint py-4">No signup-platform data yet.</p>
       ) : (
-        <div className="divide-y divide-white/[0.04]">
-          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 pb-2 text-[11px] uppercase tracking-wider text-neutral-600">
+        <div className="divide-y divide-glass-hairline">
+          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 pb-2 text-[11px] uppercase tracking-wider text-ink-faint">
             <span>Platform</span>
             <span className="w-16 text-right">Signups</span>
             <span className="w-14 text-right">Paid</span>
@@ -270,11 +260,11 @@ function PlatformBreakdown() {
           </div>
           {rows.map((r) => (
             <div key={r.platform} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 py-2.5 text-sm">
-              <span className="text-neutral-200">{PLATFORM_LABEL[r.platform] ?? r.platform}</span>
-              <span className="w-16 text-right tabular-nums text-neutral-300">{formatNumber(r.signups)}</span>
-              <span className="w-14 text-right tabular-nums text-neutral-300">{formatNumber(r.paidCustomers)}</span>
-              <span className="w-16 text-right tabular-nums text-neutral-500">{r.conversionPct}%</span>
-              <span className="w-20 text-right tabular-nums text-emerald-300">{formatCurrency(r.estMrr)}</span>
+              <span className="text-ink-strong">{PLATFORM_LABEL[r.platform] ?? r.platform}</span>
+              <span className="w-16 text-right tabular-nums text-ink-body">{formatNumber(r.signups)}</span>
+              <span className="w-14 text-right tabular-nums text-ink-body">{formatNumber(r.paidCustomers)}</span>
+              <span className="w-16 text-right tabular-nums text-ink-soft">{r.conversionPct}%</span>
+              <span className="w-20 text-right tabular-nums text-success-text">{formatCurrency(r.estMrr)}</span>
             </div>
           ))}
         </div>
@@ -283,19 +273,19 @@ function PlatformBreakdown() {
       {/* Conversion funnel by platform */}
       {(data?.funnelByPlatform?.length ?? 0) > 0 && (
         <div className="mt-6">
-          <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2">Purchase funnel by platform (sessions)</p>
+          <p className="text-xs text-ink-soft uppercase tracking-wider mb-2">Purchase funnel by platform (sessions)</p>
           <div className="space-y-3">
             {data!.funnelByPlatform.map((f) => {
               const top = f.steps[0]?.sessions || 1;
               return (
                 <div key={f.platform}>
-                  <p className="text-xs text-neutral-400 mb-1">{PLATFORM_LABEL[f.platform] ?? f.platform}</p>
+                  <p className="text-xs text-ink-soft mb-1">{PLATFORM_LABEL[f.platform] ?? f.platform}</p>
                   <div className="grid grid-cols-4 gap-1.5">
                     {f.steps.map((s) => (
-                      <div key={s.step} className="rounded-md bg-white/[0.03] border border-white/[0.05] px-2 py-1.5">
-                        <p className="text-[10px] text-neutral-500 truncate">{s.step.replace("premium_", "").replace("_", " ")}</p>
-                        <p className="text-sm text-neutral-200 tabular-nums">{formatNumber(s.sessions)}</p>
-                        <div className="mt-1 h-1 rounded-full bg-white/[0.05] overflow-hidden">
+                      <div key={s.step} className="rounded-md bg-surface-sunken border border-glass-hairline px-2 py-1.5">
+                        <p className="text-[10px] text-ink-soft truncate">{s.step.replace("premium_", "").replace("_", " ")}</p>
+                        <p className="text-sm text-ink-strong tabular-nums">{formatNumber(s.sessions)}</p>
+                        <div className="mt-1 h-1 rounded-full bg-surface-sunken overflow-hidden">
                           <div className="h-full bg-brand/60" style={{ width: `${Math.min(100, (s.sessions / top) * 100)}%` }} />
                         </div>
                       </div>
@@ -326,14 +316,12 @@ function ProfitBreakdownModal({
   open,
   onClose,
   metrics,
-  aiCost,
 }: {
   open: boolean;
   onClose: () => void;
   metrics: import("../lib/queries").AdminMetrics | undefined;
-  aiCost: { openaiCost: number; elCost: number; runpodCost: number } | undefined;
 }) {
-  if (!metrics || !aiCost) {
+  if (!metrics) {
     return (
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-lg">
@@ -352,7 +340,9 @@ function ProfitBreakdownModal({
   const yearlyCount = metrics.activeYearlySubs;
   const grantedCount = metrics.grantedUsers;
 
-  const aiCostTotal = (aiCost.openaiCost ?? 0) + (aiCost.elCost ?? 0) + (aiCost.runpodCost ?? 0);
+  // ponytail: OCR provider spend (Gemini, OpenAI fallback) is not tracked in Kyriq's DB,
+  // so costs here are Stripe fees only. Wire a cost table in when one exists.
+  const aiCostTotal = 0;
   const costPerUser = totalUsers > 0 ? aiCostTotal / totalUsers : 0;
 
   const mrrUsdModal = metrics.mrrCents / 100;
@@ -376,102 +366,90 @@ function ProfitBreakdownModal({
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Profitability breakdown — {monthLabel}</DialogTitle>
-          <DialogDescription>Are we making a profit, and how much does each user cost us?</DialogDescription>
+          <DialogDescription>Are we making a profit, and what does each plan earn after fees?</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 pt-1">
           {/* Verdict banner */}
           <div className={cn(
             "rounded-xl border px-4 py-3 text-sm font-medium",
-            isProfitable ? "border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-300"
-                         : "border-red-500/25 bg-red-500/[0.08] text-red-300"
+            isProfitable ? "border-success-border bg-success-bg text-success-text"
+                         : "border-error-border bg-error-bg text-error-text"
           )}>
             {isProfitable
-              ? `Profitable — an estimated ${formatCurrency(netProfit)}/mo net (${formatPct(marginPct)} margin) after AI costs and Stripe fees.`
-              : `Not profitable right now — an estimated ${formatCurrency(Math.abs(netProfit))}/mo shortfall after AI costs and Stripe fees.`}
+              ? `Profitable — an estimated ${formatCurrency(netProfit)}/mo net (${formatPct(marginPct)} margin) after Stripe fees.`
+              : `Not profitable right now — an estimated ${formatCurrency(Math.abs(netProfit))}/mo shortfall after Stripe fees.`}
           </div>
 
           {/* User split */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">Users — {formatNumber(totalUsers)} total</p>
+            <p className="text-[11px] uppercase tracking-wider text-ink-soft mb-2">Users — {formatNumber(totalUsers)} total</p>
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] p-3">
-                <p className="text-[11px] text-neutral-500">Free</p>
-                <p className="text-lg font-bold text-white tabular-nums">{formatNumber(freeUsers)}</p>
+              <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
+                <p className="text-[11px] text-ink-soft">Free</p>
+                <p className="text-lg font-bold text-ink-strong tabular-nums">{formatNumber(freeUsers)}</p>
               </div>
-              <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] p-3">
-                <p className="text-[11px] text-neutral-500">Paid (monthly)</p>
-                <p className="text-lg font-bold text-white tabular-nums">{formatNumber(monthlyCount)}</p>
+              <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
+                <p className="text-[11px] text-ink-soft">Paid (monthly)</p>
+                <p className="text-lg font-bold text-ink-strong tabular-nums">{formatNumber(monthlyCount)}</p>
               </div>
-              <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] p-3">
-                <p className="text-[11px] text-neutral-500">Paid (annual)</p>
-                <p className="text-lg font-bold text-white tabular-nums">{formatNumber(yearlyCount)}</p>
+              <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
+                <p className="text-[11px] text-ink-soft">Paid (annual)</p>
+                <p className="text-lg font-bold text-ink-strong tabular-nums">{formatNumber(yearlyCount)}</p>
               </div>
-              <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] p-3">
-                <p className="text-[11px] text-neutral-500">Granted premium</p>
-                <p className="text-lg font-bold text-white tabular-nums">{formatNumber(grantedCount)}</p>
+              <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
+                <p className="text-[11px] text-ink-soft">Comped firms</p>
+                <p className="text-lg font-bold text-ink-strong tabular-nums">{formatNumber(grantedCount)}</p>
               </div>
             </div>
           </div>
 
           {/* Costs */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">Costs (last 30 days)</p>
-            <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] divide-y divide-white/[0.05]">
+            <p className="text-[11px] uppercase tracking-wider text-ink-soft mb-2">Costs (est. per month)</p>
+            <div className="rounded-lg border border-glass-hairline bg-surface-sunken divide-y divide-glass-hairline">
               <div className="flex items-center justify-between px-3 py-2 text-sm">
-                <span className="text-neutral-400">OpenAI</span>
-                <span className="text-white tabular-nums">{formatCurrency(aiCost.openaiCost)}</span>
+                <span className="text-ink-soft">Est. Stripe fees /mo</span>
+                <span className="text-ink-strong tabular-nums">{formatCurrency(estMonthlyStripeFees)}</span>
               </div>
-              <div className="flex items-center justify-between px-3 py-2 text-sm">
-                <span className="text-neutral-400">ElevenLabs</span>
-                <span className="text-white tabular-nums">{formatCurrency(aiCost.elCost)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2 text-sm">
-                <span className="text-neutral-400">RunPod</span>
-                <span className="text-white tabular-nums">{formatCurrency(aiCost.runpodCost)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2 text-sm">
-                <span className="text-neutral-400">Est. Stripe fees /mo</span>
-                <span className="text-white tabular-nums">{formatCurrency(estMonthlyStripeFees)}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2.5 text-sm bg-white/[0.02]">
-                <span className="font-semibold text-neutral-300">Total costs /mo</span>
-                <span className="font-bold text-white tabular-nums">{formatCurrency(totalMonthlyCosts)}</span>
+              <div className="flex items-center justify-between px-3 py-2.5 text-sm bg-surface-sunken">
+                <span className="font-semibold text-ink-body">Total costs /mo</span>
+                <span className="font-bold text-ink-strong tabular-nums">{formatCurrency(totalMonthlyCosts)}</span>
               </div>
             </div>
-            <p className="mt-1.5 text-[11px] text-neutral-600">Cost per user (AI only): {formatCurrency(costPerUser)}/mo, across all {formatNumber(totalUsers)} users. Fixed hosting costs aren't tracked here — see the Profit Calculator for full scenario modeling.</p>
+            <p className="mt-1.5 text-[11px] text-ink-faint">OCR provider and hosting costs aren't tracked here — see the Profit Calculator for scenario modeling.</p>
           </div>
 
           {/* Revenue vs cost */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">Revenue vs. cost</p>
+            <p className="text-[11px] uppercase tracking-wider text-ink-soft mb-2">Revenue vs. cost</p>
             <div className="grid grid-cols-3 gap-2.5">
-              <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] p-3">
-                <p className="text-[11px] text-neutral-500">MRR</p>
-                <p className="text-base font-bold text-white tabular-nums">{formatCurrency(mrrUsdModal)}</p>
+              <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
+                <p className="text-[11px] text-ink-soft">MRR</p>
+                <p className="text-base font-bold text-ink-strong tabular-nums">{formatCurrency(mrrUsdModal)}</p>
               </div>
-              <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] p-3">
-                <p className="text-[11px] text-neutral-500">Total costs</p>
-                <p className="text-base font-bold text-white tabular-nums">{formatCurrency(totalMonthlyCosts)}</p>
+              <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
+                <p className="text-[11px] text-ink-soft">Total costs</p>
+                <p className="text-base font-bold text-ink-strong tabular-nums">{formatCurrency(totalMonthlyCosts)}</p>
               </div>
-              <div className={cn("rounded-lg border p-3", isProfitable ? "border-emerald-500/25 bg-emerald-500/[0.06]" : "border-red-500/25 bg-red-500/[0.06]")}>
-                <p className="text-[11px] text-neutral-500">Net profit</p>
-                <p className={cn("text-base font-bold tabular-nums", isProfitable ? "text-emerald-300" : "text-red-300")}>{formatCurrency(netProfit)}</p>
+              <div className={cn("rounded-lg border p-3", isProfitable ? "border-success-border bg-success-bg" : "border-error-border bg-error-bg")}>
+                <p className="text-[11px] text-ink-soft">Net profit</p>
+                <p className={cn("text-base font-bold tabular-nums", isProfitable ? "text-success-text" : "text-error-text")}>{formatCurrency(netProfit)}</p>
               </div>
             </div>
           </div>
 
           {/* Per-plan profitability */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">Per-plan margin (after Stripe fees, minus avg. AI cost/user)</p>
+            <p className="text-[11px] uppercase tracking-wider text-ink-soft mb-2">Per-plan margin (after Stripe fees)</p>
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] p-3">
-                <p className="text-[11px] text-neutral-500">Monthly plan (${MONTHLY_PLAN_PRICE})</p>
-                <p className={cn("text-base font-bold tabular-nums", monthlyPlanMargin >= 0 ? "text-emerald-300" : "text-red-300")}>{formatCurrency(monthlyPlanMargin)}/mo</p>
+              <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
+                <p className="text-[11px] text-ink-soft">Monthly plan (${MONTHLY_PLAN_PRICE})</p>
+                <p className={cn("text-base font-bold tabular-nums", monthlyPlanMargin >= 0 ? "text-success-text" : "text-error-text")}>{formatCurrency(monthlyPlanMargin)}/mo</p>
               </div>
-              <div className="rounded-lg border border-white/[0.06] bg-[#0a0f1a] p-3">
-                <p className="text-[11px] text-neutral-500">Annual plan (${ANNUAL_PLAN_PRICE}/yr)</p>
-                <p className={cn("text-base font-bold tabular-nums", annualPlanMargin >= 0 ? "text-emerald-300" : "text-red-300")}>{formatCurrency(annualPlanMargin)}/mo-equiv</p>
+              <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
+                <p className="text-[11px] text-ink-soft">Annual plan (${ANNUAL_PLAN_PRICE}/yr)</p>
+                <p className={cn("text-base font-bold tabular-nums", annualPlanMargin >= 0 ? "text-success-text" : "text-error-text")}>{formatCurrency(annualPlanMargin)}/mo-equiv</p>
               </div>
             </div>
           </div>
@@ -529,46 +507,6 @@ export default function RevenuePage() {
     staleTime: 120_000,
   });
 
-  const aiCostQuery = useQuery({
-    queryKey: ["admin", "ai-cost-30d"],
-    queryFn: async () => {
-      const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
-      const { data } = await supabaseClient
-        .from("ai_usage")
-        .select("openai_prompt_tokens,openai_completion_tokens,elevenlabs_chars_tts,runpod_gpu_ms")
-        .gte("usage_date", since);
-      // RunPod's own billed figures (synced into daily_costs) replace the
-      // metered gpu_ms estimate when present. The meter only sees successful
-      // jobs' executionTime; on 2026-08-20/21 it priced a ~$62 crash-loop at
-      // ~$0.10, and this page's profit figure inherited that blindness.
-      const { data: billed } = await supabaseClient
-        .from("daily_costs")
-        .select("runpod_actual_usd, runpod_storage_usd")
-        .gte("cost_date", since)
-        .not("runpod_actual_usd", "is", null)
-        .limit(31);
-      const billedRunpod = (billed ?? []).reduce(
-        (s, r) => s + Number(r.runpod_actual_usd ?? 0) + Number(r.runpod_storage_usd ?? 0),
-        0
-      );
-      if (!data) return { openaiCost: 0, elCost: 0, runpodCost: billedRunpod };
-      const totals = (data as Array<{ openai_prompt_tokens: number; openai_completion_tokens: number; elevenlabs_chars_tts: number; runpod_gpu_ms: number }>).reduce(
-        (acc, r) => ({
-          prompt: acc.prompt + (r.openai_prompt_tokens ?? 0),
-          compl:  acc.compl  + (r.openai_completion_tokens ?? 0),
-          chars:  acc.chars  + (r.elevenlabs_chars_tts ?? 0),
-          gpuMs:  acc.gpuMs  + (r.runpod_gpu_ms ?? 0),
-        }),
-        { prompt: 0, compl: 0, chars: 0, gpuMs: 0 }
-      );
-      return {
-        openaiCost: (totals.prompt / 1_000_000) * GPT_PROMPT_PER_M + (totals.compl / 1_000_000) * GPT_COMPL_PER_M,
-        elCost: totals.chars * EL_COST_PER_CHAR,
-        runpodCost: billedRunpod > 0 ? billedRunpod : (totals.gpuMs / 1000) * RUNPOD_COST_PER_SEC,
-      };
-    },
-    staleTime: 120_000,
-  });
 
   const charges = chargesQuery.data?.data ?? [];
   const columns = buildColumns(charges);
@@ -594,8 +532,6 @@ export default function RevenuePage() {
     : null;
 
   const mrrUsd = metrics ? metrics.mrrCents / 100 : 0;
-  const totalCost = (aiCostQuery.data?.openaiCost ?? 0) + (aiCostQuery.data?.elCost ?? 0) + (aiCostQuery.data?.runpodCost ?? 0);
-  const estProfit = mrrUsd - totalCost;
   // Conversion uses deduped paying customers (by email), not raw is_premium rows.
   const conversionPct = metrics && metrics.totalUsers > 0
     ? (metrics.paidCustomers / metrics.totalUsers) * 100
@@ -646,7 +582,7 @@ export default function RevenuePage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowProfitBreakdown(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-glass-hairline bg-surface-sunken px-3 py-1.5 text-xs text-ink-soft hover:text-ink-strong hover:bg-surface-sunken transition-colors"
             >
               <Calculator className="h-3 w-3" />
               Profitability breakdown
@@ -654,14 +590,14 @@ export default function RevenuePage() {
             <button
               onClick={handleStripeSync}
               disabled={syncing}
-              className="flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg border border-glass-hairline bg-surface-sunken px-3 py-1.5 text-xs text-ink-soft hover:text-ink-strong hover:bg-surface-sunken transition-colors disabled:opacity-50"
             >
               <RefreshCw className={cn("h-3 w-3", syncing && "animate-spin")} />
               {syncing ? "Syncing…" : "Sync from Stripe"}
             </button>
           </div>
           {syncResult && (
-            <p className={cn("text-xs", syncResult.startsWith("✓") ? "text-emerald-400" : "text-red-400")}>
+            <p className={cn("text-xs", syncResult.startsWith("✓") ? "text-success-text" : "text-error-text")}>
               {syncResult}
             </p>
           )}
@@ -670,25 +606,25 @@ export default function RevenuePage() {
 
       {/* Duplicate billing warning */}
       {duplicates.length > 0 && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-2.5 flex items-start gap-3">
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
+        <div className="rounded-xl border border-warning-border bg-warning-bg px-4 py-2.5 flex items-start gap-3">
+          <AlertTriangle className="h-3.5 w-3.5 text-warning-text mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-amber-300">Duplicate billing detected</p>
+            <p className="text-xs font-semibold text-warning-text">Duplicate billing detected</p>
             {duplicates.map((d) => (
-              <p key={d.email} className="text-xs text-amber-400/80 mt-0.5">
+              <p key={d.email} className="text-xs text-warning-text/80 mt-0.5">
                 <span className="font-medium">{d.email}</span> — {d.count} active subscriptions, charged {d.count}×/month
               </p>
             ))}
           </div>
           <a href="https://dashboard.stripe.com/subscriptions" target="_blank" rel="noopener noreferrer"
-             className="shrink-0 text-xs text-amber-400 underline underline-offset-2 hover:text-amber-300">
+             className="shrink-0 text-xs text-warning-text underline underline-offset-2 hover:text-warning-text">
             Stripe →
           </a>
         </div>
       )}
 
       {/* ── Top 6 KPIs ── */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Total Collected"  value={chargesQuery.data ? formatCurrency(totalCollected) : "—"} sub="this period"         loading={chargesQuery.isLoading} tooltip="Sum of all succeeded charges in the selected date period. Does not include refunded or failed charges." />
         <KpiCard label="MRR"              value={metrics ? formatCurrency(mrrUsd) : "—"}                  sub="monthly recurring"   loading={metricsLoading}         tooltip="Monthly Recurring Revenue — sum of all active monthly subscription amounts billed per month." />
         <KpiCard label="ARR"              value={metrics ? formatCurrency(metrics.arrCents / 100) : "—"}  sub="annual recurring"    loading={metricsLoading}         tooltip="Annual Recurring Revenue — sum of all active annual subscription amounts billed per year." />
@@ -725,18 +661,18 @@ export default function RevenuePage() {
       </div>
 
       {/* ── Hero chart ── */}
-      <div className="rounded-xl border border-white/[0.06] bg-[#0d1117] p-4">
+      <div className="glass-card rounded-card border border-glass-hairline shadow-contact p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm font-semibold text-white">Revenue over time</p>
-            <p className="text-xs text-neutral-500 mt-0.5">Succeeded charges by day</p>
+            <p className="text-sm font-semibold text-ink-strong">Revenue over time</p>
+            <p className="text-xs text-ink-soft mt-0.5">Succeeded charges by day</p>
           </div>
           {chargesQuery.data && (
-            <p className="text-xl font-bold text-white tabular-nums">{formatCurrency(totalCollected)}</p>
+            <p className="text-xl font-bold text-ink-strong tabular-nums">{formatCurrency(totalCollected)}</p>
           )}
         </div>
         {chargesQuery.isLoading ? (
-          <Skeleton className="h-44 w-full bg-white/[0.04] rounded-lg" />
+          <Skeleton className="h-44 w-full bg-surface-sunken rounded-lg" />
         ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={176}>
             <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
@@ -746,48 +682,39 @@ export default function RevenuePage() {
                   <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-              <XAxis dataKey="day" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={36} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7f5" vertical={false} />
+              <XAxis dataKey="day" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={36} />
               <RechartsTooltip content={<ChartTooltip />} />
               <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={1.5} fill="url(#revenueGrad)" dot={false} activeDot={{ r: 4, fill: "#6366f1", strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-44 text-neutral-600 text-sm">No charge data yet</div>
+          <div className="flex items-center justify-center h-44 text-ink-faint text-sm">No charge data yet</div>
         )}
       </div>
 
       {/* ── Bottom 6 KPIs ── */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Monthly Subs"    value={metrics ? formatNumber(metrics.monthlyUsers) : "—"}              sub={`${formatUsd(PRICE_MONTHLY_USD)}/mo`} loading={metricsLoading}      tooltip={`Customers currently on the ${formatUsd(PRICE_MONTHLY_USD)}/month plan.`} />
         <KpiCard label="Annual Subs"     value={metrics ? formatNumber(metrics.yearlyUsers) : "—"}               sub={`${formatUsd(PRICE_YEARLY_USD)}/yr`}  loading={metricsLoading}      tooltip={`Customers currently on the ${formatUsd(PRICE_YEARLY_USD)}/year plan.`} />
         <KpiCard label="Conversion"      value={metrics ? formatPct(conversionPct) : "—"}                        sub={metrics ? `${metrics.paidCustomers} paid of ${metrics.totalUsers}` : undefined} loading={metricsLoading} tooltip="Percentage of all registered users who are distinct paying customers (deduped by email — duplicate subscriptions count once)." />
         <KpiCard label="Avg Transaction" value={chargesQuery.data ? formatCurrency(avgTx) : "—"}                 sub={`${succeededCharges.length} succeeded`} loading={chargesQuery.isLoading} tooltip="Average charge amount across all succeeded transactions in the selected period." />
-        <KpiCard label="AI Costs / mo"   value={aiCostQuery.data ? formatCurrency(totalCost) : "—"}              sub="openai + runpod + elevenlabs"    loading={aiCostQuery.isLoading}  tooltip="OpenAI (GPT tokens) + RunPod (actual billed spend from their invoice where synced, metered GPU-seconds otherwise) + ElevenLabs (fallback TTS characters) over the last 30 days." />
-        <KpiCard
-          label="Est. Profit / mo"
-          value={metrics && aiCostQuery.data ? formatCurrency(estProfit) : "—"}
-          sub="MRR − AI costs"
-          loading={metricsLoading || aiCostQuery.isLoading}
-          highlight={metrics && aiCostQuery.data ? (estProfit >= 0 ? "emerald" : "red") : undefined}
-          tooltip="Rough monthly margin estimate: MRR minus estimated AI costs. Does not account for hosting, Stripe fees, or other expenses."
-        />
       </div>
 
       {/* ── Revenue breakdown — how revenue is generated ── */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#0d1117] p-5 space-y-4">
+      <div className="rounded-2xl border border-glass-hairline bg-surface p-5 space-y-4">
         <div>
-          <p className="text-sm font-semibold text-white">Revenue breakdown</p>
-          <p className="text-xs text-neutral-500 mt-0.5">How recurring revenue is generated, and whether it's flowing</p>
+          <p className="text-sm font-semibold text-ink-strong">Revenue breakdown</p>
+          <p className="text-xs text-ink-soft mt-0.5">How recurring revenue is generated, and whether it's flowing</p>
         </div>
 
         {/* Health verdict banner */}
         {metrics && (
           <div className={cn(
             "rounded-xl border px-4 py-3 text-sm",
-            healthOk ? "border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-300"
-                     : "border-amber-500/20 bg-amber-500/[0.06] text-amber-300"
+            healthOk ? "border-success-border bg-success-bg text-success-text"
+                     : "border-warning-border bg-warning-bg text-warning-text"
           )}>
             {healthVerdict}
           </div>
@@ -795,33 +722,33 @@ export default function RevenuePage() {
 
         {/* By plan */}
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">MRR by plan</p>
+          <p className="text-[11px] uppercase tracking-wider text-ink-soft mb-2">MRR by plan</p>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a] p-3.5">
+            <div className="rounded-card border border-glass-hairline bg-surface-sunken p-3.5">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-neutral-400">Monthly plans</p>
-                <span className="text-[11px] text-neutral-600">{metrics ? `${metrics.activeMonthlySubs} subs` : "—"}</span>
+                <p className="text-xs text-ink-soft">Monthly plans</p>
+                <span className="text-[11px] text-ink-faint">{metrics ? `${metrics.activeMonthlySubs} subs` : "—"}</span>
               </div>
-              <p className="text-lg font-bold text-white tabular-nums">{metrics ? formatCurrency(monthlyMrr) : "—"}<span className="ml-1 text-[11px] font-normal text-neutral-500">/mo</span></p>
+              <p className="text-lg font-bold text-ink-strong tabular-nums">{metrics ? formatCurrency(monthlyMrr) : "—"}<span className="ml-1 text-[11px] font-normal text-ink-soft">/mo</span></p>
               {mrrTotal > 0 && (
-                <div className="mt-2 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <div className="mt-2 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
                   <div className="h-full bg-blue-400" style={{ width: `${monthlyShare}%` }} />
                 </div>
               )}
-              <p className="mt-1 text-[11px] text-neutral-600">{formatPct(monthlyShare)} of MRR</p>
+              <p className="mt-1 text-[11px] text-ink-faint">{formatPct(monthlyShare)} of MRR</p>
             </div>
-            <div className="rounded-xl border border-white/[0.06] bg-[#0a0f1a] p-3.5">
+            <div className="rounded-card border border-glass-hairline bg-surface-sunken p-3.5">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-neutral-400">Annual plans</p>
-                <span className="text-[11px] text-neutral-600">{metrics ? `${metrics.activeYearlySubs} subs` : "—"}</span>
+                <p className="text-xs text-ink-soft">Annual plans</p>
+                <span className="text-[11px] text-ink-faint">{metrics ? `${metrics.activeYearlySubs} subs` : "—"}</span>
               </div>
-              <p className="text-lg font-bold text-white tabular-nums">{metrics ? formatCurrency(yearlyMrr) : "—"}<span className="ml-1 text-[11px] font-normal text-neutral-500">/mo</span></p>
+              <p className="text-lg font-bold text-ink-strong tabular-nums">{metrics ? formatCurrency(yearlyMrr) : "—"}<span className="ml-1 text-[11px] font-normal text-ink-soft">/mo</span></p>
               {mrrTotal > 0 && (
-                <div className="mt-2 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <div className="mt-2 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
                   <div className="h-full bg-emerald-400" style={{ width: `${yearlyShare}%` }} />
                 </div>
               )}
-              <p className="mt-1 text-[11px] text-neutral-600">{formatPct(yearlyShare)} of MRR · {metrics ? formatCurrency(metrics.arrCents / 100) : "—"} ARR</p>
+              <p className="mt-1 text-[11px] text-ink-faint">{formatPct(yearlyShare)} of MRR · {metrics ? formatCurrency(metrics.arrCents / 100) : "—"} ARR</p>
             </div>
           </div>
         </div>
@@ -839,15 +766,15 @@ export default function RevenuePage() {
       <PlatformBreakdown />
 
       {/* ── Transactions table ── */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#0d1117] overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+      <div className="rounded-2xl border border-glass-hairline bg-surface overflow-hidden">
+        <div className="px-6 py-4 border-b border-glass-hairline flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-white">Recent Transactions</p>
-            <p className="text-xs text-neutral-500 mt-0.5">Last 20 charges — live from Stripe</p>
+            <p className="text-sm font-semibold text-ink-strong">Recent Transactions</p>
+            <p className="text-xs text-ink-soft mt-0.5">Last 20 charges — live from Stripe</p>
           </div>
           <button
             onClick={() => navigate("/transactions")}
-            className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="flex items-center gap-1 text-xs text-brand-deep hover:text-brand-deep transition-colors"
           >
             View all <ArrowRight className="h-3 w-3" />
           </button>
@@ -866,7 +793,6 @@ export default function RevenuePage() {
         open={showProfitBreakdown}
         onClose={() => setShowProfitBreakdown(false)}
         metrics={metrics}
-        aiCost={aiCostQuery.data}
       />
     </div>
     </TooltipProvider>

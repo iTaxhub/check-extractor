@@ -72,7 +72,6 @@ interface User {
   voice_clone_status?: 'pending' | 'cloning' | 'ready' | 'failed' | null;
   country_code?: string | null;
   language?: string | null;
-  ritual_count?: number;
   utm_source?: string | null;
   utm_medium?: string | null;
   referrer?: string | null;
@@ -100,10 +99,10 @@ const GRANT_OPTIONS: { value: GrantDuration; label: string }[] = [
 ];
 
 const GOAL_LABEL: Record<string, { label: string; color: string }> = {
-  manage_emotions:   { label: 'Emotions',  color: 'border-rose-500/30 bg-rose-500/10 text-rose-300' },
-  connect_to_source: { label: 'Source',    color: 'border-brand/30 bg-brand/10 text-brand-light' },
-  attract_abundance: { label: 'Abundance', color: 'border-amber-500/30 bg-amber-500/10 text-amber-300' },
-  all_of_the_above:  { label: 'All',       color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
+  manage_emotions:   { label: 'Emotions',  color: 'border-error-border bg-error-bg text-error-text' },
+  connect_to_source: { label: 'Source',    color: 'border-brand/30 bg-brand/10 text-brand' },
+  attract_abundance: { label: 'Abundance', color: 'border-warning-border bg-warning-bg text-warning-text' },
+  all_of_the_above:  { label: 'All',       color: 'border-success-border bg-success-bg text-success-text' },
 };
 
 // Best-effort country code → flag emoji conversion (ISO-2 → regional indicator pair)
@@ -138,12 +137,12 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
       enableSorting: true,
       cell: ({ row }) => (
         <div>
-          <p className="text-sm text-white">{row.original.email}</p>
+          <p className="text-sm text-ink-strong">{row.original.email}</p>
           {(row.original.full_name || row.original.display_name) && (
-            <p className="text-xs text-neutral-500">{row.original.display_name || row.original.full_name}</p>
+            <p className="text-xs text-ink-soft">{row.original.display_name || row.original.full_name}</p>
           )}
           {row.original.role === 'admin' && (
-            <Badge variant="outline" className="mt-1 text-[10px] border-brand/40 bg-brand/15 text-brand-light">
+            <Badge variant="outline" className="mt-1 text-[10px] border-brand/40 bg-brand/15 text-brand">
               Admin
             </Badge>
           )}
@@ -159,20 +158,20 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
         // Hierarchy: Granted > Premium > Free. Show one badge primarily.
         if (row.original.is_premium) {
           return (
-            <Badge variant="outline" className="text-xs border-brand/30 bg-brand/10 text-brand-light">
+            <Badge variant="outline" className="text-xs border-brand/30 bg-brand/10 text-brand">
               {row.original.premium_plan === 'yearly' ? 'Annual' : 'Monthly'}
             </Badge>
           );
         }
         if (grantActive) {
           return (
-            <Badge variant="outline" className="text-xs border-amber-500/30 bg-amber-500/10 text-amber-300">
+            <Badge variant="outline" className="text-xs border-warning-border bg-warning-bg text-warning-text">
               Granted
             </Badge>
           );
         }
         return (
-          <Badge variant="outline" className="text-xs border-white/[0.08] text-neutral-500">
+          <Badge variant="outline" className="text-xs border-glass-hairline text-ink-soft">
             Free
           </Badge>
         );
@@ -184,7 +183,7 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
       enableSorting: true,
       cell: ({ row }) => {
         const meta = row.original.goal_id ? GOAL_LABEL[row.original.goal_id] : null;
-        if (!meta) return <span className="text-neutral-600 text-xs">—</span>;
+        if (!meta) return <span className="text-ink-faint text-xs">—</span>;
         return (
           <Badge variant="outline" className={cn("text-[11px]", meta.color)}>
             {meta.label}
@@ -200,18 +199,18 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
         const s = row.original.voice_clone_status;
         if (s === 'ready') {
           return (
-            <span className="inline-flex items-center gap-1 text-emerald-300 text-xs">
+            <span className="inline-flex items-center gap-1 text-success-text text-xs">
               <Mic size={11} /> Ready
             </span>
           );
         }
         if (s === 'cloning' || s === 'pending') {
-          return <span className="inline-flex items-center gap-1 text-amber-300 text-xs"><Mic size={11} /> {s}</span>;
+          return <span className="inline-flex items-center gap-1 text-warning-text text-xs"><Mic size={11} /> {s}</span>;
         }
         if (s === 'failed') {
-          return <span className="inline-flex items-center gap-1 text-red-300 text-xs"><Mic size={11} /> Failed</span>;
+          return <span className="inline-flex items-center gap-1 text-error-text text-xs"><Mic size={11} /> Failed</span>;
         }
-        return <span className="text-neutral-600 text-xs">—</span>;
+        return <span className="text-ink-faint text-xs">—</span>;
       },
     },
     {
@@ -220,28 +219,20 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
       enableSorting: true,
       cell: ({ row }) => {
         const cc = row.original.country_code;
-        if (!cc) return <span className="text-neutral-600 text-xs">—</span>;
+        if (!cc) return <span className="text-ink-faint text-xs">—</span>;
         return (
-          <span className="text-xs text-neutral-300 tabular-nums">
+          <span className="text-xs text-ink-body tabular-nums">
             <span className="mr-1">{flagEmoji(cc)}</span>{cc.toUpperCase()}
           </span>
         );
       },
     },
     {
-      header: "Rituals",
-      id: "ritual_count",
-      enableSorting: false, // sorted via aggregate, not DB column
-      cell: ({ row }) => (
-        <span className="text-xs text-neutral-300 tabular-nums">{row.original.ritual_count ?? 0}</span>
-      ),
-    },
-    {
       header: "Joined",
       id: "created_at",
       enableSorting: true,
       cell: ({ row }) => (
-        <span className="text-xs text-neutral-400">{new Date(row.original.created_at).toLocaleDateString()}</span>
+        <span className="text-xs text-ink-soft">{new Date(row.original.created_at).toLocaleDateString()}</span>
       ),
     },
     {
@@ -253,14 +244,14 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
         const channel = u.utm_source || u.referrer || "direct";
         return (
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs text-neutral-300">{channel}</span>
+            <span className="text-xs text-ink-body">{channel}</span>
             {(u.utm_medium || u.signup_platform) && (
-              <span className="text-[10px] text-neutral-500">
+              <span className="text-[10px] text-ink-soft">
                 {[u.utm_medium, u.signup_platform].filter(Boolean).join(" · ")}
               </span>
             )}
             {u.heard_about && (
-              <span className="text-[10px] text-neutral-400">said: {u.heard_about}</span>
+              <span className="text-[10px] text-ink-soft">said: {u.heard_about}</span>
             )}
           </div>
         );
@@ -271,7 +262,7 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
       id: "last_active_at",
       enableSorting: true,
       cell: ({ row }) => (
-        <span className="text-xs text-neutral-400">
+        <span className="text-xs text-ink-soft">
           {row.original.last_active_at ? formatRelative(row.original.last_active_at) : "—"}
         </span>
       ),
@@ -291,41 +282,41 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
               <DropdownMenuTrigger asChild>
                 <button
                   disabled={isPending}
-                  className="h-8 w-8 rounded-md flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors disabled:opacity-40"
+                  className="h-8 w-8 rounded-md flex items-center justify-center text-ink-soft hover:text-ink-strong hover:bg-surface-sunken transition-colors disabled:opacity-40"
                   aria-label="User actions"
                 >
                   <MoreVertical size={16} />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-[#0d1117] border-white/[0.08] text-neutral-200">
-                <DropdownMenuLabel className="text-neutral-500 text-xs">Manage user</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => onView(u)} className="text-neutral-200 focus:bg-white/[0.06] focus:text-white">
+              <DropdownMenuContent align="end" className="bg-surface border-glass-hairline text-ink-strong">
+                <DropdownMenuLabel className="text-ink-soft text-xs">Manage user</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => onView(u)} className="text-ink-strong focus:bg-surface-sunken focus:text-ink-strong">
                   View details
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/[0.06]" />
+                <DropdownMenuSeparator className="bg-surface-sunken" />
                 {isAdmin ? (
-                  <DropdownMenuItem onClick={() => onDemote(u)} className="text-red-300 focus:bg-red-500/10 focus:text-red-200">
+                  <DropdownMenuItem onClick={() => onDemote(u)} className="text-error-text focus:bg-error-bg focus:text-error-text">
                     Remove admin role
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem onClick={() => onPromote(u)} className="text-brand-light focus:bg-brand/10 focus:text-brand">
+                  <DropdownMenuItem onClick={() => onPromote(u)} className="text-brand focus:bg-brand/10 focus:text-brand">
                     Make admin
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-amber-300 focus:bg-amber-500/10 focus:text-amber-200">
-                    Grant premium
+                  <DropdownMenuSubTrigger className="text-warning-text focus:bg-warning-bg focus:text-warning-text">
+                    Comp paid access
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="bg-[#0d1117] border-white/[0.08]">
+                  <DropdownMenuSubContent className="bg-surface border-glass-hairline">
                     {GRANT_OPTIONS.map((opt) => (
-                      <DropdownMenuItem key={opt.value} onClick={() => onGrant(u, opt.value)} className="text-amber-200 focus:bg-amber-500/10 focus:text-amber-100">
+                      <DropdownMenuItem key={opt.value} onClick={() => onGrant(u, opt.value)} className="text-warning-text focus:bg-warning-bg focus:text-warning-text">
                         {opt.label}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
                 {grantActive && (
-                  <DropdownMenuItem onClick={() => onRevokeGrant(u)} className="text-red-300 focus:bg-red-500/10 focus:text-red-200">
+                  <DropdownMenuItem onClick={() => onRevokeGrant(u)} className="text-error-text focus:bg-error-bg focus:text-error-text">
                     Revoke grant
                   </DropdownMenuItem>
                 )}
@@ -360,7 +351,6 @@ const EXPORT_FIELDS: ExportField[] = [
   { id: 'goal', label: 'Goal', getter: (u) => u.goal_id ? (GOAL_LABEL[u.goal_id]?.label || u.goal_id) : '' },
   { id: 'country', label: 'Country', getter: (u) => u.country_code?.toUpperCase() || '' },
   { id: 'voice', label: 'Voice Status', getter: (u) => u.voice_clone_status || '' },
-  { id: 'rituals', label: 'Rituals Completed', getter: (u) => String(u.ritual_count ?? 0) },
   { id: 'joined', label: 'Joined Date', getter: (u) => u.created_at ? new Date(u.created_at).toISOString().slice(0, 10) : '' },
   { id: 'source', label: 'Source Channel', getter: (u) => u.utm_source || u.referrer || 'direct' },
   { id: 'last_active', label: 'Last Active Date', getter: (u) => u.last_active_at ? new Date(u.last_active_at).toISOString().slice(0, 10) : '' },
@@ -596,14 +586,14 @@ export default function UsersPage() {
           onClick={() => setExportOpen(true)}
           variant="outline"
           size="sm"
-          className="border-white/[0.08] bg-[#0d1117] text-neutral-300 hover:text-white hover:bg-white/[0.06] gap-2"
+          className="border-glass-hairline bg-surface text-ink-body hover:text-ink-strong hover:bg-surface-sunken gap-2"
         >
           <Download size={14} />
           Export CSV
         </Button>
       </div>
 
-      {/* KPI tiles — now 4 columns to fit Granted Premium */}
+      {/* KPI tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiTile
           label="Total Users"
@@ -611,12 +601,12 @@ export default function UsersPage() {
           loading={metricsLoading}
         />
         <KpiTile
-          label="Paying Customers"
+          label="Paying firms"
           value={metrics ? formatNumber(metrics.paidCustomers ?? 0) : "—"}
           loading={metricsLoading}
         />
         <KpiTile
-          label="Granted Premium"
+          label="Comped firms"
           value={metrics ? formatNumber(metrics.grantedUsers ?? 0) : "—"}
           loading={metricsLoading}
         />
@@ -639,7 +629,7 @@ export default function UsersPage() {
         {/* Filter bar */}
         <div className="flex items-center gap-3 mb-4">
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-soft" />
             <Input
               placeholder="Search by email or name…"
               value={search}
@@ -648,7 +638,7 @@ export default function UsersPage() {
                 setCursor(null);
                 setCursorHistory([]);
               }}
-              className="pl-9 bg-[#0d1117] border-white/[0.08] text-white placeholder:text-neutral-600 focus-visible:ring-brand/40"
+              className="pl-9 bg-surface border-glass-hairline text-ink-strong placeholder:text-ink-faint focus-visible:ring-brand/40"
             />
           </div>
           <Select
@@ -659,23 +649,23 @@ export default function UsersPage() {
               setCursorHistory([]);
             }}
           >
-            <SelectTrigger className="w-32 bg-[#0d1117] border-white/[0.08] text-neutral-300">
+            <SelectTrigger className="w-32 bg-surface border-glass-hairline text-ink-body">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-[#0d1117] border-white/[0.08]">
-              <SelectItem value="all" className="text-neutral-300">All</SelectItem>
-              <SelectItem value="premium" className="text-neutral-300">Premium</SelectItem>
-              <SelectItem value="free" className="text-neutral-300">Free</SelectItem>
+            <SelectContent className="bg-surface border-glass-hairline">
+              <SelectItem value="all" className="text-ink-body">All</SelectItem>
+              <SelectItem value="premium" className="text-ink-body">Paid</SelectItem>
+              <SelectItem value="free" className="text-ink-body">Free</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-white/[0.06] overflow-hidden overflow-x-auto">
+        <div className="rounded-xl border border-glass-hairline overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((hg) => (
-                <TableRow key={hg.id} className="border-white/[0.06] hover:bg-transparent">
+                <TableRow key={hg.id} className="border-glass-hairline hover:bg-transparent">
                   {hg.headers.map((header) => {
                     const canSort = header.column.getCanSort();
                     const sorted = header.column.getIsSorted();
@@ -684,16 +674,16 @@ export default function UsersPage() {
                         key={header.id}
                         onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                         className={cn(
-                          "text-neutral-500 text-[11px] uppercase tracking-wider font-medium py-3 select-none",
-                          canSort && "cursor-pointer hover:text-neutral-300"
+                          "text-ink-soft text-[11px] uppercase tracking-wider font-medium py-3 select-none",
+                          canSort && "cursor-pointer hover:text-ink-body"
                         )}
                       >
                         <span className="inline-flex items-center gap-1.5">
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {canSort && (
-                            sorted === 'asc' ? <ArrowUp size={11} className="text-brand-light" /> :
-                            sorted === 'desc' ? <ArrowDown size={11} className="text-brand-light" /> :
-                            <ArrowUpDown size={11} className="text-neutral-700" />
+                            sorted === 'asc' ? <ArrowUp size={11} className="text-brand" /> :
+                            sorted === 'desc' ? <ArrowDown size={11} className="text-brand" /> :
+                            <ArrowUpDown size={11} className="text-ink-faint" />
                           )}
                         </span>
                       </TableHead>
@@ -705,17 +695,17 @@ export default function UsersPage() {
             <TableBody>
               {usersQuery.isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <TableRow key={i} className="border-white/[0.04]">
+                  <TableRow key={i} className="border-glass-hairline">
                     {columns.map((_, j) => (
                       <TableCell key={j}>
-                        <Skeleton className="h-4 w-full bg-white/[0.04]" />
+                        <Skeleton className="h-4 w-full bg-surface-sunken" />
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : table.getRowModel().rows.length === 0 ? (
                 <TableRow className="border-0">
-                  <TableCell colSpan={columns.length} className="py-12 text-center text-neutral-500 text-sm">
+                  <TableCell colSpan={columns.length} className="py-12 text-center text-ink-soft text-sm">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -727,10 +717,10 @@ export default function UsersPage() {
                       setSelectedUserId(row.original.id);
                       setDrawerOpen(true);
                     }}
-                    className="border-white/[0.04] cursor-pointer hover:bg-white/[0.02] transition-colors"
+                    className="border-glass-hairline cursor-pointer hover:bg-surface-sunken transition-colors"
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="text-neutral-200 text-sm py-3">
+                      <TableCell key={cell.id} className="text-ink-strong text-sm py-3">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -748,16 +738,16 @@ export default function UsersPage() {
             size="sm"
             onClick={goPrev}
             disabled={cursorHistory.length === 0}
-            className="border-white/[0.08] bg-transparent text-neutral-400 hover:text-white gap-1"
+            className="border-glass-hairline bg-transparent text-ink-soft hover:text-ink-strong gap-1"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
             Prev
           </Button>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-neutral-500">
+            <span className="text-xs text-ink-soft">
               {usersQuery.data ? `${usersQuery.data.rows.length} users` : ""}
             </span>
-            <label className="flex items-center gap-1.5 text-xs text-neutral-500">
+            <label className="flex items-center gap-1.5 text-xs text-ink-soft">
               Rows
               <select
                 value={pageSize}
@@ -768,7 +758,7 @@ export default function UsersPage() {
                   setCursor(null);
                   setCursorHistory([]);
                 }}
-                className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-white"
+                className="rounded-lg border border-glass-hairline bg-surface-sunken px-2 py-1 text-xs text-ink-strong"
               >
                 {[20, 50, 100].map((n) => (
                   <option key={n} value={n}>{n}</option>
@@ -781,7 +771,7 @@ export default function UsersPage() {
             size="sm"
             onClick={goNext}
             disabled={!usersQuery.data?.nextCursor}
-            className="border-white/[0.08] bg-transparent text-neutral-400 hover:text-white gap-1"
+            className="border-glass-hairline bg-transparent text-ink-soft hover:text-ink-strong gap-1"
           >
             Next
             <ChevronRight className="h-3.5 w-3.5" />
@@ -797,9 +787,9 @@ export default function UsersPage() {
       />
 
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>
-        <DialogContent className="bg-[#0d1117] border-white/[0.08] text-white max-w-md">
+        <DialogContent className="bg-surface border-glass-hairline text-ink-strong max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-[#8B6BFF] flex items-center gap-2">
+            <DialogTitle className="text-brand flex items-center gap-2">
               <Download size={18} />
               Export Users to CSV
             </DialogTitle>
@@ -808,7 +798,7 @@ export default function UsersPage() {
           <div className="space-y-4 py-2">
             {/* Who to export */}
             <div className="space-y-2">
-              <p className="text-xs text-neutral-500">Who to export</p>
+              <p className="text-xs text-ink-soft">Who to export</p>
               <div className="grid grid-cols-2 gap-2">
                 {([
                   { id: 'all', label: 'Everyone', hint: 'Ignore on-screen filters' },
@@ -821,12 +811,12 @@ export default function UsersPage() {
                     className={cn(
                       "rounded-lg border p-2 text-left text-xs transition-colors",
                       exportScope === opt.id
-                        ? "border-[#8B6BFF]/50 bg-[#8B6BFF]/10 text-white"
-                        : "border-white/[0.06] bg-white/[0.02] text-neutral-400 hover:text-neutral-200"
+                        ? "border-brand/40 bg-brand-wash text-ink-strong"
+                        : "border-glass-hairline bg-surface-sunken text-ink-soft hover:text-ink-strong"
                     )}
                   >
                     <span className="block font-medium">{opt.label}</span>
-                    <span className="block text-[10px] text-neutral-500">{opt.hint}</span>
+                    <span className="block text-[10px] text-ink-soft">{opt.hint}</span>
                   </button>
                 ))}
               </div>
@@ -834,12 +824,12 @@ export default function UsersPage() {
 
             {/* Letter narrowing — "from B onwards" or "B only" */}
             <div className="space-y-2">
-              <p className="text-xs text-neutral-500">Narrow by first letter</p>
+              <p className="text-xs text-ink-soft">Narrow by first letter</p>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={letterMode}
                   onChange={(e) => setLetterMode(e.target.value as 'any' | 'from' | 'only')}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1.5 text-xs text-white"
+                  className="rounded-lg border border-glass-hairline bg-surface-sunken px-2 py-1.5 text-xs text-ink-strong"
                 >
                   <option value="any">All letters</option>
                   <option value="from">From letter…</option>
@@ -850,7 +840,7 @@ export default function UsersPage() {
                   value={letter}
                   onChange={(e) => setLetter(e.target.value)}
                   disabled={letterMode === 'any'}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                  className="rounded-lg border border-glass-hairline bg-surface-sunken px-2 py-1.5 text-xs text-ink-strong disabled:opacity-40"
                 >
                   {Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)).map((l) => (
                     <option key={l} value={l}>{l}</option>
@@ -861,14 +851,14 @@ export default function UsersPage() {
                   value={letterField}
                   onChange={(e) => setLetterField(e.target.value as 'email' | 'name')}
                   disabled={letterMode === 'any'}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                  className="rounded-lg border border-glass-hairline bg-surface-sunken px-2 py-1.5 text-xs text-ink-strong disabled:opacity-40"
                 >
                   <option value="email">of email</option>
                   <option value="name">of name</option>
                 </select>
               </div>
               {letterMode !== 'any' && (
-                <p className="text-[10px] text-neutral-500">
+                <p className="text-[10px] text-ink-soft">
                   {letterMode === 'only'
                     ? `Only users whose ${letterField} starts with "${letter}".`
                     : `Users whose ${letterField} starts with "${letter}" through "Z".`}
@@ -876,13 +866,13 @@ export default function UsersPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-between text-xs text-neutral-500 pb-1 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between text-xs text-ink-soft pb-1 border-b border-glass-hairline">
               <span>Columns ({selectedFields.length} / {EXPORT_FIELDS.length} selected)</span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedFields(EXPORT_FIELDS.map((f) => f.id))}
-                  className="text-brand-light hover:underline"
+                  className="text-brand hover:underline"
                 >
                   Select all
                 </button>
@@ -890,7 +880,7 @@ export default function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedFields([])}
-                  className="text-neutral-400 hover:underline"
+                  className="text-ink-soft hover:underline"
                 >
                   Clear all
                 </button>
@@ -906,15 +896,15 @@ export default function UsersPage() {
                     className={cn(
                       "flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors select-none",
                       checked
-                        ? "border-[#8B6BFF]/50 bg-[#8B6BFF]/10 text-white"
-                        : "border-white/[0.06] bg-white/[0.02] text-neutral-400 hover:text-neutral-200"
+                        ? "border-brand/40 bg-brand-wash text-ink-strong"
+                        : "border-glass-hairline bg-surface-sunken text-ink-soft hover:text-ink-strong"
                     )}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleExportField(f.id)}
-                      className="accent-[#8B6BFF] rounded"
+                      className="accent-brand rounded"
                     />
                     <span>{f.label}</span>
                   </label>
@@ -927,14 +917,14 @@ export default function UsersPage() {
             <Button
               variant="outline"
               onClick={() => setExportOpen(false)}
-              className="border-white/[0.08] bg-transparent text-neutral-400 hover:text-white"
+              className="border-glass-hairline bg-transparent text-ink-soft hover:text-ink-strong"
             >
               Cancel
             </Button>
             <Button
               onClick={handleExportCsv}
               disabled={exporting || selectedFields.length === 0}
-              className="bg-[#8B6BFF] hover:bg-[#7a59f5] text-white gap-2"
+              className="bg-brand hover:bg-brand-dark text-white gap-2"
             >
               <Download size={14} />
               {exporting ? "Generating CSV…" : "Download CSV"}
