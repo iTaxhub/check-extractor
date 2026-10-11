@@ -179,8 +179,17 @@ export default function CompanySwitcher() {
           {isSwitching ? 'Switching…' : active?.companyName || 'Select company'}
         </span>
         {active && needsReconnect(active.status) && (
-          <span className="shrink-0 rounded-pill bg-error-bg px-1.5 py-0.5 text-[10px] font-semibold text-error-text">
-            Reconnect
+          // One click straight into the Intuit sign-in, instead of opening the
+          // menu first. A span, not a nested <button>, inside the trigger.
+          <span
+            role="link"
+            tabIndex={0}
+            title="QuickBooks sign-in expired. Click to reconnect."
+            onClick={(e) => { e.stopPropagation(); startConnect(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); startConnect(); } }}
+            className="shrink-0 cursor-pointer rounded-pill bg-error-bg px-1.5 py-0.5 text-[10px] font-semibold text-error-text hover:bg-error hover:text-white"
+          >
+            {connecting ? 'Opening…' : 'Reconnect'}
           </span>
         )}
         {isSwitching ? (
