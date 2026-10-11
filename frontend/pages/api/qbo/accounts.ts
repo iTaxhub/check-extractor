@@ -187,9 +187,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // the company the switcher says is active.
     const token = await getQbToken(supabase);
     if (!token.ok) {
-      return res
-        .status(token.reason === 'not_connected' ? 400 : 401)
-        .json({ error: token.reason === 'not_connected' ? 'QuickBooks not connected' : token.detail });
+      // Not connected / needs reconnect are states, not request failures: the
+      // caller is signed in and allowed. Answer 200 with no accounts and say
+      // why, so the switcher renders empty and the company badge (which reads
+      // qb_connections.status) tells the user to reconnect. A 401 here read as
+      // a login failure and filled every page's console with errors.
+      return res.status(200).json({
+        accounts: [],
+        syncedAt: null,
+        connection: token.reason === 'not_connected' ? 'not_connected' : 'needs_reconnect',
+        detail: token.reason === 'not_connected' ? 'QuickBooks is not connected.' : token.detail,
+      });
     }
     const realmId = token.connection.realmId;
 
