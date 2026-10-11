@@ -583,3 +583,32 @@ export async function adminRecipients(tenantId: string): Promise<string[]> {
     .map((r: any) => String(r.email || '').trim().toLowerCase())
     .filter(Boolean);
 }
+
+/**
+ * sendOnce() to every administrator of a firm. The recipient is appended to
+ * the period key, because billing_notices is unique per (tenant, kind, key)
+ * and a bare key would let only the first admin through.
+ *
+ * Never throws: a trigger calls this after its own work has succeeded, and a
+ * mail failure must not turn that success into an error.
+ */
+export async function notifyAdmins(
+  args: Omit<SendOnceArgs, 'to'> & { firmNameFrom?: 'tenants' }
+): Promise<SendResult[]> {
+  const { firmNameFrom, ...rest } = args;
+  try {
+    let vars = rest.vars ?? {};
+    if (firmNameFrom && vars.firmName == null) {
+      const { data } = await createServiceClient().from('tenants').select('name').eq('id', rest.tenantId).maybeSingle();
+      vars = { ...vars, firmName: data?.name ?? null };
+    }
+    const out: SendResult[] = [];
+    for (const to of await adminRecipients(rest.tenantId)) {
+      out.push(await sendOnce({ ...rest, vars, to, periodKey: `${rest.periodKey}:${to}` }));
+    }
+    return out;
+  } catch (err: any) {
+    console.error(`[email] ${rest.kind} for ${rest.tenantId} failed:`, err?.message || err);
+    return [];
+  }
+}

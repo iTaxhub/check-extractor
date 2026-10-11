@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAuthContext, getActiveRealm } from '@/lib/match-helpers';
 import { createServiceClient } from '@/lib/supabase/api';
+import { sendEmail } from '@/lib/email/send';
 
 /**
  * POST /api/matches/bulk-approve
@@ -82,9 +83,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }))
     );
 
+    // Summary to the person who approved. Awaited (serverless may freeze a
+    // detached promise) but fully guarded: the approval already happened.
+    try {
+      await clearedEmail(db, { tenantId, userId, realmId, batchId, count: ids.length, checkIds: validCheckIds });
+    } catch (mailErr: any) {
+      console.error('[bulk-approve] cleared email failed:', mailErr?.message || mailErr);
+    }
+
     return res.status(200).json({ success: true, approved: ids.length });
   } catch (error: any) {
     console.error('Bulk approve error:', error);
     return res.status(500).json({ error: error.message });
   }
+}
+
+async function clearedEmail(
+  db: ReturnType<typeof createServiceClient>,
+  a: { tenantId: string; userId: string; realmId: string | null; batchId?: string; count: number; checkIds: string[] }
+) {
+  const [{ data: me }, { data: checks }, { data: company }, { data: tenant }] = await Promise.all([
+    db.from('user_profiles').select('email, full_name').eq('id', a.userId).maybeSingle(),
+    a.checkIds.length
+      ? db.from('checks').select('amount').in('id', a.checkIds).eq('tenant_id', a.tenantId)
+      : Promise.resolve({ data: [] as any[] }),
+    db.from('qb_connections').select('company_name').eq('tenant_id', a.tenantId).eq('realm_id', a.realmId ?? '').maybeSingle(),
+    db.from('tenants').select('name').eq('id', a.tenantId).maybeSingle(),
+  ]);
+  if (!me?.email) return;
+
+  let open = db
+    .from('matches')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', a.tenantId)
+    .eq('realm_id', a.realmId ?? '')
+    .in('status', ['matched', 'pending']);
+  if (a.batchId) open = open.eq('batch_id', a.batchId);
+  const { count: remaining } = await open;
+
+  await sendEmail({
+    to: me.email,
+    template: 'reconciliation_cleared',
+    tenantId: a.tenantId,
+    vars: {
+      firmName: tenant?.name ?? null,
+      approvedBy: me.full_name || me.email,
+      clearedCount: a.count,
+      clearedTotal: (checks || []).reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0),
+      companyName: company?.company_name ?? null,
+      remaining: remaining ?? 0,
+    },
+    metadata: { batch_id: a.batchId ?? null },
+  });
 }
