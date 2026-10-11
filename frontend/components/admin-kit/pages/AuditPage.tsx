@@ -6,6 +6,7 @@ import { PageHeader } from "../components/PageHeader";
 import { ChartCard } from "../components/ChartCard";
 import { EmptyState } from "../components/EmptyState";
 import { formatRelative } from "../lib/formatters";
+import { callEdgeFn } from "../lib/api";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/admin-kit/_deps/components/ui/input";
 import { Badge } from "@/components/admin-kit/_deps/components/ui/badge";
@@ -82,9 +83,8 @@ export default function AuditPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "audit", search],
-    // DepthMe read admin_audit_logs; Kyriq has no admin-action log table yet
-    // (audit_logs is per-tenant check edits), so the log is empty until one exists.
-    queryFn: async (): Promise<AuditLogEntry[]> => [],
+    // audit_logs across every firm: admin actions, comp grants, refunds, check edits.
+    queryFn: () => callEdgeFn<AuditLogEntry[]>("admin-audit-list", { search }),
     staleTime: 15_000,
   });
 
@@ -152,7 +152,7 @@ export default function AuditPage() {
             description="Check that you have admin access and try again."
           />
         ) : !data?.length ? (
-          <EmptyState title="No admin audit log yet" description="Kyriq does not record super-admin actions to a table yet." />
+          <EmptyState title="Nothing logged yet" description="Admin actions, comp grants, refunds and check edits will appear here." />
         ) : (
           <div className="space-y-6">
             {groupByDay(data).map((group) => (

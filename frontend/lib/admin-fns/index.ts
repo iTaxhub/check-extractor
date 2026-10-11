@@ -17,12 +17,14 @@ import stripeQuery from './admin-stripe-query';
 import platformBreakdown from './admin-platform-breakdown';
 import stripeSync from './admin-stripe-sync';
 import funnelQuery from './admin-funnel-query';
+import auditList from './admin-audit-list';
 import { activityByHour, eventsQuery, landingQuery, visitorsQuery } from './analytics-empty';
 
 export type AdminCtx = { user: User; db: SupabaseClient };
 export type AdminFn = (body: Record<string, unknown>, ctx: AdminCtx) => Promise<unknown>;
 
 export const ADMIN_FNS: Record<string, AdminFn> = {
+  'admin-audit-list': auditList,
   'admin-metrics': metrics,
   'admin-health': health,
   'admin-users-list': usersList,

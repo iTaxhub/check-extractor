@@ -12,6 +12,7 @@ import type { TemplateKey } from '@/lib/email/templates';
  *   A. Invitations that have expired            (email 03)
  *   B. Documents that failed to process         (email 14)
  *   C. Trial and usage notices                  (billing 01-06, 08-11)
+ *   D. Weekly report (Mondays) and monthly report (the 1st), UTC
  *
  * Pass C takes every number from public.tenant_usage_state() — the same
  * resolver the server-side processing gate calls — so an email cannot tell a
@@ -69,8 +70,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const invitations = only && only !== 'invitations' ? null : await expiredInvitations(svc, now);
   const jobs = only && only !== 'jobs' ? null : await failedJobs(svc, now);
   const usage = only && only !== 'usage' ? null : await usageNotices(svc);
+  const reports = only && only !== 'reports' ? null : await periodReports(svc, now, only === 'reports');
 
-  const all = [invitations, jobs, usage].filter(Boolean) as Outcome[];
+  const all = [invitations, jobs, usage, reports].filter(Boolean) as Outcome[];
   const anyFailure = all.some((o) => o.failures.length > 0);
 
   return res.status(anyFailure ? 207 : 200).json({
@@ -78,6 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     invitations,
     jobs,
     usage,
+    reports,
     note:
       'skipped counts emails that were rendered and recorded but not sent because RESEND_API_KEY ' +
       'is unset. Their send-once claim is released, so they go out on the next run once a key exists.',
@@ -318,6 +321,9 @@ export function decideNotices(state: Record<string, any>): DueNotice[] {
       template: 'trial_started',
       vars,
     });
+    // Welcome rides with trial_started: same moment (a firm's first run
+    // through this cron after sign-up), same once-per-firm key.
+    due.push({ kind: 'welcome', periodKey: String(state.tenant_id), template: 'welcome', vars });
   }
 
   const reason = String(state.block_reason ?? '');
@@ -361,4 +367,133 @@ export function decideNotices(state: Record<string, any>): DueNotice[] {
 async function firmName(svc: any, tenantId: string): Promise<string | null> {
   const { data } = await svc.from('tenants').select('name').eq('id', tenantId).maybeSingle();
   return data?.name ?? null;
+}
+
+/* ── Pass D: weekly and monthly reports ────────────────────────────────── */
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * Runs inside the daily cron. Monday sends last week (Mon-Sun), the 1st sends
+ * last month. `force` (?pass=reports) runs both regardless of the day, for a
+ * manual trigger; sendOnce on the period key keeps that safe.
+ */
+async function periodReports(svc: any, now: Date, force: boolean): Promise<Outcome> {
+  const o = outcome();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const periods: Array<{ kind: 'weekly_report' | 'monthly_report'; start: Date; end: Date }> = [];
+
+  if (force || today.getUTCDay() === 1) {
+    const daysSinceMonday = (today.getUTCDay() + 6) % 7;
+    const end = new Date(today.getTime() - daysSinceMonday * DAY); // this Monday, exclusive
+    periods.push({ kind: 'weekly_report', start: new Date(end.getTime() - 7 * DAY), end });
+  }
+  if (force || today.getUTCDate() === 1) {
+    const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+    const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 1, 1));
+    periods.push({ kind: 'monthly_report', start, end });
+  }
+  if (periods.length === 0) return o;
+
+  const { data: tenants, error } = await svc.from('tenants').select('id, name').limit(2000);
+  if (error) {
+    o.failures.push(error.message);
+    return o;
+  }
+
+  for (const tenant of tenants || []) {
+    for (const p of periods) {
+      try {
+        const stats = await periodStats(svc, tenant.id, p.start, p.end);
+        if (stats.checksProcessed === 0 && stats.cleared === 0) continue; // no usage, no report
+
+        const lastDay = new Date(p.end.getTime() - DAY);
+        const vars =
+          p.kind === 'weekly_report'
+            ? { ...stats, weekStart: isoDay(p.start), weekEnd: isoDay(lastDay) }
+            : {
+                ...stats,
+                monthLabel: p.start.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+                exactMatchRate: stats.checksProcessed
+                  ? Math.min(100, Math.round((stats.exactMatches / stats.checksProcessed) * 100))
+                  : 0,
+              };
+
+        for (const to of await adminRecipients(tenant.id)) {
+          const result = await sendOnce({
+            tenantId: tenant.id, // required: 'notification' mail carries an unsubscribe
+            kind: p.kind,
+            periodKey: `${isoDay(p.start)}:${to}`,
+            to,
+            template: p.kind,
+            vars: { ...vars, firmName: tenant.name ?? null },
+          });
+          record(o, `${tenant.id}/${p.kind}/${to}`, result);
+        }
+      } catch (err: any) {
+        o.failures.push(`${tenant.id}/${p.kind}: ${err?.message || err}`);
+      }
+    }
+  }
+  return o;
+}
+
+const OPEN_STATUSES = ['pending', 'matched', 'flagged', 'discrepancy'];
+
+/**
+ * Numbers for one firm and one period, from check_jobs, matches and checks.
+ * ponytail: open items and discrepancies are the firm's state NOW, not as of
+ * the period end (matches keeps no history); "exact" means an approved match
+ * with confidence_score >= 95, the bulk-approve default; duplicates are not a
+ * tracked status, so they report 0. Upgrade path: a reporting view in SQL.
+ */
+async function periodStats(svc: any, tenantId: string, start: Date, end: Date) {
+  const from = start.toISOString();
+  const to = end.toISOString();
+
+  const [jobsRes, clearedRes, openRes, usageRes] = await Promise.all([
+    svc
+      .from('check_jobs')
+      .select('total_checks')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'complete')
+      .gte('created_at', from)
+      .lt('created_at', to),
+    svc
+      .from('matches')
+      .select('realm_id, confidence_score, check_id')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'approved')
+      .gte('approved_at', from)
+      .lt('approved_at', to),
+    svc.from('matches').select('status').eq('tenant_id', tenantId).in('status', OPEN_STATUSES),
+    svc.rpc('tenant_usage_state', { p_tenant_id: tenantId }),
+  ]);
+  for (const r of [jobsRes, clearedRes, openRes]) if (r.error) throw r.error;
+
+  const cleared: any[] = clearedRes.data || [];
+  const checkIds = cleared.map((m) => m.check_id).filter(Boolean);
+  let clearedTotal = 0;
+  if (checkIds.length) {
+    const { data: checks, error } = await svc.from('checks').select('amount').in('id', checkIds).eq('tenant_id', tenantId);
+    if (error) throw error;
+    clearedTotal = (checks || []).reduce((s: number, c: any) => s + (Number(c.amount) || 0), 0);
+  }
+
+  const open: any[] = openRes.data || [];
+  const state: any = usageRes.error ? {} : usageRes.data || {};
+  const paid = state.subscription_status === 'active';
+
+  return {
+    checksProcessed: (jobsRes.data || []).reduce((s: number, j: any) => s + (Number(j.total_checks) || 0), 0),
+    companies: new Set(cleared.map((m) => m.realm_id).filter(Boolean)).size,
+    exactMatches: cleared.filter((m) => Number(m.confidence_score) >= 95).length,
+    cleared: cleared.length,
+    clearedTotal,
+    openItems: open.length,
+    discrepancies: open.filter((m) => m.status === 'discrepancy').length,
+    duplicates: 0,
+    usageUsed: Number((paid ? state.checks_used_this_period : state.trial_checks_used) ?? 0),
+    usageAllowance: Number((paid ? state.plan_check_allowance : state.trial_check_limit) ?? 0),
+  };
 }

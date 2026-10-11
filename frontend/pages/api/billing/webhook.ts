@@ -16,6 +16,7 @@ import {
   tenantIdForStripeObject,
 } from '@/lib/billing/service';
 import { annualEnabled, createAnnualSubscription } from '@/lib/billing/annual';
+import { notifyAdmins } from '@/lib/email/send';
 
 /**
  * POST /api/billing/webhook — the eight Stripe events (CHECKLIST section 7).
@@ -200,6 +201,42 @@ async function applyInvoiceToTenant(tenantId: string, invoice: any) {
   if (error) throw error;
 }
 
+async function invoiceEmail(tenantId: string, type: string, invoice: any) {
+  const usd = (cents: unknown) => Number(cents ?? 0) / 100;
+  if (type === 'invoice.paid' && Number(invoice?.amount_paid ?? 0) > 0) {
+    const start = stripeTime(invoice?.period_start);
+    const end = stripeTime(invoice?.period_end);
+    await notifyAdmins({
+      tenantId,
+      kind: 'payment_receipt',
+      periodKey: String(invoice.id),
+      template: 'payment_receipt',
+      firmNameFrom: 'tenants',
+      vars: {
+        amountUsd: usd(invoice.amount_paid),
+        invoiceNumber: invoice?.number ?? null,
+        invoiceUrl: invoice?.hosted_invoice_url ?? null,
+        periodLabel: start && end && start !== end ? `${start.slice(0, 10)} to ${end.slice(0, 10)}` : null,
+      },
+      metadata: { stripe_invoice_id: invoice.id },
+    });
+  } else if (type === 'invoice.payment_failed') {
+    await notifyAdmins({
+      tenantId,
+      kind: 'payment_failed',
+      // Per attempt, so each failed retry warns once, not once per invoice ever.
+      periodKey: `${invoice.id}:${invoice?.attempt_count ?? 0}`,
+      template: 'payment_failed',
+      firmNameFrom: 'tenants',
+      vars: {
+        amountUsd: usd(invoice?.amount_due),
+        nextAttempt: stripeTime(invoice?.next_payment_attempt),
+      },
+      metadata: { stripe_invoice_id: invoice.id },
+    });
+  }
+}
+
 /* ────────────────────────── checkout completion ────────────────────────── */
 
 async function handleCheckoutCompleted(tenantId: string, session: any, envName: 'test' | 'live') {
@@ -381,6 +418,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       case 'invoice.payment_failed':
         await upsertInvoice(tenantId, object);
         await applyInvoiceToTenant(tenantId, object);
+        // After the DB write; notifyAdmins never throws, and sendOnce keyed on
+        // the invoice id means a Stripe retry of this event cannot mail twice.
+        await invoiceEmail(tenantId, type, object);
         break;
     }
 
