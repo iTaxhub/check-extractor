@@ -62,12 +62,12 @@ interface TooltipPayload {
 function CustomTooltip({ active, payload, label }: TooltipPayload) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-[#0d1117] px-3 py-2 shadow-xl">
-      <p className="mb-1 text-xs text-neutral-500">{label}</p>
+    <div className="rounded-lg border border-glass-hairline bg-surface px-3 py-2 shadow-xl">
+      <p className="mb-1 text-xs text-ink-soft">{label}</p>
       {payload.map((p) => (
-        <p key={p.name} className="text-sm text-white">
+        <p key={p.name} className="text-sm text-ink-strong">
           {p.value.toLocaleString()}{" "}
-          <span className="text-xs text-neutral-500">{p.name}</span>
+          <span className="text-xs text-ink-soft">{p.name}</span>
         </p>
       ))}
     </div>
@@ -128,15 +128,15 @@ function EventsTab({ from, to }: { from: string; to: string }) {
       >
         {selectedEvent && (
           <div className="mb-4 flex items-center gap-2">
-            <span className="text-xs text-neutral-500">Filtered to:</span>
-            <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-xs text-brand-light">
+            <span className="text-xs text-ink-soft">Filtered to:</span>
+            <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-xs text-brand">
               {selectedEvent}
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelectedEvent(undefined)}
-              className="h-6 px-2 text-xs text-neutral-500 hover:text-white"
+              className="h-6 px-2 text-xs text-ink-soft hover:text-ink-strong"
             >
               Clear
             </Button>
@@ -153,19 +153,19 @@ function EventsTab({ from, to }: { from: string; to: string }) {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.04)"
+                stroke="#e5e7f5"
                 horizontal={false}
               />
               <XAxis
                 type="number"
-                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 type="category"
                 dataKey="event_name"
-                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tick={{ fill: "#475569", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={160}
@@ -177,10 +177,10 @@ function EventsTab({ from, to }: { from: string; to: string }) {
                     key={entry.event_name}
                     fill={
                       selectedEvent === entry.event_name
-                        ? "#7c3aed"
+                        ? "#6366f1"
                         : i === 0
-                          ? "#6d28d9"
-                          : "#4c1d95"
+                          ? "#6366f1"
+                          : "#818cf8"
                     }
                     cursor="pointer"
                     onClick={() =>
@@ -205,8 +205,8 @@ function EventsTab({ from, to }: { from: string; to: string }) {
 
       {summary.length > 0 && (
         <ChartCard title="Event Summary" description="All events in period">
-          <div className="space-y-0 divide-y divide-white/[0.04]">
-            <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-neutral-500 uppercase">
+          <div className="space-y-0 divide-y divide-glass-hairline">
+            <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-ink-soft uppercase">
               <span>Event</span>
               <span className="text-right">Occurrences</span>
               <span className="text-right">Unique Users</span>
@@ -222,15 +222,15 @@ function EventsTab({ from, to }: { from: string; to: string }) {
                 className={cn(
                   "grid cursor-pointer grid-cols-3 py-2.5 text-sm transition-colors",
                   selectedEvent === e.event_name
-                    ? "text-brand-light"
-                    : "text-neutral-300 hover:text-white"
+                    ? "text-brand"
+                    : "text-ink-body hover:text-ink-strong"
                 )}
               >
                 <span className="font-mono text-xs">{e.event_name}</span>
                 <span className="text-right tabular-nums">
                   {formatNumber(e.count)}
                 </span>
-                <span className="text-right text-neutral-500 tabular-nums">
+                <span className="text-right text-ink-soft tabular-nums">
                   {formatNumber(e.unique_users)}
                 </span>
               </div>
@@ -290,19 +290,19 @@ function ScreensTab({ from, to }: { from: string; to: string }) {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.04)"
+                stroke="#e5e7f5"
                 horizontal={false}
               />
               <XAxis
                 type="number"
-                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 type="category"
                 dataKey="screen"
-                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tick={{ fill: "#475569", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={150}
@@ -315,7 +315,7 @@ function ScreensTab({ from, to }: { from: string; to: string }) {
                   return (
                     <Cell
                       key={entry.screen}
-                      fill={`rgba(109, 40, 217, ${opacity})`}
+                      fill={`rgba(99, 102, 241, ${opacity})`}
                     />
                   );
                 })}
@@ -335,15 +335,15 @@ function ScreensTab({ from, to }: { from: string; to: string }) {
           title="Screen Visit Counts"
           description="Sorted by most visited"
         >
-          <div className="divide-y divide-white/[0.04]">
-            <div className="grid grid-cols-2 pb-2 text-xs tracking-wider text-neutral-500 uppercase">
+          <div className="divide-y divide-glass-hairline">
+            <div className="grid grid-cols-2 pb-2 text-xs tracking-wider text-ink-soft uppercase">
               <span>Screen</span>
               <span className="text-right">Views</span>
             </div>
             {screenData.map((s) => (
               <div
                 key={s.screen}
-                className="grid grid-cols-2 py-2.5 text-sm text-neutral-300"
+                className="grid grid-cols-2 py-2.5 text-sm text-ink-body"
               >
                 <span className="font-mono text-xs">{s.screen}</span>
                 <span className="text-right tabular-nums">
@@ -403,13 +403,13 @@ function FunnelTab({ from, to }: { from: string; to: string }) {
                     <span
                       className={cn(
                         "font-mono",
-                        isFirst ? "text-brand-light" : "text-neutral-400"
+                        isFirst ? "text-brand" : "text-ink-soft"
                       )}
                     >
                       {step.step}
                     </span>
                     <div className="flex items-center gap-3 text-right">
-                      <span className="font-medium text-white tabular-nums">
+                      <span className="font-medium text-ink-strong tabular-nums">
                         {formatNumber(step.users)}
                       </span>
                       {!isFirst && (
@@ -417,23 +417,23 @@ function FunnelTab({ from, to }: { from: string; to: string }) {
                           className={cn(
                             "w-16 text-right tabular-nums",
                             step.drop_off_pct > 30
-                              ? "text-red-400"
+                              ? "text-error-text"
                               : step.drop_off_pct > 10
-                                ? "text-amber-400"
-                                : "text-emerald-400"
+                                ? "text-warning-text"
+                                : "text-success-text"
                           )}
                         >
                           −{step.drop_off_pct.toFixed(1)}%
                         </span>
                       )}
                       {isFirst && (
-                        <span className="w-16 text-right text-xs text-neutral-600">
+                        <span className="w-16 text-right text-xs text-ink-faint">
                           base
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="h-7 overflow-hidden rounded bg-white/[0.04]">
+                  <div className="h-7 overflow-hidden rounded bg-surface-sunken">
                     <div
                       className={cn(
                         "h-full rounded",
@@ -471,12 +471,12 @@ function FunnelTab({ from, to }: { from: string; to: string }) {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.04)"
+                stroke="#e5e7f5"
                 vertical={false}
               />
               <XAxis
                 dataKey="step"
-                tick={{ fill: "#6b7280", fontSize: 10 }}
+                tick={{ fill: "#64748b", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 angle={-35}
@@ -484,7 +484,7 @@ function FunnelTab({ from, to }: { from: string; to: string }) {
                 interval={0}
               />
               <YAxis
-                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -493,7 +493,7 @@ function FunnelTab({ from, to }: { from: string; to: string }) {
                 {funnel.map((entry, i) => (
                   <Cell
                     key={entry.step}
-                    fill={i === 0 ? "#6d28d9" : "#4c1d95"}
+                    fill={i === 0 ? "#6366f1" : "#818cf8"}
                   />
                 ))}
               </Bar>
@@ -610,12 +610,12 @@ function FeaturesTab({ from, to }: { from: string; to: string }) {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.04)"
+                stroke="#e5e7f5"
                 vertical={false}
               />
               <XAxis
                 dataKey="feature"
-                tick={{ fill: "#6b7280", fontSize: 10 }}
+                tick={{ fill: "#64748b", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 angle={-20}
@@ -623,7 +623,7 @@ function FeaturesTab({ from, to }: { from: string; to: string }) {
                 interval={0}
               />
               <YAxis
-                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -632,7 +632,7 @@ function FeaturesTab({ from, to }: { from: string; to: string }) {
                 {chartData.map((entry, i) => (
                   <Cell
                     key={entry.feature}
-                    fill={i === 0 ? "#6d28d9" : "#4c1d95"}
+                    fill={i === 0 ? "#6366f1" : "#818cf8"}
                   />
                 ))}
               </Bar>
@@ -641,7 +641,7 @@ function FeaturesTab({ from, to }: { from: string; to: string }) {
         ) : (
           <EmptyState
             title="No feature events yet"
-            description="Feature usage will appear once users complete rituals, generate boards, and more."
+            description="Feature usage will appear once Kyriq emits product analytics events."
           />
         )}
       </ChartCard>
@@ -649,17 +649,17 @@ function FeaturesTab({ from, to }: { from: string; to: string }) {
       {guideTypeRows.length > 0 && (
         <ChartCard
           title="By Guide Type"
-          description="Rituals completed and boards generated, grouped by guide type"
+          description="Feature events, grouped by type"
         >
-          <div className="divide-y divide-white/[0.04]">
-            <div className="grid grid-cols-2 pb-2 text-xs tracking-wider text-neutral-500 uppercase">
+          <div className="divide-y divide-glass-hairline">
+            <div className="grid grid-cols-2 pb-2 text-xs tracking-wider text-ink-soft uppercase">
               <span>Feature · Guide Type</span>
               <span className="text-right">Count</span>
             </div>
             {guideTypeRows.map((row) => (
               <div
                 key={row.feature}
-                className="grid grid-cols-2 py-2.5 text-sm text-neutral-300"
+                className="grid grid-cols-2 py-2.5 text-sm text-ink-body"
               >
                 <span className="font-mono text-xs">{row.feature}</span>
                 <span className="text-right tabular-nums">
@@ -856,13 +856,13 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
                     <span
                       className={cn(
                         "font-mono",
-                        isFirst ? "text-brand-light" : "text-neutral-400"
+                        isFirst ? "text-brand" : "text-ink-soft"
                       )}
                     >
                       {step.step}
                     </span>
                     <div className="flex items-center gap-3 text-right">
-                      <span className="font-medium text-white tabular-nums">
+                      <span className="font-medium text-ink-strong tabular-nums">
                         {formatNumber(step.users)}
                       </span>
                       {!isFirst ? (
@@ -870,22 +870,22 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
                           className={cn(
                             "w-16 text-right tabular-nums",
                             step.drop_off_pct > 30
-                              ? "text-red-400"
+                              ? "text-error-text"
                               : step.drop_off_pct > 10
-                                ? "text-amber-400"
-                                : "text-emerald-400"
+                                ? "text-warning-text"
+                                : "text-success-text"
                           )}
                         >
                           −{step.drop_off_pct.toFixed(1)}%
                         </span>
                       ) : (
-                        <span className="w-16 text-right text-xs text-neutral-600">
+                        <span className="w-16 text-right text-xs text-ink-faint">
                           base
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="h-7 overflow-hidden rounded bg-white/[0.04]">
+                  <div className="h-7 overflow-hidden rounded bg-surface-sunken">
                     <div
                       className={cn(
                         "h-full rounded",
@@ -902,9 +902,9 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
               );
             })}
             {biggestDrop.step && (
-              <p className="pt-2 text-xs text-neutral-500">
+              <p className="pt-2 text-xs text-ink-soft">
                 Biggest drop-off:{" "}
-                <span className="font-mono text-amber-400">
+                <span className="font-mono text-warning-text">
                   {biggestDrop.step}
                 </span>{" "}
                 (−{biggestDrop.pct.toFixed(1)}%)
@@ -946,14 +946,14 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
       {/* Conversion by source screen — converted vs failed vs abandoned */}
       <ChartCard
         title="Conversion by Source Screen"
-        description="Where users opened premium, split by outcome. Abandoned = saw the paywall but never started checkout; Failed = started but cancelled/errored. (Outcome attribution by screen applies to events from this release onward.)"
+        description="Where users opened the upgrade flow, split by outcome. Abandoned = saw the paywall but never started checkout; Failed = started but cancelled/errored. (Outcome attribution by screen applies to events from this release onward.)"
         loading={isLoading && !sourceConversion.length}
       >
         {sourceConversion.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-glass-hairline">
                   {[
                     "Source screen",
                     "Reached",
@@ -965,7 +965,7 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
                     <th
                       key={h}
                       className={cn(
-                        "px-3 pb-2 text-xs font-medium whitespace-nowrap text-neutral-500",
+                        "px-3 pb-2 text-xs font-medium whitespace-nowrap text-ink-soft",
                         i === 0 ? "text-left" : "text-right"
                       )}
                     >
@@ -974,25 +974,25 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-glass-hairline">
                 {sourceConversion.map((r) => (
-                  <tr key={r.screen} className="hover:bg-white/[0.02]">
-                    <td className="px-3 py-2 font-mono text-xs text-neutral-300">
+                  <tr key={r.screen} className="hover:bg-surface-sunken">
+                    <td className="px-3 py-2 font-mono text-xs text-ink-body">
                       {r.screen}
                     </td>
-                    <td className="px-3 py-2 text-right text-neutral-300 tabular-nums">
+                    <td className="px-3 py-2 text-right text-ink-body tabular-nums">
                       {formatNumber(r.reached)}
                     </td>
-                    <td className="px-3 py-2 text-right text-emerald-400 tabular-nums">
+                    <td className="px-3 py-2 text-right text-success-text tabular-nums">
                       {formatNumber(r.converted)}
                     </td>
-                    <td className="px-3 py-2 text-right text-red-400 tabular-nums">
+                    <td className="px-3 py-2 text-right text-error-text tabular-nums">
                       {formatNumber(r.failed)}
                     </td>
-                    <td className="px-3 py-2 text-right text-amber-400 tabular-nums">
+                    <td className="px-3 py-2 text-right text-warning-text tabular-nums">
                       {formatNumber(r.abandoned)}
                     </td>
-                    <td className="px-3 py-2 text-right font-medium text-white tabular-nums">
+                    <td className="px-3 py-2 text-right font-medium text-ink-strong tabular-nums">
                       {r.reached > 0 ? `${r.convRate.toFixed(1)}%` : "—"}
                     </td>
                   </tr>
@@ -1028,19 +1028,19 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="rgba(255,255,255,0.04)"
+                  stroke="#e5e7f5"
                   horizontal={false}
                 />
                 <XAxis
                   type="number"
-                  tick={{ fill: "#6b7280", fontSize: 11 }}
+                  tick={{ fill: "#64748b", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   type="category"
                   dataKey="screen"
-                  tick={{ fill: "#9ca3af", fontSize: 11 }}
+                  tick={{ fill: "#475569", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   width={150}
@@ -1050,22 +1050,22 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
                   {sourceRows.slice(0, 12).map((entry, i) => (
                     <Cell
                       key={entry.screen}
-                      fill={i === 0 ? "#6d28d9" : "#4c1d95"}
+                      fill={i === 0 ? "#6366f1" : "#818cf8"}
                     />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
 
-            <div className="mt-4 divide-y divide-white/[0.04]">
-              <div className="grid grid-cols-2 pb-2 text-xs tracking-wider text-neutral-500 uppercase">
+            <div className="mt-4 divide-y divide-glass-hairline">
+              <div className="grid grid-cols-2 pb-2 text-xs tracking-wider text-ink-soft uppercase">
                 <span>Source Screen</span>
                 <span className="text-right">Taps</span>
               </div>
               {sourceRows.map((row) => (
                 <div
                   key={row.screen}
-                  className="grid grid-cols-2 py-2.5 text-sm text-neutral-300"
+                  className="grid grid-cols-2 py-2.5 text-sm text-ink-body"
                 >
                   <span className="font-mono text-xs">{row.screen}</span>
                   <span className="text-right tabular-nums">
@@ -1077,8 +1077,8 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
           </>
         ) : (
           <EmptyState
-            title="No premium upgrade events"
-            description="Conversion data will appear once users interact with the premium upgrade flow."
+            title="No upgrade events"
+            description="Conversion data will appear once firms interact with the upgrade flow."
           />
         )}
       </ChartCard>
@@ -1195,12 +1195,12 @@ function LandingTab({ from, to }: { from: string; to: string }) {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.04)"
+                stroke="#e5e7f5"
                 horizontal={false}
               />
               <XAxis
                 type="number"
-                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 domain={[0, totalSessions || 1]}
@@ -1208,7 +1208,7 @@ function LandingTab({ from, to }: { from: string; to: string }) {
               <YAxis
                 type="category"
                 dataKey="label"
-                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tick={{ fill: "#475569", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={130}
@@ -1230,8 +1230,8 @@ function LandingTab({ from, to }: { from: string; to: string }) {
 
         {/* Pct table */}
         {sectionFunnel.some((s) => s.sessions > 0) && (
-          <div className="mt-6 divide-y divide-white/[0.04]">
-            <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-neutral-500 uppercase">
+          <div className="mt-6 divide-y divide-glass-hairline">
+            <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-ink-soft uppercase">
               <span>Section</span>
               <span className="text-right">Sessions</span>
               <span className="text-right">Reach %</span>
@@ -1239,7 +1239,7 @@ function LandingTab({ from, to }: { from: string; to: string }) {
             {sectionFunnel.map((row) => (
               <div
                 key={row.section}
-                className="grid grid-cols-3 py-2 text-sm text-neutral-300"
+                className="grid grid-cols-3 py-2 text-sm text-ink-body"
               >
                 <span className="font-mono text-xs">
                   {SECTION_LABELS[row.section] ?? row.section}
@@ -1247,7 +1247,7 @@ function LandingTab({ from, to }: { from: string; to: string }) {
                 <span className="text-right tabular-nums">
                   {formatNumber(row.sessions)}
                 </span>
-                <span className="text-right text-neutral-500 tabular-nums">
+                <span className="text-right text-ink-soft tabular-nums">
                   {row.pct}%
                 </span>
               </div>
@@ -1263,8 +1263,8 @@ function LandingTab({ from, to }: { from: string; to: string }) {
         loading={isLoading && !ctaClicks.length}
       >
         {ctaClicks.length > 0 ? (
-          <div className="divide-y divide-white/[0.04]">
-            <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-neutral-500 uppercase">
+          <div className="divide-y divide-glass-hairline">
+            <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-ink-soft uppercase">
               <span>Location</span>
               <span className="text-right">Clicks</span>
               <span className="text-right">% of total</span>
@@ -1272,13 +1272,13 @@ function LandingTab({ from, to }: { from: string; to: string }) {
             {ctaClicks.map((row) => (
               <div
                 key={row.location}
-                className="grid grid-cols-3 py-2.5 text-sm text-neutral-300"
+                className="grid grid-cols-3 py-2.5 text-sm text-ink-body"
               >
                 <span className="font-mono text-xs">{row.location}</span>
                 <span className="text-right tabular-nums">
                   {formatNumber(row.clicks)}
                 </span>
-                <span className="text-right text-neutral-500 tabular-nums">
+                <span className="text-right text-ink-soft tabular-nums">
                   {totalCtaClicks > 0
                     ? ((row.clicks / totalCtaClicks) * 100).toFixed(1)
                     : "—"}
@@ -1301,8 +1301,8 @@ function LandingTab({ from, to }: { from: string; to: string }) {
           title="By Angle / Variant"
           description="Landing views split by ?lp= parameter"
         >
-          <div className="divide-y divide-white/[0.04]">
-            <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-neutral-500 uppercase">
+          <div className="divide-y divide-glass-hairline">
+            <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-ink-soft uppercase">
               <span>Angle</span>
               <span className="text-right">Views</span>
               <span className="text-right">Sessions</span>
@@ -1310,13 +1310,13 @@ function LandingTab({ from, to }: { from: string; to: string }) {
             {byAngle.map((row) => (
               <div
                 key={row.angle}
-                className="grid grid-cols-3 py-2.5 text-sm text-neutral-300"
+                className="grid grid-cols-3 py-2.5 text-sm text-ink-body"
               >
                 <span className="font-mono text-xs">{row.angle}</span>
                 <span className="text-right tabular-nums">
                   {formatNumber(row.views)}
                 </span>
-                <span className="text-right text-neutral-500 tabular-nums">
+                <span className="text-right text-ink-soft tabular-nums">
                   {formatNumber(row.sessions)}
                 </span>
               </div>
@@ -1361,8 +1361,8 @@ function BreakdownCard({
   return (
     <ChartCard title={title} description={description}>
       {rows.length > 0 ? (
-        <div className="divide-y divide-white/[0.04]">
-          <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-neutral-500 uppercase">
+        <div className="divide-y divide-glass-hairline">
+          <div className="grid grid-cols-3 pb-2 text-xs tracking-wider text-ink-soft uppercase">
             <span>{colLabel}</span>
             <span className="text-right">Sessions</span>
             <span className="text-right">% of total</span>
@@ -1370,13 +1370,13 @@ function BreakdownCard({
           {rows.map((row) => (
             <div
               key={row.label}
-              className="grid grid-cols-3 py-2.5 text-sm text-neutral-300"
+              className="grid grid-cols-3 py-2.5 text-sm text-ink-body"
             >
               <span className="truncate font-mono text-xs">{row.label}</span>
               <span className="text-right tabular-nums">
                 {formatNumber(row.sessions)}
               </span>
-              <span className="text-right text-neutral-500 tabular-nums">
+              <span className="text-right text-ink-soft tabular-nums">
                 {total > 0 ? ((row.sessions / total) * 100).toFixed(1) : "—"}%
               </span>
             </div>
@@ -1524,31 +1524,31 @@ function HourlyTab() {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.04)"
+                stroke="#e5e7f5"
                 vertical={false}
               />
               <XAxis
                 dataKey="label"
-                tick={{ fill: "#6b7280", fontSize: 10 }}
+                tick={{ fill: "#64748b", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 interval={1}
               />
               <YAxis
-                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 allowDecimals={false}
               />
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                cursor={{ fill: "rgba(99,102,241,0.06)" }}
                 contentStyle={{
-                  background: "#0d1117",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "#ffffff",
+                  border: "1px solid rgba(15,23,42,0.08)",
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                labelStyle={{ color: "#e5e7eb" }}
+                labelStyle={{ color: "#0f172a" }}
                 formatter={(v: number) => [formatNumber(v), "generations"]}
               />
               <Bar dataKey="count" radius={[3, 3, 0, 0]}>
@@ -1557,10 +1557,10 @@ function HourlyTab() {
                     key={i}
                     fill={
                       d.hour === nowHour
-                        ? "#F2CC66"
+                        ? "#f59e0b"
                         : d.warm
-                          ? "#8B6BFF"
-                          : "rgba(139,107,255,0.28)"
+                          ? "#6366f1"
+                          : "rgba(99,102,241,0.28)"
                     }
                   />
                 ))}
@@ -1570,11 +1570,11 @@ function HourlyTab() {
         ) : (
           <EmptyState
             title="No voice activity yet"
-            description="Once users generate ritual voiceovers, the hourly demand pattern appears here."
+            description="Once firms process checks, the hourly demand pattern appears here."
           />
         )}
         {(data?.warmHours?.length ?? 0) > 0 && (
-          <p className="mt-4 text-xs text-neutral-500">
+          <p className="mt-4 text-xs text-ink-soft">
             Warm windows:{" "}
             {data!.warmHours
               .map((h) => `${String(h).padStart(2, "0")}:00`)
@@ -1605,7 +1605,7 @@ export default function AnalyticsPage() {
       />
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-white/[0.06] pb-0">
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-glass-hairline pb-0">
         {TABS.map(({ id, label }) => (
           <button
             key={id}
@@ -1613,8 +1613,8 @@ export default function AnalyticsPage() {
             className={cn(
               "-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
               tab === id
-                ? "border-brand text-white"
-                : "border-transparent text-neutral-500 hover:text-neutral-300"
+                ? "border-brand text-ink-strong"
+                : "border-transparent text-ink-soft hover:text-ink-body"
             )}
           >
             {label}

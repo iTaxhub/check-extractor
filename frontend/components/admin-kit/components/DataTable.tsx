@@ -50,11 +50,11 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+    <div className="rounded-xl border border-glass-hairline overflow-hidden">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((hg) => (
-            <TableRow key={hg.id} className="border-white/[0.06] hover:bg-transparent">
+            <TableRow key={hg.id} className="border-glass-hairline hover:bg-transparent">
               {hg.headers.map((header) => {
                 const canSort = header.column.getCanSort();
                 const sortDir = header.column.getIsSorted();
@@ -63,8 +63,8 @@ export function DataTable<TData, TValue>({
                     key={header.id}
                     onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                     className={cn(
-                      "text-neutral-500 text-xs uppercase tracking-wider font-medium py-3",
-                      canSort && "cursor-pointer select-none hover:text-neutral-300"
+                      "text-ink-soft text-xs uppercase tracking-wider font-medium py-3",
+                      canSort && "cursor-pointer select-none hover:text-ink-body"
                     )}
                   >
                     <div className="flex items-center gap-1">
@@ -72,7 +72,7 @@ export function DataTable<TData, TValue>({
                         ? null
                         : flexRender(header.column.columnDef.header, header.getContext())}
                       {canSort && (
-                        <span className="text-neutral-600">
+                        <span className="text-ink-faint">
                           {sortDir === "asc" ? (
                             <ChevronUp className="h-3 w-3" />
                           ) : sortDir === "desc" ? (
@@ -92,10 +92,10 @@ export function DataTable<TData, TValue>({
         <TableBody>
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i} className="border-white/[0.04]">
+              <TableRow key={i} className="border-glass-hairline">
                 {columns.map((_, j) => (
                   <TableCell key={j}>
-                    <Skeleton className="h-4 w-full bg-white/[0.04]" />
+                    <Skeleton className="h-4 w-full bg-surface-sunken" />
                   </TableCell>
                 ))}
               </TableRow>
@@ -112,12 +112,12 @@ export function DataTable<TData, TValue>({
                 key={row.id}
                 onClick={() => onRowClick?.(row.original)}
                 className={cn(
-                  "border-white/[0.04] transition-colors",
-                  onRowClick && "cursor-pointer hover:bg-white/[0.02]"
+                  "border-glass-hairline transition-colors",
+                  onRowClick && "cursor-pointer hover:bg-surface-sunken"
                 )}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="text-neutral-200 text-sm py-3">
+                  <TableCell key={cell.id} className="text-ink-strong text-sm py-3">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}

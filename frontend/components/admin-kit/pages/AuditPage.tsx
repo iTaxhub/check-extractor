@@ -6,7 +6,6 @@ import { PageHeader } from "../components/PageHeader";
 import { ChartCard } from "../components/ChartCard";
 import { EmptyState } from "../components/EmptyState";
 import { formatRelative } from "../lib/formatters";
-import { supabase } from "@/components/admin-kit/shim/supabase";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/admin-kit/_deps/components/ui/input";
 import { Badge } from "@/components/admin-kit/_deps/components/ui/badge";
@@ -26,27 +25,27 @@ interface AuditLogEntry {
 }
 
 const SEVERITY_STYLES: Record<string, string> = {
-  critical: "bg-red-500/10 text-red-400 border-red-500/20",
-  warning: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  info: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  critical: "bg-error-bg text-error-text border-error-border",
+  warning: "bg-warning-bg text-warning-text border-warning-border",
+  info: "bg-info-bg text-info-text border-info-border",
 };
 
 const ACTION_COLOR: Record<string, string> = {
-  delete: "text-red-400",
-  suspend: "text-orange-400",
-  impersonate_start: "text-yellow-400",
-  "moderation.remove": "text-orange-400",
-  premium_grant_granted: "text-amber-300",
-  premium_grant_revoked: "text-red-300",
-  role_granted: "text-brand-light",
-  role_revoked: "text-red-300",
+  delete: "text-error-text",
+  suspend: "text-warning-text",
+  impersonate_start: "text-warning-text",
+  "moderation.remove": "text-warning-text",
+  premium_grant_granted: "text-warning-text",
+  premium_grant_revoked: "text-error-text",
+  role_granted: "text-brand",
+  role_revoked: "text-error-text",
 };
 
 function getActionColor(action: string): string {
   for (const [key, color] of Object.entries(ACTION_COLOR)) {
     if (action.includes(key)) return color;
   }
-  return "text-neutral-300";
+  return "text-ink-body";
 }
 
 // Group entries into Today / Yesterday / Earlier buckets for readability
@@ -83,23 +82,9 @@ export default function AuditPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "audit", search],
-    queryFn: async () => {
-      let query = supabase
-        .from("admin_audit_logs")
-        .select("id, actor_email, action, target_type, target_id, after, severity, ip, created_at")
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      if (search) {
-        query = query.or(
-          `actor_email.ilike.%${search}%,action.ilike.%${search}%,target_id.ilike.%${search}%`
-        );
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as AuditLogEntry[];
-    },
+    // DepthMe read admin_audit_logs; Kyriq has no admin-action log table yet
+    // (audit_logs is per-tenant check edits), so the log is empty until one exists.
+    queryFn: async (): Promise<AuditLogEntry[]> => [],
     staleTime: 15_000,
   });
 
@@ -136,7 +121,7 @@ export default function AuditPage() {
             size="sm"
             onClick={exportCsv}
             disabled={!data?.length}
-            className="border-white/[0.08] bg-transparent text-neutral-400 hover:text-white hover:bg-white/[0.04] gap-1.5"
+            className="border-glass-hairline bg-transparent text-ink-soft hover:text-ink-strong hover:bg-surface-sunken gap-1.5"
           >
             <Download className="h-3.5 w-3.5" />
             CSV
@@ -145,12 +130,12 @@ export default function AuditPage() {
       >
         <div className="mb-4 flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-soft" />
             <Input
               placeholder="Filter by actor, action, or target ID…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-[#0d1117] border-white/[0.08] text-white placeholder:text-neutral-600 focus-visible:ring-brand/40"
+              className="pl-9 bg-surface border-glass-hairline text-ink-strong placeholder:text-ink-faint focus-visible:ring-brand/40"
             />
           </div>
         </div>
@@ -158,7 +143,7 @@ export default function AuditPage() {
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full bg-white/[0.03] rounded-lg" />
+              <Skeleton key={i} className="h-12 w-full bg-surface-sunken rounded-lg" />
             ))}
           </div>
         ) : error ? (
@@ -167,21 +152,21 @@ export default function AuditPage() {
             description="Check that you have admin access and try again."
           />
         ) : !data?.length ? (
-          <EmptyState title="No audit entries" description="Actions you take will appear here." />
+          <EmptyState title="No admin audit log yet" description="Kyriq does not record super-admin actions to a table yet." />
         ) : (
           <div className="space-y-6">
             {groupByDay(data).map((group) => (
               <div key={group.label}>
-                <div className="flex items-center gap-3 mb-3 sticky top-0 bg-[#0b0f14]/80 backdrop-blur-sm py-1 z-10">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-medium">{group.label}</p>
-                  <div className="flex-1 h-px bg-white/[0.04]" />
-                  <span className="text-[10px] text-neutral-700">{group.items.length}</span>
+                <div className="flex items-center gap-3 mb-3 sticky top-0 bg-surface/80 backdrop-blur-sm py-1 z-10">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-ink-soft font-medium">{group.label}</p>
+                  <div className="flex-1 h-px bg-surface-sunken" />
+                  <span className="text-[10px] text-ink-faint">{group.items.length}</span>
                 </div>
-                <div className="divide-y divide-white/[0.04]">
+                <div className="divide-y divide-glass-hairline">
                   {group.items.map((entry) => (
                     <div
                       key={entry.id}
-                      className="flex items-start gap-4 py-3 first:pt-0 last:pb-0 hover:bg-white/[0.015] -mx-2 px-2 rounded transition-colors"
+                      className="flex items-start gap-4 py-3 first:pt-0 last:pb-0 hover:bg-surface-sunken -mx-2 px-2 rounded transition-colors"
                     >
                       <span
                         className={cn(
@@ -208,21 +193,21 @@ export default function AuditPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-xs text-neutral-500">{entry.actor_email}</span>
+                          <span className="text-xs text-ink-soft">{entry.actor_email}</span>
                           {entry.target_id && (
                             <>
-                              <span className="text-neutral-700">→</span>
-                              <span className="text-xs text-neutral-500 font-mono">
+                              <span className="text-ink-faint">→</span>
+                              <span className="text-xs text-ink-soft font-mono">
                                 {entry.target_type && `${entry.target_type}:`}{entry.target_id.slice(0, 12)}…
                               </span>
                             </>
                           )}
                           {entry.ip && (
-                            <span className="text-xs text-neutral-700 font-mono">{entry.ip}</span>
+                            <span className="text-xs text-ink-faint font-mono">{entry.ip}</span>
                           )}
                         </div>
                       </div>
-                      <span className="flex-shrink-0 text-xs text-neutral-600 tabular-nums whitespace-nowrap">
+                      <span className="flex-shrink-0 text-xs text-ink-faint tabular-nums whitespace-nowrap">
                         {formatRelative(entry.created_at)}
                       </span>
                     </div>

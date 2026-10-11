@@ -20,7 +20,7 @@ export function AdminLayout({ children, embedded = false }: AdminLayoutProps) {
   return (
     <div
       className={cn(
-        "bg-[#0b0f14] font-sans text-neutral-100",
+        "bg-app-bg font-sans text-ink-body",
         // Standalone, the document scrolls and min-h-screen is right.
         // Embedded, it is NOT: the consumer app's shell is `position: fixed;
         // inset: 0` so the document has nothing to scroll, and admin content

@@ -16,8 +16,9 @@ const userDetail: AdminFn = async (body, { db }) => {
     tenantsById(db, [tenantId]),
     db.auth.admin.getUserById(id),
     compGrants(db),
+    // Live check_jobs has no user_id, so show the firm's recent jobs instead.
     db.from('check_jobs').select('job_id, pdf_name, status, total_checks, created_at, completed_at')
-      .eq('user_id', id).order('created_at', { ascending: false }).limit(25),
+      .eq('tenant_id', tenantId || '00000000-0000-0000-0000-000000000000').order('created_at', { ascending: false }).limit(25),
     tenantId
       ? db.from('billing_invoices').select('stripe_invoice_id, number, status, amount_paid, currency, paid_at, created_at, hosted_invoice_url')
         .eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(25)

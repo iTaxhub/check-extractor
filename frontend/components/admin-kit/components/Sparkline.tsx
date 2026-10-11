@@ -10,7 +10,7 @@ interface SparklineProps {
 }
 
 export function Sparkline({ data, color, positive, negative }: SparklineProps) {
-  const resolvedColor = color ?? (positive ? "#34d399" : negative ? "#f87171" : "#a78bfa");
+  const resolvedColor = color ?? (positive ? "#10b981" : negative ? "#ef4444" : "#6366f1");
   const chartData = data.map((v) => ({ v }));
 
   return (

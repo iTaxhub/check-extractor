@@ -21,7 +21,6 @@ export const adminKeys = {
       ["admin", "content", "feedback", filters] as const,
   },
   health: () => ["admin", "health"] as const,
-  runpodStats: () => ["admin", "runpod-stats"] as const,
 };
 
 export interface AdminMetrics {
@@ -79,34 +78,5 @@ export function useAdminHealth() {
     queryFn: () => callEdgeFn<AdminHealth>("admin-health", {}),
     staleTime: 30_000,
     refetchInterval: 60_000,
-  });
-}
-
-/** Live RunPod account credit + measured 30-day GPU burn (admin-runpod-stats). */
-export interface RunpodStats {
-  balance: number | null;
-  balanceError: string | null;
-  gpuSeconds30d: number;
-  /** Sum of RunPod's OWN billed amounts over 30d (daily_costs.runpod_actual_usd,
-   *  synced from their billing API). null until the first sync. This is the
-   *  truth; cost30d below is our meter, which is blind to billed-but-crashed
-   *  worker boots — the failure mode that cost ~$62 on 2026-08-20/21. */
-  actual30d: number | null;
-  actualYesterday: number | null;
-  actualDays: number;
-  cost30d: number;
-  dailyBurn: number;
-  estDaysRemaining: number | null;
-  selfhostCount30d: number;
-  fallbackCount30d: number;
-  fishCount30d: number;
-  costPerSec: number;
-}
-
-export function useRunpodStats() {
-  return useQuery({
-    queryKey: adminKeys.runpodStats(),
-    queryFn: () => callEdgeFn<RunpodStats>("admin-runpod-stats", {}),
-    staleTime: 120_000,
   });
 }

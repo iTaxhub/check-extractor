@@ -17,10 +17,10 @@ interface KpiTileProps {
 export function KpiTile({ label, value, delta, suffix, loading, onClick, sparkline }: KpiTileProps) {
   if (loading) {
     return (
-      <div className="rounded-xl border border-white/[0.06] bg-[#0d1117] p-5">
-        <Skeleton className="h-4 w-20 bg-white/[0.06] mb-3" />
-        <Skeleton className="h-8 w-32 bg-white/[0.06] mb-2" />
-        <Skeleton className="h-3 w-16 bg-white/[0.06]" />
+      <div className="glass-card rounded-card border border-glass-hairline shadow-contact p-5">
+        <Skeleton className="h-4 w-20 bg-surface-sunken mb-3" />
+        <Skeleton className="h-8 w-32 bg-surface-sunken mb-2" />
+        <Skeleton className="h-3 w-16 bg-surface-sunken" />
       </div>
     );
   }
@@ -33,23 +33,23 @@ export function KpiTile({ label, value, delta, suffix, loading, onClick, sparkli
       onClick={onClick}
       disabled={!onClick}
       className={cn(
-        "rounded-xl border border-white/[0.06] bg-[#0d1117] p-5 text-left transition-[color,background-color,border-color,box-shadow,opacity,transform]",
-        onClick && "hover:border-white/[0.12] hover:bg-[#12171d] cursor-pointer"
+        "glass-card rounded-card border border-glass-hairline shadow-contact p-5 text-left transition-[color,background-color,border-color,box-shadow,opacity,transform]",
+        onClick && "hover:border-glass-hairline hover:bg-surface-sunken cursor-pointer"
       )}
     >
       <div className="flex items-start justify-between">
-        <p className="text-xs text-neutral-500 uppercase tracking-wider">{label}</p>
+        <p className="text-xs text-ink-soft uppercase tracking-wider">{label}</p>
         {sparkline && <div className="opacity-60">{sparkline}</div>}
       </div>
-      <p className="mt-2 text-3xl font-bold tabular-nums text-white">
+      <p className="mt-2 text-3xl font-bold tabular-nums text-ink-strong">
         {value}
-        {suffix && <span className="ml-1 text-lg font-normal text-neutral-400">{suffix}</span>}
+        {suffix && <span className="ml-1 text-lg font-normal text-ink-soft">{suffix}</span>}
       </p>
       {delta !== undefined && (
         <div
           className={cn(
             "mt-2 flex items-center gap-1 text-xs",
-            isPositive ? "text-emerald-400" : isNegative ? "text-red-400" : "text-neutral-500"
+            isPositive ? "text-success-text" : isNegative ? "text-error-text" : "text-ink-soft"
           )}
         >
           {isPositive ? (

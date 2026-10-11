@@ -40,18 +40,18 @@ function emailOf(c: ChargeLike): string {
 }
 
 const statusStyle: Record<string, string> = {
-  succeeded: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  pending: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  failed: "bg-red-500/10 text-red-400 border-red-500/20",
-  refunded: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  succeeded: "bg-success-bg text-success-text border-success-border",
+  pending: "bg-warning-bg text-warning-text border-warning-border",
+  failed: "bg-error-bg text-error-text border-error-border",
+  refunded: "bg-warning-bg text-warning-text border-warning-border",
 };
 
 function Row({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   if (value == null || value === "") return null;
   return (
-    <div className="flex items-start justify-between gap-4 py-2 border-b border-white/[0.04] last:border-0">
-      <span className="text-xs text-neutral-500 shrink-0">{label}</span>
-      <span className={cn("text-sm text-neutral-200 text-right break-all", mono && "font-mono text-xs")}>{value}</span>
+    <div className="flex items-start justify-between gap-4 py-2 border-b border-glass-hairline last:border-0">
+      <span className="text-xs text-ink-soft shrink-0">{label}</span>
+      <span className={cn("text-sm text-ink-strong text-right break-all", mono && "font-mono text-xs")}>{value}</span>
     </div>
   );
 }
@@ -66,30 +66,30 @@ export function TransactionDetailDrawer({ charge, open, onClose }: { charge: Cha
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto p-0 bg-[#0b0e14] border-white/[0.06]">
-        <SheetHeader className="px-6 pt-6 pb-4 border-b border-white/[0.06]">
-          <SheetTitle className="text-white flex items-center gap-3">
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto p-0 bg-surface-sunken border-glass-hairline">
+        <SheetHeader className="px-6 pt-6 pb-4 border-b border-glass-hairline">
+          <SheetTitle className="text-ink-strong flex items-center gap-3">
             {formatCurrency(charge.amount / 100)} {charge.currency.toUpperCase()}
-            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium border", statusStyle[status] ?? "bg-white/[0.04] text-neutral-400 border-white/[0.08]")}>
+            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium border", statusStyle[status] ?? "bg-surface-sunken text-ink-soft border-glass-hairline")}>
               {status}
             </span>
           </SheetTitle>
-          <p className="text-xs text-neutral-500">{emailOf(charge)}</p>
+          <p className="text-xs text-ink-soft">{emailOf(charge)}</p>
         </SheetHeader>
 
         <div className="p-6 space-y-5">
           {reason && (
-            <div className="rounded-xl border border-red-500/25 bg-red-500/10 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-red-400/80 mb-1">Why it failed</p>
-              <p className="text-sm text-red-200">{reason}</p>
+            <div className="rounded-xl border border-error-border bg-error-bg p-3">
+              <p className="text-[10px] uppercase tracking-wider text-error-text/80 mb-1">Why it failed</p>
+              <p className="text-sm text-error-text">{reason}</p>
               {(charge.failure_code || charge.outcome?.reason) && (
-                <p className="text-[11px] text-red-300/60 font-mono mt-1">{charge.failure_code || charge.outcome?.reason}</p>
+                <p className="text-[11px] text-error-text/60 font-mono mt-1">{charge.failure_code || charge.outcome?.reason}</p>
               )}
             </div>
           )}
 
           <div>
-            <p className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Details</p>
+            <p className="text-xs text-ink-soft uppercase tracking-wider mb-1">Details</p>
             <Row label="Date" value={format(dt, "MMM d, yyyy 'at' h:mm:ss a")} />
             <Row label="Amount" value={`${formatCurrency(charge.amount / 100)} ${charge.currency.toUpperCase()}`} />
             <Row label="Status" value={status} />
@@ -105,7 +105,7 @@ export function TransactionDetailDrawer({ charge, open, onClose }: { charge: Cha
 
           {charge.metadata && Object.keys(charge.metadata).length > 0 && (
             <div>
-              <p className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Metadata</p>
+              <p className="text-xs text-ink-soft uppercase tracking-wider mb-1">Metadata</p>
               {Object.entries(charge.metadata).map(([k, v]) => (
                 <Row key={k} label={k} value={String(v)} mono />
               ))}
@@ -114,11 +114,11 @@ export function TransactionDetailDrawer({ charge, open, onClose }: { charge: Cha
 
           <div className="flex gap-2">
             {charge.receipt_url && (
-              <a href={charge.receipt_url} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-neutral-300 hover:bg-white/[0.06]">
+              <a href={charge.receipt_url} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-glass-hairline bg-surface-sunken px-3 py-2 text-xs text-ink-body hover:bg-surface-sunken">
                 Receipt <ExternalLink className="h-3 w-3" />
               </a>
             )}
-            <a href={`https://dashboard.stripe.com/payments/${charge.id}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-indigo-500/25 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-300 hover:bg-indigo-500/20">
+            <a href={`https://dashboard.stripe.com/payments/${charge.id}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-brand/30 bg-brand-wash px-3 py-2 text-xs text-brand-deep hover:bg-brand-wash">
               Open in Stripe <ExternalLink className="h-3 w-3" />
             </a>
           </div>

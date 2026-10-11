@@ -69,7 +69,7 @@ export default function VoicePage() {
   const [previewing, setPreviewing] = useState(false);
   const recRef = useRef<Recognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const paneRef = useRef<HTMLDivElement>(null);
 
   const focus: CheckCard | null = list ? list.rows[index] ?? null : single;
 
@@ -99,7 +99,12 @@ export default function VoicePage() {
     } catch { setError('Voice preview is unavailable.'); }
     setPreviewing(false);
   }
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }), [turns, pending, reports, reduced]);
+  // Scroll the conversation pane itself. scrollIntoView() also scrolls every
+  // scrollable ancestor, which pushed the page header and the orb out of view.
+  useEffect(() => {
+    const el = paneRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: reduced ? 'auto' : 'smooth' });
+  }, [turns, pending, reports, reduced]);
 
   const SR = typeof window !== 'undefined' ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition : null;
 
@@ -226,7 +231,7 @@ export default function VoicePage() {
   }
 
   return (
-    <div className="relative isolate overflow-hidden rounded-3xl border border-white/[0.06] bg-[#0b0f14] text-white">
+    <div className="relative isolate overflow-hidden rounded-3xl border border-glass-hairline bg-surface/60 text-ink-strong shadow-contact">
       <Stage reduced={!!reduced} phase={phase} />
 
       <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
@@ -234,26 +239,26 @@ export default function VoicePage() {
         <section className="flex min-w-0 flex-col">
           <header className="mb-2 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300/90">Kyriq Voice · Beta</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accentEmerald-dark/90">Kyriq Voice · Beta</p>
               <h1 className="text-2xl font-bold tracking-tight">Reconcile out loud</h1>
             </div>
             <div className="flex items-center gap-2">
               {voices.length > 0 && (
-                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 py-1 pl-3 pr-1">
+                <div className="flex items-center gap-1 rounded-full border border-glass-hairline bg-surface py-1 pl-3 pr-1">
                   <label htmlFor="voice" className="sr-only">Voice</label>
-                  <select id="voice" value={voiceId} onChange={(e) => chooseVoice(e.target.value)} className="max-w-[170px] bg-transparent text-[13px] text-white/90 outline-none [&>optgroup]:bg-slate-900 [&>optgroup>option]:bg-slate-900">
+                  <select id="voice" value={voiceId} onChange={(e) => chooseVoice(e.target.value)} className="max-w-[170px] bg-transparent text-[13px] text-ink-body outline-none">
                     {(['female', 'male'] as const).map((g) => (
                       <optgroup key={g} label={g === 'female' ? 'Female voices' : 'Male voices'}>
                         {voices.filter((v) => v.gender === g).map((v) => <option key={v.id} value={v.id}>{v.name} · {v.style}</option>)}
                       </optgroup>
                     ))}
                   </select>
-                  <button onClick={previewVoice} disabled={previewing} className="press grid h-7 w-7 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-50" aria-label="Preview this voice">
+                  <button onClick={previewVoice} disabled={previewing} className="press grid h-7 w-7 place-items-center rounded-full bg-brand-wash text-ink-strong hover:bg-brand-tint disabled:opacity-50" aria-label="Preview this voice">
                     {previewing ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
                   </button>
                 </div>
               )}
-              <button onClick={() => setSpeak((s) => !s)} className="press rounded-full border border-white/10 bg-white/5 p-2.5 text-white/80 hover:bg-white/10" aria-label={speak ? 'Mute spoken replies' : 'Turn on spoken replies'}>
+              <button onClick={() => setSpeak((s) => !s)} className="press rounded-full border border-glass-hairline bg-surface p-2.5 text-ink-soft hover:bg-brand-wash" aria-label={speak ? 'Mute spoken replies' : 'Turn on spoken replies'}>
                 {speak ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </button>
             </div>
@@ -261,11 +266,11 @@ export default function VoicePage() {
 
           <Orb phase={phase} reduced={!!reduced} onClick={toggleMic} disabled={!SR} />
 
-          <div className="mt-2 h-[min(46vh,460px)] space-y-3 overflow-y-auto rounded-3xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+          <div ref={paneRef} className="mt-2 h-[min(46vh,460px)] space-y-3 overflow-y-auto rounded-3xl border border-glass-hairline bg-surface p-4 backdrop-blur-xl">
             {turns.length === 0 && (
               <div className="flex flex-wrap gap-2">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => ask(s)} className="press rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[13px] text-white/80 transition hover:border-indigo-400/60 hover:bg-indigo-500/10">
+                  <button key={s} onClick={() => ask(s)} className="press rounded-full border border-glass-hairline bg-surface px-3.5 py-2 text-[13px] text-ink-soft transition hover:border-brand hover:bg-brand-wash">
                     &ldquo;{s}&rdquo;
                   </button>
                 ))}
@@ -274,47 +279,46 @@ export default function VoicePage() {
             <AnimatePresence initial={false}>
               {turns.map((t, i) => (
                 <motion.div key={i} initial={reduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn('flex', t.role === 'user' ? 'justify-end' : 'justify-start')}>
-                  <div className={cn('max-w-[88%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed', t.role === 'user' ? 'bg-indigo-500 text-white' : 'border border-white/10 bg-white/[0.06] text-white/90')}>{t.content}</div>
+                  <div className={cn('max-w-[88%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed', t.role === 'user' ? 'bg-indigo-500 text-white' : 'border border-glass-hairline bg-surface text-ink-body')}>{t.content}</div>
                 </motion.div>
               ))}
             </AnimatePresence>
 
             {pending.map((p, i) => (
-              <motion.div key={`p${i}`} initial={reduced ? false : { opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.07] p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Needs your confirmation</p>
-                <p className="mt-1 text-[14px] text-white">{p.label}</p>
+              <motion.div key={`p${i}`} initial={reduced ? false : { opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl border border-success-border bg-success-bg p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accentEmerald-dark">Needs your confirmation</p>
+                <p className="mt-1 text-[14px] text-ink-strong">{p.label}</p>
                 <div className="mt-3 flex items-center gap-2">
                   {p.state === 'open' && (
                     <>
                       <button onClick={() => confirm(i)} className="press inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-2 text-[13px] font-semibold text-white hover:bg-emerald-400">
                         {p.action === 'flag' ? <Flag size={14} /> : <Check size={14} />} Confirm
                       </button>
-                      <button onClick={() => setPending((all) => all.filter((_, j) => j !== i))} className="press inline-flex items-center gap-1 rounded-full px-3 py-2 text-[13px] text-white/60 hover:text-white"><X size={14} /> Cancel</button>
+                      <button onClick={() => setPending((all) => all.filter((_, j) => j !== i))} className="press inline-flex items-center gap-1 rounded-full px-3 py-2 text-[13px] text-ink-faint hover:text-ink-strong"><X size={14} /> Cancel</button>
                     </>
                   )}
-                  {p.state === 'working' && <span className="inline-flex items-center gap-2 text-[13px] text-white/70"><Loader2 size={14} className="animate-spin" /> Working…</span>}
-                  {p.state === 'done' && <span className="text-[13px] font-semibold text-emerald-300">Done</span>}
-                  {p.state === 'failed' && <span className="text-[13px] text-rose-300">{p.note}</span>}
+                  {p.state === 'working' && <span className="inline-flex items-center gap-2 text-[13px] text-ink-soft"><Loader2 size={14} className="animate-spin" /> Working…</span>}
+                  {p.state === 'done' && <span className="text-[13px] font-semibold text-accentEmerald-dark">Done</span>}
+                  {p.state === 'failed' && <span className="text-[13px] text-error-text">{p.note}</span>}
                 </div>
               </motion.div>
             ))}
 
             {reports.map((r, i) => (
-              <motion.div key={`r${i}`} initial={reduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-indigo-400/30 bg-indigo-500/[0.08] p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-300">Report ready</p>
-                <p className="mt-1 text-[14px] text-white">{r.title} · {r.rows.length} rows</p>
+              <motion.div key={`r${i}`} initial={reduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-brand-tint bg-brand-wash p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand">Report ready</p>
+                <p className="mt-1 text-[14px] text-ink-strong">{r.title} · {r.rows.length} rows</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button disabled={r.state === 'working'} onClick={() => report(i, 'download')} className="press inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-slate-900 disabled:opacity-50"><FileDown size={14} /> Download PDF</button>
-                  <button disabled={r.state === 'working' || r.state === 'emailed'} onClick={() => report(i, 'email')} className="press inline-flex items-center gap-1.5 rounded-full border border-white/20 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"><Mail size={14} /> {r.email ? 'Confirm: email me' : 'Email me'}</button>
-                  {r.state === 'working' && <Loader2 size={14} className="animate-spin text-white/70" />}
-                  {r.note && <span className={cn('text-[12px]', r.state === 'failed' ? 'text-rose-300' : 'text-emerald-300')}>{r.note}</span>}
+                  <button disabled={r.state === 'working'} onClick={() => report(i, 'download')} className="press inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"><FileDown size={14} /> Download PDF</button>
+                  <button disabled={r.state === 'working' || r.state === 'emailed'} onClick={() => report(i, 'email')} className="press inline-flex items-center gap-1.5 rounded-full border border-glass-hairline px-4 py-2 text-[13px] font-semibold text-ink-strong disabled:opacity-50"><Mail size={14} /> {r.email ? 'Confirm: email me' : 'Email me'}</button>
+                  {r.state === 'working' && <Loader2 size={14} className="animate-spin text-ink-soft" />}
+                  {r.note && <span className={cn('text-[12px]', r.state === 'failed' ? 'text-error-text' : 'text-accentEmerald-dark')}>{r.note}</span>}
                 </div>
               </motion.div>
             ))}
 
             {phase === 'thinking' && <ThinkingDots reduced={!!reduced} />}
-            {error && <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-[13px] text-rose-200">{error}</div>}
-            <div ref={endRef} />
+            {error && <div className="rounded-xl border border-error-border bg-error-bg px-3 py-2 text-[13px] text-error-text">{error}</div>}
           </div>
 
           <form onSubmit={(e) => { e.preventDefault(); ask(input); }} className="mt-3 flex items-center gap-2">
@@ -322,14 +326,14 @@ export default function VoicePage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={SR ? 'Tap the orb and talk, or type here…' : 'Type a question (voice input needs Chrome or Edge)…'}
-              className="h-12 flex-1 rounded-full border border-white/10 bg-white/[0.05] px-5 text-[14px] text-white placeholder:text-white/40 outline-none focus:border-indigo-400/70"
+              className="h-12 flex-1 rounded-full border border-glass-hairline bg-surface px-5 text-[14px] text-ink-strong placeholder:text-ink-faint outline-none focus:border-brand"
             />
             <button type="submit" disabled={phase === 'thinking' || !input.trim()} className="press flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500 text-white disabled:opacity-40" aria-label="Send"><Send size={16} /></button>
           </form>
         </section>
 
         {/* RIGHT: focus panel */}
-        <section className="min-w-0 rounded-3xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl lg:sticky lg:top-4 lg:self-start">
+        <section className="min-w-0 rounded-3xl border border-glass-hairline bg-surface p-5 backdrop-blur-xl lg:sticky lg:top-4 lg:self-start">
           <FocusPanel
             reduced={!!reduced}
             focus={focus}
@@ -362,7 +366,7 @@ function Stage({ reduced, phase }: { reduced: boolean; phase: Phase }) {
         animate={reduced ? undefined : { x: [0, -60, 0], y: [0, -50, 0], opacity: hot ? 0.9 : 0.5 }}
         transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
       />
-      <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)', backgroundSize: '48px 48px', maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)' }} />
+      <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'linear-gradient(rgba(99,102,241,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,.35) 1px, transparent 1px)', backgroundSize: '48px 48px', maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)' }} />
     </div>
   );
 }
@@ -389,7 +393,7 @@ function Orb({ phase, reduced, onClick, disabled }: { phase: Phase; reduced: boo
           animate={reduced ? undefined : { rotate: 360 }}
           transition={{ duration: phase === 'thinking' ? 2.2 : 9, repeat: Infinity, ease: 'linear' }}
         />
-        <span className="absolute inset-[3px] rounded-full bg-[hsl(230_45%_6%)]" />
+        <span className="absolute inset-[3px] rounded-full bg-white" />
         {/* core */}
         <span className="absolute inset-5 rounded-full" style={{ background: 'radial-gradient(circle at 35% 30%, rgba(165,180,252,0.95), rgba(99,102,241,0.75) 35%, rgba(16,185,129,0.55) 70%, rgba(7,11,24,0.2) 100%)', boxShadow: '0 0 80px rgba(99,102,241,0.55), inset 0 0 40px rgba(255,255,255,0.15)' }} />
         {/* waveform */}
@@ -403,9 +407,9 @@ function Orb({ phase, reduced, onClick, disabled }: { phase: Phase; reduced: boo
             />
           ))}
         </span>
-        {phase === 'listening' ? <MicOff className="absolute bottom-7 text-white/80" size={16} /> : <Mic className="absolute bottom-7 text-white/70" size={16} />}
+        {phase === 'listening' ? <MicOff className="absolute bottom-7 text-ink-soft" size={16} /> : <Mic className="absolute bottom-7 text-ink-soft" size={16} />}
       </motion.button>
-      <p className="mt-3 text-[13px] font-medium text-white/70">{label}</p>
+      <p className="mt-3 text-[13px] font-medium text-ink-soft">{label}</p>
     </div>
   );
 }
@@ -414,7 +418,7 @@ function ThinkingDots({ reduced }: { reduced: boolean }) {
   return (
     <div className="flex items-center gap-1.5 pl-1">
       {[0, 1, 2].map((i) => (
-        <motion.span key={i} className="h-2 w-2 rounded-full bg-indigo-300" animate={reduced ? undefined : { opacity: [0.3, 1, 0.3], y: [0, -3, 0] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }} />
+        <motion.span key={i} className="h-2 w-2 rounded-full bg-brand" animate={reduced ? undefined : { opacity: [0.3, 1, 0.3], y: [0, -3, 0] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }} />
       ))}
     </div>
   );
@@ -439,9 +443,9 @@ function FocusPanel({ focus, list, index, onPrev, onNext, onAsk, reduced }: {
   if (!focus) {
     return (
       <div className="flex h-full min-h-[50vh] flex-col items-center justify-center text-center">
-        <Sparkles className="mb-3 text-indigo-300" size={28} />
+        <Sparkles className="mb-3 text-brand" size={28} />
         <p className="text-lg font-semibold">Nothing on screen yet</p>
-        <p className="mt-1 max-w-sm text-[14px] text-white/60">Say &ldquo;what needs attention?&rdquo; or &ldquo;pull up check 1042&rdquo; and the check, its image and what Kyriq read from it appear here.</p>
+        <p className="mt-1 max-w-sm text-[14px] text-ink-faint">Say &ldquo;what needs attention?&rdquo; or &ldquo;pull up check 1042&rdquo; and the check, its image and what Kyriq read from it appear here.</p>
       </div>
     );
   }
@@ -450,26 +454,26 @@ function FocusPanel({ focus, list, index, onPrev, onNext, onAsk, reduced }: {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-300">{list ? list.title : 'Check'}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand">{list ? list.title : 'Check'}</p>
           <p className="text-xl font-bold">#{focus.check_number || '—'} · {focus.payee || 'Unknown payee'}</p>
         </div>
         {list && (
           <div className="flex items-center gap-2">
-            <button onClick={onPrev} disabled={index === 0} className="press rounded-full border border-white/10 p-2 disabled:opacity-30" aria-label="Previous check"><ChevronLeft size={18} /></button>
-            <span className="min-w-[64px] text-center text-[13px] tabular-nums text-white/70">{index + 1} / {list.rows.length}</span>
-            <button onClick={onNext} disabled={index >= list.rows.length - 1} className="press rounded-full border border-white/10 p-2 disabled:opacity-30" aria-label="Next check"><ChevronRight size={18} /></button>
+            <button onClick={onPrev} disabled={index === 0} className="press rounded-full border border-glass-hairline p-2 disabled:opacity-30" aria-label="Previous check"><ChevronLeft size={18} /></button>
+            <span className="min-w-[64px] text-center text-[13px] tabular-nums text-ink-soft">{index + 1} / {list.rows.length}</span>
+            <button onClick={onNext} disabled={index >= list.rows.length - 1} className="press rounded-full border border-glass-hairline p-2 disabled:opacity-30" aria-label="Next check"><ChevronRight size={18} /></button>
           </div>
         )}
       </div>
 
       <AnimatePresence mode="wait">
         <motion.div key={`${focus.check_number}-${index}`} initial={reduced ? false : { opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={reduced ? undefined : { opacity: 0, x: -24 }} transition={{ duration: 0.3 }}>
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+          <div className="relative overflow-hidden rounded-2xl border border-glass-hairline bg-surface-sunken">
             {imgSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={imgSrc} alt={`Check ${focus.check_number ?? ''}`} className="max-h-[280px] w-full object-contain" />
             ) : (
-              <div className="grid h-40 place-items-center text-[13px] text-white/50">No image for this check</div>
+              <div className="grid h-40 place-items-center text-[13px] text-ink-faint">No image for this check</div>
             )}
             {!reduced && <motion.span aria-hidden className="pointer-events-none absolute inset-x-0 h-16 bg-gradient-to-b from-transparent via-emerald-300/20 to-transparent" initial={{ top: '-20%' }} animate={{ top: '110%' }} transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 1.5, ease: 'easeInOut' }} />}
           </div>
@@ -478,10 +482,10 @@ function FocusPanel({ focus, list, index, onPrev, onNext, onAsk, reduced }: {
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
               {fields.map((f) => (
                 <div key={f.k}>
-                  <dt className="text-[11px] uppercase tracking-wider text-white/45">{f.k}</dt>
-                  <dd className="truncate text-[14px] font-medium text-white">{f.v}</dd>
+                  <dt className="text-[11px] uppercase tracking-wider text-ink-faint">{f.k}</dt>
+                  <dd className="truncate text-[14px] font-medium text-ink-strong">{f.v}</dd>
                   {f.c != null && (
-                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-brand-wash">
                       <motion.div className={cn('h-full rounded-full', f.c >= 90 ? 'bg-emerald-400' : f.c >= 75 ? 'bg-amber-400' : 'bg-rose-400')} initial={reduced ? false : { width: 0 }} animate={{ width: `${f.c}%` }} transition={{ duration: 0.6 }} />
                     </div>
                   )}
@@ -492,7 +496,7 @@ function FocusPanel({ focus, list, index, onPrev, onNext, onAsk, reduced }: {
           </div>
 
           {match && (match.discrepancy_type || match.flagged_reason) && (
-            <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[13px] text-amber-100">
+            <div className="mt-4 rounded-xl border border-warning-border bg-warning-bg px-3 py-2 text-[13px] text-warning-text">
               {match.discrepancy_type && <>Discrepancy: {match.discrepancy_type}{match.discrepancy_amount != null ? `, off by ${money(match.discrepancy_amount)}` : ''}. </>}
               {match.flagged_reason && <>Flag: {match.flagged_reason}</>}
             </div>
@@ -500,8 +504,8 @@ function FocusPanel({ focus, list, index, onPrev, onNext, onAsk, reduced }: {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {match && match.status !== 'approved' && <button onClick={() => onAsk(`Approve check ${focus.check_number}`)} className="press rounded-full bg-emerald-500/90 px-3.5 py-1.5 text-[13px] font-semibold text-white">Approve this</button>}
-            <button onClick={() => onAsk(`Flag check ${focus.check_number}`)} className="press rounded-full border border-white/15 px-3.5 py-1.5 text-[13px] text-white/85">Flag</button>
-            {list && index < list.rows.length - 1 && <button onClick={onNext} className="press rounded-full border border-white/15 px-3.5 py-1.5 text-[13px] text-white/85">Next</button>}
+            <button onClick={() => onAsk(`Flag check ${focus.check_number}`)} className="press rounded-full border border-glass-hairline px-3.5 py-1.5 text-[13px] text-ink-body">Flag</button>
+            {list && index < list.rows.length - 1 && <button onClick={onNext} className="press rounded-full border border-glass-hairline px-3.5 py-1.5 text-[13px] text-ink-body">Next</button>}
           </div>
         </motion.div>
       </AnimatePresence>
@@ -515,12 +519,12 @@ function ScoreRing({ score, status, reduced }: { score: number | null; status: s
   return (
     <div className="flex flex-col items-center justify-center">
       <svg width="96" height="96" viewBox="0 0 96 96" aria-label={score == null ? 'No match' : `${score}% match`}>
-        <circle cx="48" cy="48" r={r} stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
+        <circle cx="48" cy="48" r={r} stroke="rgba(99,102,241,0.12)" strokeWidth="8" fill="none" />
         <motion.circle cx="48" cy="48" r={r} stroke={color} strokeWidth="8" fill="none" strokeLinecap="round" transform="rotate(-90 48 48)"
           strokeDasharray={c} initial={reduced ? false : { strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - v / 100) }} transition={{ duration: 0.8 }} />
-        <text x="48" y="53" textAnchor="middle" className="fill-white text-[18px] font-bold">{score == null ? '—' : `${score}%`}</text>
+        <text x="48" y="53" textAnchor="middle" className="fill-current text-[18px] font-bold text-ink-strong">{score == null ? '—' : `${score}%`}</text>
       </svg>
-      <span className="mt-1 text-[11px] uppercase tracking-wider text-white/55">{status ?? 'no match'}</span>
+      <span className="mt-1 text-[11px] uppercase tracking-wider text-ink-faint">{status ?? 'no match'}</span>
     </div>
   );
 }

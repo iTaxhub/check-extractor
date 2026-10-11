@@ -56,10 +56,10 @@ const STATUS_FILTERS = ["all", "succeeded", "failed", "pending", "refunded"] as 
 type StatusFilter = typeof STATUS_FILTERS[number];
 
 const statusStyle: Record<string, string> = {
-  succeeded: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  pending:   "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  failed:    "bg-red-500/10 text-red-400 border-red-500/20",
-  refunded:  "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  succeeded: "bg-success-bg text-success-text border-success-border",
+  pending:   "bg-warning-bg text-warning-text border-warning-border",
+  failed:    "bg-error-bg text-error-text border-error-border",
+  refunded:  "bg-warning-bg text-warning-text border-warning-border",
 };
 
 function exportCsv(charges: StripeCharge[]) {
@@ -129,7 +129,7 @@ export default function TransactionsPage() {
         <button
           onClick={() => exportCsv(filtered)}
           disabled={filtered.length === 0}
-          className="flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-lg border border-glass-hairline bg-surface-sunken px-3 py-1.5 text-xs text-ink-soft hover:text-ink-strong hover:bg-surface-sunken transition-colors disabled:opacity-40"
         >
           <Download className="h-3 w-3" />
           Export CSV
@@ -144,9 +144,9 @@ export default function TransactionsPage() {
           { label: "Total Collected", value: query.data ? formatCurrency(succeededTotal) : "—" },
           { label: "Refunded / Failed", value: query.data ? String(charges.filter((c) => c.refunded || c.status === "failed").length) : "—" },
         ].map(({ label, value }) => (
-          <div key={label} className="rounded-2xl border border-white/[0.06] bg-[#0d1117] p-4">
-            <p className="text-xs text-neutral-500 uppercase tracking-wider mb-1">{label}</p>
-            <p className="text-xl font-bold text-white tabular-nums">{value}</p>
+          <div key={label} className="rounded-2xl border border-glass-hairline bg-surface p-4">
+            <p className="text-xs text-ink-soft uppercase tracking-wider mb-1">{label}</p>
+            <p className="text-xl font-bold text-ink-strong tabular-nums">{value}</p>
           </div>
         ))}
       </div>
@@ -155,17 +155,17 @@ export default function TransactionsPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-soft" />
           <input
             type="text"
             placeholder="Search by email or charge ID…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-white/[0.06] bg-white/[0.03] pl-9 pr-4 py-2 text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.05] transition-colors"
+            className="w-full rounded-lg border border-glass-hairline bg-surface-sunken pl-9 pr-4 py-2 text-sm text-ink-strong placeholder:text-ink-faint focus:outline-none focus:border-brand/30 focus:bg-surface-sunken transition-colors"
           />
         </div>
         {/* Status tabs */}
-        <div className="flex gap-1 p-1 rounded-lg border border-white/[0.06] bg-white/[0.02]">
+        <div className="flex gap-1 p-1 rounded-lg border border-glass-hairline bg-surface-sunken">
           {STATUS_FILTERS.map((s) => (
             <button
               key={s}
@@ -173,8 +173,8 @@ export default function TransactionsPage() {
               className={cn(
                 "rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
                 statusFilter === s
-                  ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/20"
-                  : "text-neutral-500 hover:text-neutral-300"
+                  ? "bg-brand-wash text-brand-deep border border-brand/30"
+                  : "text-ink-soft hover:text-ink-body"
               )}
             >
               {s}
@@ -184,9 +184,9 @@ export default function TransactionsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#0d1117] overflow-hidden">
+      <div className="rounded-2xl border border-glass-hairline bg-surface overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-6 py-3 border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-neutral-600">
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-6 py-3 border-b border-glass-hairline text-[11px] uppercase tracking-wider text-ink-faint">
           <span>Customer</span>
           <span className="w-28 text-right">Date</span>
           <span className="w-24 text-right">Amount</span>
@@ -196,26 +196,26 @@ export default function TransactionsPage() {
 
         {/* Rows */}
         {query.isLoading ? (
-          <div className="divide-y divide-white/[0.04]">
+          <div className="divide-y divide-glass-hairline">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-6 py-4 items-center">
                 <div className="flex items-center gap-3">
-                  <Skeleton className="h-8 w-8 rounded-full bg-white/[0.04]" />
-                  <Skeleton className="h-4 w-40 bg-white/[0.04]" />
+                  <Skeleton className="h-8 w-8 rounded-full bg-surface-sunken" />
+                  <Skeleton className="h-4 w-40 bg-surface-sunken" />
                 </div>
-                <Skeleton className="h-4 w-24 bg-white/[0.04]" />
-                <Skeleton className="h-4 w-16 bg-white/[0.04]" />
-                <Skeleton className="h-6 w-20 rounded-full bg-white/[0.04]" />
-                <Skeleton className="h-4 w-4 bg-white/[0.04]" />
+                <Skeleton className="h-4 w-24 bg-surface-sunken" />
+                <Skeleton className="h-4 w-16 bg-surface-sunken" />
+                <Skeleton className="h-6 w-20 rounded-full bg-surface-sunken" />
+                <Skeleton className="h-4 w-4 bg-surface-sunken" />
               </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-neutral-600">
+          <div className="flex flex-col items-center justify-center py-16 text-ink-faint">
             <p className="text-sm">No transactions match your filters</p>
           </div>
         ) : (
-          <div className="divide-y divide-white/[0.04]">
+          <div className="divide-y divide-glass-hairline">
             {filtered.map((charge) => {
               const email = getEmail(charge);
               const status = charge.refunded ? "refunded" : charge.status;
@@ -225,43 +225,43 @@ export default function TransactionsPage() {
                 <div
                   key={charge.id}
                   onClick={() => setSelected(charge)}
-                  className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-6 py-4 items-center hover:bg-white/[0.02] transition-colors group cursor-pointer"
+                  className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-6 py-4 items-center hover:bg-surface-sunken transition-colors group cursor-pointer"
                 >
                   {/* Customer */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-8 w-8 shrink-0 rounded-full bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-xs font-bold text-indigo-300">
+                    <div className="h-8 w-8 shrink-0 rounded-full bg-brand-wash border border-brand/30 flex items-center justify-center text-xs font-bold text-brand-deep">
                       {getInitials(email)}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-neutral-200 truncate">{email}</p>
+                        <p className="text-sm text-ink-strong truncate">{email}</p>
                         {charge.metadata?.label === "test" && (
-                          <span className="shrink-0 rounded-full bg-neutral-700/50 border border-neutral-600/40 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400">
+                          <span className="shrink-0 rounded-full bg-surface-sunken border border-glass-hairline px-1.5 py-0.5 text-[10px] font-medium text-ink-soft">
                             test
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-neutral-600 font-mono truncate">{charge.id}</p>
+                      <p className="text-[11px] text-ink-faint font-mono truncate">{charge.id}</p>
                       {reason && status === "failed" && (
-                        <p className="text-[11px] text-red-400/80 truncate">{reason}</p>
+                        <p className="text-[11px] text-error-text/80 truncate">{reason}</p>
                       )}
                     </div>
                   </div>
 
                   {/* Date */}
-                  <span className="w-28 text-right text-sm text-neutral-400 tabular-nums">
+                  <span className="w-28 text-right text-sm text-ink-soft tabular-nums">
                     {format(new Date(charge.created * 1000), "MMM d, yyyy")}
                   </span>
 
                   {/* Amount */}
-                  <span className="w-24 text-right text-sm font-semibold text-white tabular-nums">
+                  <span className="w-24 text-right text-sm font-semibold text-ink-strong tabular-nums">
                     {formatCurrency(charge.amount / 100)}
                   </span>
 
                   {/* Status */}
                   <span className={cn(
                     "w-24 text-center rounded-full px-2.5 py-1 text-xs font-medium border",
-                    statusStyle[status] ?? "bg-white/[0.04] text-neutral-400 border-white/[0.08]"
+                    statusStyle[status] ?? "bg-surface-sunken text-ink-soft border-glass-hairline"
                   )}>
                     {status}
                   </span>
@@ -272,7 +272,7 @@ export default function TransactionsPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="w-10 flex justify-center text-neutral-700 hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100"
+                    className="w-10 flex justify-center text-ink-faint hover:text-brand-deep transition-colors opacity-0 group-hover:opacity-100"
                     title="View in Stripe"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
@@ -285,12 +285,12 @@ export default function TransactionsPage() {
 
         {/* Footer */}
         {!query.isLoading && filtered.length > 0 && (
-          <div className="px-6 py-3 border-t border-white/[0.04] flex items-center justify-between">
-            <p className="text-xs text-neutral-600">
+          <div className="px-6 py-3 border-t border-glass-hairline flex items-center justify-between">
+            <p className="text-xs text-ink-faint">
               Showing {filtered.length} of {charges.length} charges
             </p>
             {query.data?.has_more && (
-              <p className="text-xs text-amber-500/70">More charges exist in Stripe — increase the limit to see all</p>
+              <p className="text-xs text-warning-text/70">More charges exist in Stripe — increase the limit to see all</p>
             )}
           </div>
         )}

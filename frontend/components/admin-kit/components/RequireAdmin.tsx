@@ -21,7 +21,7 @@ export function RequireAdmin({ children, permission: _permission }: RequireAdmin
   }, [isAdmin, loading, navigate]);
 
   if (loading) {
-    return <div className="h-screen bg-[#070B16]" aria-hidden="true" />;
+    return <div className="h-screen bg-surface-sunken" aria-hidden="true" />;
   }
 
   if (!isAdmin) return null;
