@@ -8,6 +8,15 @@
 
 ---
 
+> ⚠️ **The URLs and app name in this file are out of date.** Everything here still says
+> `check-extractor-frontend.vercel.app` and "Cheque Extractor OCR". The app is at `kyriq.com` and is
+> called Kyriq. Submitting these values would be rejected.
+>
+> **Use `INTUIT-FORM-ANSWERS.md` in this folder for every value you type into the Intuit form.**
+> It was read out of the code on 14 October 2026. This file is still useful as a process checklist.
+
+---
+
 ## ✅ PRE-SUBMISSION CHECKLIST
 
 ### 1. INTUIT DEVELOPER ACCOUNT SETUP
@@ -31,7 +40,7 @@
 
 #### A. Keys & OAuth Settings
 - [ ] **Development Credentials Configured**
-  - Client ID: `ABT11UEvWZetoyA6wIAVI6fTc3PmCGod6B8IcDGRzCZ6nX2JBM`
+  - Client ID: (in the Intuit dashboard and the `QUICKBOOKS_CLIENT_ID` env var — not recorded here)
   - Client Secret: (stored securely)
   - Sandbox company created and accessible
 
