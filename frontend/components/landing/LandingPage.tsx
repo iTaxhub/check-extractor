@@ -33,6 +33,7 @@ import {
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui';
 import { KyriqIcon, KyriqIconWhite, KyriqLogo } from './KyriqMark';
+import { WaitlistForm } from './WaitlistForm';
 import { Marquee } from '@/components/ui/marquee';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { BorderBeam } from '@/components/ui/border-beam';
@@ -539,12 +540,10 @@ function VoiceSection() {
                 payees, and keeps you in control of every action.
               </p>
               <p className="text-[13px] text-shell-muted/80 mb-8">Starting with checks. Full-book reconciliation is next.</p>
-              <a
-                href="mailto:support@kyriq.com?subject=Kyriq%20Voice%20waitlist"
-                className={cn(buttonVariants({ variant: 'primary', size: 'lg' }))}
-              >
-                Join the waitlist <ArrowRight size={16} aria-hidden />
-              </a>
+              {/* Was a mailto: link, which left the site for the OS mail client
+                  (and did nothing where none was configured). The form records
+                  the signup and sends its own confirmation. */}
+              <WaitlistForm />
             </div>
 
             <div className="rounded-card border border-glass-hairline-dark bg-white/[0.04] p-5 sm:p-6">

@@ -184,6 +184,10 @@ const SAMPLES: Record<TemplateKey, Record<string, any>> = {
     planLabel: 'Growth',
     periodEnd: '2026-10-31',
   },
+
+  waitlist_confirmation: {
+    name: 'Dana Whitfield',
+  },
 };
 
 {
@@ -191,7 +195,11 @@ const SAMPLES: Record<TemplateKey, Record<string, any>> = {
   // Stripe requirements ask for ~30 days before the charge (section 7).
   // Plus 8 added Oct 2026: welcome, extraction complete, reconciliation cleared,
   // weekly and monthly reports, payment receipt, payment failed, new sign-in.
-  assert.equal(TEMPLATE_KEYS.length, 28, "section 9 (19) + annual renewal + 8 onboarding/reconciliation/reporting/billing/security");
+  // Plus 1 outside that spec: waitlist_confirmation, the receipt for the Kyriq
+  // IQ landing form that replaced the mailto: link. Counted separately so the
+  // approved-spec total above stays a number anyone can check against the
+  // CHECKLIST, instead of drifting upward every time a template is added.
+  assert.equal(TEMPLATE_KEYS.length, 28 + 1, "section 9 (19) + annual renewal + 8 onboarding/reconciliation/reporting/billing/security + 1 waitlist");
   const missing = TEMPLATE_KEYS.filter((k) => !SAMPLES[k]);
   assert.deepEqual(missing, [], `every template needs sample vars, missing: ${missing.join(', ')}`);
   const extra = Object.keys(SAMPLES).filter((k) => !TEMPLATE_KEYS.includes(k as TemplateKey));

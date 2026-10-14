@@ -478,6 +478,29 @@ export const TEMPLATES = {
       cta: { label: 'Secure your account', url: appUrl('/settings') },
     }),
   },
+
+  /**
+   * Sent the moment someone joins the Kyriq IQ waitlist from the landing page.
+   *
+   * 'marketing' would be wrong: this is the receipt for an action the person
+   * just took, it is the only confirmation they get that the form worked, and
+   * suppressing it because of an unrelated unsubscribe would leave them staring
+   * at a form with no idea whether it submitted.
+   */
+  waitlist_confirmation: {
+    category: 'transactional',
+    spec: 'growth-01 waitlist signup confirmed',
+    subject: () => "You're on the Kyriq IQ waitlist",
+    body: (v) => ({
+      paragraphs: [
+        `${v.name ? `${v.name}, you` : 'You'}'re on the list. We'll email this address the moment Kyriq IQ opens up.`,
+        'Kyriq IQ brings conversational intelligence to reconciliation: ask what happened, review what it found, and act with your approval. Starting with checks. Full-book reconciliation is next.',
+        'Nothing else to do for now. If you have a question in the meantime, just reply to this email.',
+      ],
+      cta: { label: 'See what Kyriq does today', url: appUrl('/') },
+      footnote: 'You are receiving this because you asked to be told when Kyriq IQ is ready.',
+    }),
+  },
 } satisfies Record<string, EmailTemplate>;
 
 export type TemplateKey = keyof typeof TEMPLATES;
