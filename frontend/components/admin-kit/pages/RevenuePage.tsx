@@ -6,8 +6,9 @@ import { format } from "date-fns";
 import {
   AreaChart, Area,
   XAxis, YAxis, Tooltip as RechartsTooltip,
-  CartesianGrid, ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
+import { AXIS_TICK_SM, CHART_COLORS, ChartEmpty, ChartFrame, GRID_PROPS, areaFade, NO_TWEEN } from "@/lib/charts";
 import { RefreshCw, AlertTriangle, ArrowRight, Info, Calculator } from "lucide-react";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/admin-kit/_deps/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/admin-kit/_deps/components/ui/dialog";
@@ -674,23 +675,18 @@ export default function RevenuePage() {
         {chargesQuery.isLoading ? (
           <Skeleton className="h-44 w-full bg-surface-sunken rounded-lg" />
         ) : chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={176}>
+          <ChartFrame height={176}>
             <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
-              <defs>
-                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7f5" vertical={false} />
-              <XAxis dataKey="day" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={36} />
+              {areaFade("revenueGrad", CHART_COLORS.brand)}
+              <CartesianGrid {...GRID_PROPS} />
+              <XAxis dataKey="day" tick={AXIS_TICK_SM} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={AXIS_TICK_SM} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={36} />
               <RechartsTooltip content={<ChartTooltip />} />
-              <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={1.5} fill="url(#revenueGrad)" dot={false} activeDot={{ r: 4, fill: "#6366f1", strokeWidth: 0 }} />
+              <Area {...NO_TWEEN} type="monotone" dataKey="revenue" stroke={CHART_COLORS.brand} strokeWidth={1.5} fill="url(#revenueGrad)" dot={false} activeDot={{ r: 4, fill: CHART_COLORS.brand, strokeWidth: 0 }} />
             </AreaChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         ) : (
-          <div className="flex items-center justify-center h-44 text-ink-faint text-sm">No charge data yet</div>
+          <ChartEmpty height={176}>No charge data yet</ChartEmpty>
         )}
       </div>
 
@@ -732,7 +728,7 @@ export default function RevenuePage() {
               <p className="text-lg font-bold text-ink-strong tabular-nums">{metrics ? formatCurrency(monthlyMrr) : "—"}<span className="ml-1 text-[11px] font-normal text-ink-soft">/mo</span></p>
               {mrrTotal > 0 && (
                 <div className="mt-2 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
-                  <div className="h-full bg-blue-400" style={{ width: `${monthlyShare}%` }} />
+                  <div className="h-full bg-brand" style={{ width: `${monthlyShare}%` }} />
                 </div>
               )}
               <p className="mt-1 text-[11px] text-ink-faint">{formatPct(monthlyShare)} of MRR</p>
@@ -745,7 +741,7 @@ export default function RevenuePage() {
               <p className="text-lg font-bold text-ink-strong tabular-nums">{metrics ? formatCurrency(yearlyMrr) : "—"}<span className="ml-1 text-[11px] font-normal text-ink-soft">/mo</span></p>
               {mrrTotal > 0 && (
                 <div className="mt-2 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
-                  <div className="h-full bg-emerald-400" style={{ width: `${yearlyShare}%` }} />
+                  <div className="h-full bg-success" style={{ width: `${yearlyShare}%` }} />
                 </div>
               )}
               <p className="mt-1 text-[11px] text-ink-faint">{formatPct(yearlyShare)} of MRR · {metrics ? formatCurrency(metrics.arrCents / 100) : "—"} ARR</p>

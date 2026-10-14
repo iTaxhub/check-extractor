@@ -8,9 +8,9 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  ResponsiveContainer,
   Cell,
 } from "recharts";
+import { AXIS_TICK, AXIS_TICK_SM, CHART_COLORS, ChartFrame, GRID_PROPS, TOOLTIP_PROPS, NO_TWEEN } from "@/lib/charts";
 import { PageHeader } from "../components/PageHeader";
 import { ChartCard } from "../components/ChartCard";
 import { KpiTile } from "../components/KpiTile";
@@ -144,43 +144,37 @@ function EventsTab({ from, to }: { from: string; to: string }) {
         )}
 
         {topEvents.length > 0 ? (
-          <ResponsiveContainer width="100%" height={320}>
+          <ChartFrame height={320}>
             <BarChart
               data={topEvents}
               layout="vertical"
               margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
               barSize={16}
             >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e5e7f5"
-                horizontal={false}
-              />
+              <CartesianGrid {...GRID_PROPS} vertical horizontal={false} />
               <XAxis
                 type="number"
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 type="category"
                 dataKey="event_name"
-                tick={{ fill: "#475569", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
                 width={160}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="events" radius={[0, 4, 4, 0]}>
+              <Bar {...NO_TWEEN} dataKey="count" name="events" radius={[0, 4, 4, 0]}>
                 {topEvents.map((entry, i) => (
                   <Cell
                     key={entry.event_name}
                     fill={
-                      selectedEvent === entry.event_name
-                        ? "#6366f1"
-                        : i === 0
-                          ? "#6366f1"
-                          : "#818cf8"
+                      selectedEvent === entry.event_name || i === 0
+                        ? CHART_COLORS.brand
+                        : CHART_COLORS.brandLight
                     }
                     cursor="pointer"
                     onClick={() =>
@@ -194,7 +188,7 @@ function EventsTab({ from, to }: { from: string; to: string }) {
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         ) : (
           <EmptyState
             title="No events yet"
@@ -281,47 +275,45 @@ function ScreensTab({ from, to }: { from: string; to: string }) {
         loading={isLoading && !screenData.length}
       >
         {screenData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={400}>
+          <ChartFrame height={400}>
             <BarChart
               data={screenData}
               layout="vertical"
               margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
               barSize={14}
             >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e5e7f5"
-                horizontal={false}
-              />
+              <CartesianGrid {...GRID_PROPS} vertical horizontal={false} />
               <XAxis
                 type="number"
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 type="category"
                 dataKey="screen"
-                tick={{ fill: "#475569", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
                 width={150}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="views" radius={[0, 4, 4, 0]}>
+              <Bar {...NO_TWEEN} dataKey="count" name="views" radius={[0, 4, 4, 0]}>
                 {screenData.map((entry, i) => {
-                  // Gradient from bright violet to dim purple based on rank
+                  // Rank ramp: one palette colour, fading by rank. The opacity is
+                  // a separate prop so the hue stays the shared brand token.
                   const opacity = Math.max(0.35, 1 - i * 0.04);
                   return (
                     <Cell
                       key={entry.screen}
-                      fill={`rgba(99, 102, 241, ${opacity})`}
+                      fill={CHART_COLORS.brand}
+                      fillOpacity={opacity}
                     />
                   );
                 })}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         ) : (
           <EmptyState
             title="No screen_viewed events yet"
@@ -463,20 +455,16 @@ function FunnelTab({ from, to }: { from: string; to: string }) {
           title="Funnel Chart"
           description="Users reaching each step (absolute)"
         >
-          <ResponsiveContainer width="100%" height={280}>
+          <ChartFrame height={280}>
             <BarChart
               data={funnel}
               margin={{ top: 0, right: 16, bottom: 40, left: 0 }}
               barSize={24}
             >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e5e7f5"
-                vertical={false}
-              />
+              <CartesianGrid {...GRID_PROPS} />
               <XAxis
                 dataKey="step"
-                tick={{ fill: "#64748b", fontSize: 10 }}
+                tick={AXIS_TICK_SM}
                 axisLine={false}
                 tickLine={false}
                 angle={-35}
@@ -484,21 +472,21 @@ function FunnelTab({ from, to }: { from: string; to: string }) {
                 interval={0}
               />
               <YAxis
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="users" name="users" radius={[4, 4, 0, 0]}>
+              <Bar {...NO_TWEEN} dataKey="users" name="users" radius={[4, 4, 0, 0]}>
                 {funnel.map((entry, i) => (
                   <Cell
                     key={entry.step}
-                    fill={i === 0 ? "#6366f1" : "#818cf8"}
+                    fill={i === 0 ? CHART_COLORS.brand : CHART_COLORS.brandLight}
                   />
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         </ChartCard>
       )}
     </div>
@@ -602,20 +590,16 @@ function FeaturesTab({ from, to }: { from: string; to: string }) {
         loading={isLoading && !chartData.length}
       >
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={220}>
+          <ChartFrame height={220}>
             <BarChart
               data={chartData}
               margin={{ top: 0, right: 16, bottom: 30, left: 0 }}
               barSize={28}
             >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e5e7f5"
-                vertical={false}
-              />
+              <CartesianGrid {...GRID_PROPS} />
               <XAxis
                 dataKey="feature"
-                tick={{ fill: "#64748b", fontSize: 10 }}
+                tick={AXIS_TICK_SM}
                 axisLine={false}
                 tickLine={false}
                 angle={-20}
@@ -623,21 +607,21 @@ function FeaturesTab({ from, to }: { from: string; to: string }) {
                 interval={0}
               />
               <YAxis
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="count" radius={[4, 4, 0, 0]}>
+              <Bar {...NO_TWEEN} dataKey="count" name="count" radius={[4, 4, 0, 0]}>
                 {chartData.map((entry, i) => (
                   <Cell
                     key={entry.feature}
-                    fill={i === 0 ? "#6366f1" : "#818cf8"}
+                    fill={i === 0 ? CHART_COLORS.brand : CHART_COLORS.brandLight}
                   />
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         ) : (
           <EmptyState
             title="No feature events yet"
@@ -1016,46 +1000,39 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
       >
         {sourceRows.length > 0 ? (
           <>
-            <ResponsiveContainer
-              width="100%"
-              height={Math.max(180, sourceRows.length * 36)}
-            >
+            <ChartFrame height={Math.max(180, sourceRows.length * 36)}>
               <BarChart
                 data={sourceRows.slice(0, 12)}
                 layout="vertical"
                 margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
                 barSize={16}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#e5e7f5"
-                  horizontal={false}
-                />
+                <CartesianGrid {...GRID_PROPS} vertical horizontal={false} />
                 <XAxis
                   type="number"
-                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  tick={AXIS_TICK}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   type="category"
                   dataKey="screen"
-                  tick={{ fill: "#475569", fontSize: 11 }}
+                  tick={AXIS_TICK}
                   axisLine={false}
                   tickLine={false}
                   width={150}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="taps" name="taps" radius={[0, 4, 4, 0]}>
+                <Bar {...NO_TWEEN} dataKey="taps" name="taps" radius={[0, 4, 4, 0]}>
                   {sourceRows.slice(0, 12).map((entry, i) => (
                     <Cell
                       key={entry.screen}
-                      fill={i === 0 ? "#6366f1" : "#818cf8"}
+                      fill={i === 0 ? CHART_COLORS.brand : CHART_COLORS.brandLight}
                     />
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
+            </ChartFrame>
 
             <div className="mt-4 divide-y divide-glass-hairline">
               <div className="grid grid-cols-2 pb-2 text-xs tracking-wider text-ink-soft uppercase">
@@ -1151,7 +1128,9 @@ function LandingTab({ from, to }: { from: string; to: string }) {
   const funnelChartData = sectionFunnel.map((s, i) => ({
     ...s,
     label: SECTION_LABELS[s.section] ?? s.section,
-    fill: `hsl(${260 - i * 14}, 70%, ${55 - i * 2}%)`,
+    // Page order ramp. This used to be a hand-rolled hsl() sweep through hues
+    // the app does not own; it is now one shared brand colour fading with depth.
+    fillOpacity: Math.max(0.35, 1 - i * 0.06),
   }));
 
   return (
@@ -1183,24 +1162,17 @@ function LandingTab({ from, to }: { from: string; to: string }) {
         loading={isLoading && !sectionFunnel.length}
       >
         {funnelChartData.some((s) => s.sessions > 0) ? (
-          <ResponsiveContainer
-            width="100%"
-            height={Math.max(260, funnelChartData.length * 32)}
-          >
+          <ChartFrame height={Math.max(260, funnelChartData.length * 32)}>
             <BarChart
               data={funnelChartData}
               layout="vertical"
               margin={{ top: 0, right: 48, bottom: 0, left: 0 }}
               barSize={18}
             >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e5e7f5"
-                horizontal={false}
-              />
+              <CartesianGrid {...GRID_PROPS} vertical horizontal={false} />
               <XAxis
                 type="number"
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
                 domain={[0, totalSessions || 1]}
@@ -1208,19 +1180,23 @@ function LandingTab({ from, to }: { from: string; to: string }) {
               <YAxis
                 type="category"
                 dataKey="label"
-                tick={{ fill: "#475569", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
                 width={130}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="sessions" name="sessions" radius={[0, 4, 4, 0]}>
+              <Bar {...NO_TWEEN} dataKey="sessions" name="sessions" radius={[0, 4, 4, 0]}>
                 {funnelChartData.map((entry) => (
-                  <Cell key={entry.section} fill={entry.fill} />
+                  <Cell
+                    key={entry.section}
+                    fill={CHART_COLORS.brand}
+                    fillOpacity={entry.fillOpacity}
+                  />
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         ) : (
           <EmptyState
             title="No scroll data yet"
@@ -1516,57 +1492,44 @@ function HourlyTab() {
         loading={isLoading && !byHour.length}
       >
         {chartData.some((d) => d.count > 0) ? (
-          <ResponsiveContainer width="100%" height={280}>
+          <ChartFrame height={280}>
             <BarChart
               data={chartData}
               margin={{ top: 16, right: 8, bottom: 0, left: -16 }}
               barSize={14}
             >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e5e7f5"
-                vertical={false}
-              />
+              <CartesianGrid {...GRID_PROPS} />
               <XAxis
                 dataKey="label"
-                tick={{ fill: "#64748b", fontSize: 10 }}
+                tick={AXIS_TICK_SM}
                 axisLine={false}
                 tickLine={false}
                 interval={1}
               />
               <YAxis
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
                 allowDecimals={false}
               />
               <Tooltip
-                cursor={{ fill: "rgba(99,102,241,0.06)" }}
-                contentStyle={{
-                  background: "#ffffff",
-                  border: "1px solid rgba(15,23,42,0.08)",
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-                labelStyle={{ color: "#0f172a" }}
+                {...TOOLTIP_PROPS}
                 formatter={(v: number) => [formatNumber(v), "generations"]}
               />
-              <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+              <Bar {...NO_TWEEN} dataKey="count" radius={[3, 3, 0, 0]}>
                 {chartData.map((d, i) => (
+                  // The current UTC hour is a "look here" marker, not an ordinary
+                  // series, so it keeps the warning token. Warm windows are the
+                  // brand colour; the remaining hours are the same colour, faded.
                   <Cell
                     key={i}
-                    fill={
-                      d.hour === nowHour
-                        ? "#f59e0b"
-                        : d.warm
-                          ? "#6366f1"
-                          : "rgba(99,102,241,0.28)"
-                    }
+                    fill={d.hour === nowHour ? CHART_COLORS.warning : CHART_COLORS.brand}
+                    fillOpacity={d.hour === nowHour || d.warm ? 1 : 0.28}
                   />
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         ) : (
           <EmptyState
             title="No voice activity yet"

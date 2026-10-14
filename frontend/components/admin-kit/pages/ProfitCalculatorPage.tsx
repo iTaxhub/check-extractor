@@ -2,8 +2,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip,
-  CartesianGrid, ResponsiveContainer, Legend,
+  CartesianGrid, Legend,
 } from "recharts";
+import { AXIS_TICK_SM, CHART_COLORS, ChartFrame, GRID_PROPS, LEGEND_STYLE, NO_TWEEN } from "@/lib/charts";
 import { RotateCcw, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { useAdminMetrics } from "../lib/queries";
@@ -273,18 +274,24 @@ export default function ProfitCalculatorPage() {
               <p className="text-xs text-ink-soft mt-0.5">{inputs.horizon} months at {formatPct(inputs.growthPct - inputs.churnPct)} net growth/mo</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={260}>
+          <ChartFrame height={260}>
             <LineChart data={projection} margin={{ top: 4, right: 8, bottom: 0, left: -4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7f5" vertical={false} />
-              <XAxis dataKey="month" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${Math.round(v)}`} width={48} />
+              <CartesianGrid {...GRID_PROPS} />
+              <XAxis dataKey="month" tick={AXIS_TICK_SM} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={AXIS_TICK_SM} axisLine={false} tickLine={false} tickFormatter={(v) => `$${Math.round(v)}`} width={48} />
               <RechartsTooltip content={<ChartTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#6366f1" strokeWidth={1.5} dot={false} />
-              <Line type="monotone" dataKey="profit" name="Profit" stroke="#10b981" strokeWidth={1.5} dot={false} />
-              <Line type="monotone" dataKey="cumulative" name="Cumulative" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              {/* Profit is semantic here — this chart's whole job is "are we in the
+                  black" — so it takes --success, not a categorical slot. Revenue is
+                  the brand line; Cumulative takes the neutral series rather than
+                  amber (which means "needs attention" everywhere else) and rather
+                  than a second indigo, which would not read apart from Revenue at
+                  1.5px. */}
+              <Line {...NO_TWEEN} type="monotone" dataKey="revenue" name="Revenue" stroke={CHART_COLORS.brand} strokeWidth={1.5} dot={false} />
+              <Line {...NO_TWEEN} type="monotone" dataKey="profit" name="Profit" stroke={CHART_COLORS.emerald} strokeWidth={1.5} dot={false} />
+              <Line {...NO_TWEEN} type="monotone" dataKey="cumulative" name="Cumulative" stroke={CHART_COLORS.inkFaint} strokeWidth={1.5} dot={false} />
             </LineChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         </div>
       </div>
 

@@ -36,7 +36,20 @@ const OWNED = [
 ];
 
 /** Both shells, which must agree on one width token. */
-const SHELLS = ['app/(app)/layout.tsx', 'app/(admin)/layout.tsx'];
+/**
+ * Shells that pin a sidebar width and offset the main column by the same
+ * amount. These two numbers drifting apart is the regression being guarded.
+ *
+ * `app/(admin)/layout.tsx` is deliberately NOT here any more. The admin console
+ * was ported to admin-kit and is now a flex row with a COLLAPSIBLE nav, so
+ * there is no fixed offset to keep in step — the layout guarantees it
+ * structurally, and demanding `md:ml-60` of it asserted an architecture that no
+ * longer exists. Its nav width is checked below instead.
+ */
+const SHELLS = ['app/(app)/layout.tsx'];
+
+/** The admin nav still has to use the shared token rather than a pixel value. */
+const ADMIN_NAV = 'components/admin-kit/components/SideNav.tsx';
 
 const read = (rel: string) => readFileSync(path.join(root, rel), 'utf8');
 
@@ -71,7 +84,20 @@ for (const rel of SHELLS) {
   assert.match(src, /\bw-60\b/, `${rel} lost the shared shell width token (w-60)`);
   assert.match(src, /\bmd:ml-60\b/, `${rel} main offset no longer matches the shell width`);
 }
-console.log('  ok  both shells share one spacing-token width (w-60 / md:ml-60)');
+
+// The admin nav sets its own width (it collapses), so it is checked for the
+// token rather than for an offset it does not have.
+{
+  const nav = read(ADMIN_NAV);
+  assert.equal(
+    nav.match(ARBITRARY_WIDTH),
+    null,
+    `${ADMIN_NAV} pinned the nav to a pixel width — use the spacing scale`
+  );
+  assert.match(nav, /\bw-60\b/, `${ADMIN_NAV} lost the shared shell width token (w-60)`);
+}
+
+console.log('  ok  app shell width and offset agree; admin nav uses the same token');
 
 /* --- The shells stay transparent over the ambient mesh ------------------- */
 // Glass over a flat page reads as a rendering bug, so a shell must not paint

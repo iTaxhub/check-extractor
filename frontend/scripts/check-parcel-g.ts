@@ -34,11 +34,32 @@ const has = (rel: string) => existsSync(path.join(root, rel));
 const PALETTE = 'lib/charts.tsx';
 
 /** The four files that render Recharts. Nothing else may import recharts. */
+/**
+ * Every file that draws a Recharts chart, and must therefore take its colours
+ * from the one palette.
+ *
+ * Recharts takes colours as JS props, not classNames, so a token change never
+ * reaches a chart on its own — which is exactly how the admin console drifted
+ * after it was ported from another product with its own palette. This list is
+ * the only thing that catches it.
+ *
+ * Keep it in step with `grep -rl recharts frontend/app frontend/components`.
+ *
+ * Two entries were dropped because they no longer draw anything:
+ * `app/(admin)/admin/page.tsx` has no chart left, and
+ * `app/(admin)/admin/revenue/page.tsx` is a three-line re-export of
+ * admin-kit's RevenuePage. Listing a re-export asserts the palette against a
+ * file that cannot contain a colour, which passes or fails for the wrong
+ * reason. The five admin-kit entries are where the charts actually live.
+ */
 const CHART_FILES = [
-  'app/(admin)/admin/page.tsx',
-  'app/(admin)/admin/revenue/page.tsx',
   'app/(admin)/admin/tenants/[id]/page.tsx',
   'app/(app)/firm-dashboard/page.tsx',
+  'components/admin-kit/components/Sparkline.tsx',
+  'components/admin-kit/pages/AnalyticsPage.tsx',
+  'components/admin-kit/pages/ProfitCalculatorPage.tsx',
+  'components/admin-kit/pages/PulsePage.tsx',
+  'components/admin-kit/pages/RevenuePage.tsx',
 ];
 
 const OWNED = [
@@ -95,7 +116,14 @@ console.log(`  ok  ${OWNED.length} parcel-G files carry no hex and no raw palett
 
 for (const rel of CHART_FILES) {
   const src = read(rel);
-  assert.match(src, /from '@\/lib\/charts'/, `${rel} does not import the shared chart palette`);
+  // Quote-agnostic on purpose: admin-kit was ported from a double-quoted
+  // codebase, and a guard that fails on quote style rather than on the thing it
+  // guards sends you hunting for a missing import that is right there.
+  assert.match(
+    src,
+    /from ['"]@\/lib\/charts['"]/,
+    `${rel} does not import the shared chart palette`
+  );
 
   // No colour prop may be written at a call site.
   for (const prop of ['stroke', 'fill', 'stopColor', 'color']) {
@@ -133,20 +161,33 @@ console.log(`  ok  all ${CHART_FILES.length} chart files take every colour from 
 
   for (const rel of CHART_FILES) {
     const src = read(rel);
+    // A container given BOTH dimensions as literal numbers never measures its
+    // parent, so a 0-height parent cannot collapse it - it is not exposed to
+    // the bug this rule exists to catch. Routing one through ChartFrame
+    // (hardcoded w-full + width="100%") would stretch a fixed-width inline
+    // chart to fill whatever cell holds it, trading a non-bug for a real
+    // layout regression. Such mounts are stripped before the rule runs rather
+    // than the file being excused by name: a container that later drops its
+    // numeric width comes straight back under the rule.
+    const measured = src.replace(
+      /<ResponsiveContainer\s+width=\{\d+\}\s+height=\{\d+\}>[\s\S]*?<\/ResponsiveContainer>/g,
+      ''
+    );
     assert.doesNotMatch(
-      src,
-      /ResponsiveContainer/,
+      measured,
+      // The JSX mount is the hazard; a bare import collapses nothing.
+      /<ResponsiveContainer/,
       `${rel} mounts ResponsiveContainer directly — go through ChartFrame, which guarantees the height`
     );
-    const frames = (src.match(/<ChartFrame\b/g) ?? []).length;
-    const charts = (src.match(/<(?:Area|Bar|Line|Pie|Composed)Chart\b/g) ?? []).length;
+    const frames = (measured.match(/<ChartFrame\b/g) ?? []).length;
+    const charts = (measured.match(/<(?:Area|Bar|Line|Pie|Composed)Chart\b/g) ?? []).length;
     assert.equal(
       frames,
       charts,
       `${rel} has ${charts} charts but ${frames} ChartFrames — every chart needs its own sized frame`
     );
     // And every frame must name a height rather than relying on the default.
-    const unsized = (src.match(/<ChartFrame(?![^>]*height=)/g) ?? []).length;
+    const unsized = (measured.match(/<ChartFrame(?![^>]*height=)/g) ?? []).length;
     assert.equal(unsized, 0, `${rel} has ${unsized} ChartFrame(s) with no explicit height`);
   }
 }
@@ -169,8 +210,10 @@ console.log('  ok  every chart sits in a ChartFrame with an explicit height');
     assert.doesNotMatch(src, /<AreaFade\b/, `${rel} renders <AreaFade /> — call {areaFade(id, color)} instead`);
     // Every url(#id) fill must have a matching areaFade() call on the page.
     for (const m of src.matchAll(/fill="url\(#([^)]+)\)"/g)) {
+      // Quote style is not the point: the admin-kit port uses double quotes.
+      const defined = [`areaFade('${m[1]}'`, `areaFade("${m[1]}"`].some((c) => src.includes(c));
       assert.ok(
-        src.includes(`areaFade('${m[1]}'`),
+        defined,
         `${rel} fills with url(#${m[1]}) but never defines that gradient`
       );
     }

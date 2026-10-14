@@ -129,3 +129,6 @@ diagnose-qb.ps1
 # Real client cheques and bank statements. Live account numbers — never commit.
 cheques/
 new changes/
+
+# Supabase CLI scratch (created by `supabase link`)
+supabase/.temp/
