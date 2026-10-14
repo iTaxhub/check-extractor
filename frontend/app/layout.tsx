@@ -27,7 +27,21 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Kyriq — Check Reconciliation for QuickBooks Online',
     description: 'Reconcile checks with confidence while your team stays in control of every approval.',
-    images: ['/landing/match-review-dashboard-4k-v1.png'],
+    // A purpose-built 1200x630 JPEG, NOT one of the 4K landing PNGs.
+    // Social scrapers fetch this URL directly and never go through Next's image
+    // optimiser, so whatever is named here is downloaded at full size. The 4K
+    // source is 5.79MB, over X's 5MB cap and far past the few hundred KB
+    // WhatsApp will wait for — the preview silently does not render. This is
+    // 86KB. Regenerate with scripts/build-og-card.py if the art changes.
+    images: [{ url: '/landing/og-card-1200x630.jpg', width: 1200, height: 630 }],
+    type: 'website',
+    siteName: 'Kyriq',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Kyriq — Check Reconciliation for QuickBooks Online',
+    description: 'Reconcile checks with confidence while your team stays in control of every approval.',
+    images: ['/landing/og-card-1200x630.jpg'],
   },
 }
 
