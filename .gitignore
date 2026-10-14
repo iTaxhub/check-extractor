@@ -125,3 +125,7 @@ frontend/email-previews/
 complete-oauth.ps1
 test-gemini-keys.ps1
 diagnose-qb.ps1
+
+# Real client cheques and bank statements. Live account numbers — never commit.
+cheques/
+new changes/
