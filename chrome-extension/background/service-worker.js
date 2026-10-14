@@ -43,30 +43,6 @@ function logErr(msg, err) {
   console.error(`[Kyriq SW ${ts}] ❌ ${msg}`, err?.message || err);
 }
 
-// #region agent log
-// Off by default. Enable via:
-//   chrome.storage.local.set({ kyriqDebugIngest: { url: 'http://127.0.0.1:7415/ingest/f682ae64-23f5-470b-ad66-bf3be254098b', sessionId: '76c285' } })
-let _debugIngestConfig = null;
-chrome.storage.local.get('kyriqDebugIngest')
-  .then(({ kyriqDebugIngest }) => { _debugIngestConfig = kyriqDebugIngest || null; })
-  .catch(() => {});
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.kyriqDebugIngest) {
-    _debugIngestConfig = changes.kyriqDebugIngest.newValue || null;
-  }
-});
-
-function debugAgentLog(payload) {
-  const body = { sessionId: _debugIngestConfig?.sessionId || '76c285', runId: 'ext-audit', timestamp: Date.now(), ...payload };
-  try { log('[AGENT_DEBUG]', body); } catch (_) {}
-  if (!_debugIngestConfig?.url) return;
-  fetch(_debugIngestConfig.url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': _debugIngestConfig.sessionId || '76c285' },
-    body: JSON.stringify(body),
-  }).catch(() => {});
-}
-// #endregion
 
 // ── Hardcoded Bootstrap Config (Update these for your deployment) ─
 const BOOTSTRAP_CONFIG = {
@@ -153,25 +129,9 @@ async function getConfig() {
       configCache: { data: remote, expiresAt: Date.now() + CONFIG_CACHE_TTL },
     });
     log('App config fetched and cached', { hasGemini: !!remote.geminiApiKey, hasQbClientId: !!remote.qbClientId });
-    // #region agent log
-    debugAgentLog({
-      hypothesisId: 'E',
-      location: 'service-worker.js:getConfig',
-      message: 'extension config fetch ok',
-      data: { apiHost, status: res.status, hasGemini: !!remote.geminiApiKey, hasQbClientId: !!remote.qbClientId },
-    });
-    // #endregion
     return merged;
   } catch (e) {
     logErr('Config fetch failed, using fallback', e);
-    // #region agent log
-    debugAgentLog({
-      hypothesisId: 'E',
-      location: 'service-worker.js:getConfig',
-      message: 'extension config fetch failed',
-      data: { apiHost: (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, ''), err: String(e?.message || e) },
-    });
-    // #endregion
     if (configCache?.data) return { ...configCache.data, ...bootstrap };
     return { ...bootstrap, geminiApiKey: '', qbClientId: '' };
   }
@@ -964,20 +924,6 @@ async function pullQBTransactions() {
   const results = await Promise.all(fetchPromises);
   results.forEach(txns => allTxns.push(...txns));
 
-  // #region agent log
-  debugAgentLog({
-    hypothesisId: 'H1',
-    location: 'service-worker.js:pullQBTransactions',
-    message: 'intuit query window + per-type counts',
-    data: {
-      realmId,
-      windowStart,
-      pullLookbackDays,
-      counts: queries.map((q, i) => ({ type: q.type, n: (results[i] || []).length })),
-      totalFetched: allTxns.length,
-    },
-  });
-  // #endregion
 
   // Upsert to Supabase — qb_entries FIRST (canonical table for matching), qb_transactions SECOND (non-fatal).
   // IMPORTANT: the web app pull-checks.ts uses the same pattern. The old order (qb_transactions first
@@ -1020,23 +966,7 @@ async function pullQBTransactions() {
         headers: { Prefer: 'resolution=merge-duplicates' },
         body: JSON.stringify(allTxns),
       });
-      // #region agent log
-      debugAgentLog({
-        hypothesisId: 'H2',
-        location: 'service-worker.js:pullQBTransactions',
-        message: 'supabase qb_transactions upsert ok',
-        data: { rowCount: allTxns.length },
-      });
-      // #endregion
     } catch (txnErr) {
-      // #region agent log
-      debugAgentLog({
-        hypothesisId: 'H2',
-        location: 'service-worker.js:pullQBTransactions',
-        message: 'supabase qb_transactions upsert failed (non-fatal — qb_entries already written)',
-        data: { err: String(txnErr?.message || txnErr), rowCount: allTxns.length },
-      });
-      // #endregion
       logErr('pullQBTransactions: qb_transactions upsert failed (non-fatal)', txnErr);
       // Do NOT throw — qb_entries was already written successfully above
     }
@@ -1071,14 +1001,6 @@ async function runFullMatch(extractedChecks) {
     account: e.account,
   }));
 
-  // #region agent log
-  debugAgentLog({
-    hypothesisId: 'H3',
-    location: 'service-worker.js:runFullMatch',
-    message: 'supabase qb_entries for matching',
-    data: { tenantId, qbRowCount: qbTxns.length, checkCount: extractedChecks?.length ?? 0 },
-  });
-  // #endregion
 
   // Build a set of intuit_ids already cleared/stamped, drawn from two sources:
   // 1. chrome.storage.local.kyriqApproved — approvals from this/prior sessions on this browser.
@@ -1915,20 +1837,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           log('RUN_MATCHING', { checksCount: checksToMatch.length, fromCache: !msg.checks });
           const matches = await runFullMatch(checksToMatch);
           log('RUN_MATCHING done', { matchCount: matches?.length });
-          // #region agent log
-          const withQb = (matches || []).filter((m) => m.qbTxn).length;
-          debugAgentLog({
-            hypothesisId: 'H3',
-            location: 'service-worker.js:RUN_MATCHING',
-            message: 'match result summary',
-            data: {
-              checks: checksToMatch.length,
-              results: matches?.length ?? 0,
-              withQbTxn: withQb,
-              topScores: (matches || []).slice(0, 5).map((m) => m.score),
-            },
-          });
-          // #endregion
           return { success: true, matches };
         }
         case 'FIX_DISCREPANCY': {
@@ -1972,14 +1880,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
           if (!txnType || !qbIntuitId) {
             log('APPROVE_AND_CLEAR: missing QB identifiers — marking approved locally only');
-            // #region agent log
-            debugAgentLog({
-              hypothesisId: 'H4',
-              location: 'service-worker.js:APPROVE_AND_CLEAR',
-              message: 'missing txn identifiers',
-              data: { hasType: !!txnType, hasIntuitId: !!qbIntuitId, txn_id_prefix: qbTxn.txn_id ? String(qbTxn.txn_id).slice(0, 24) : null },
-            });
-            // #endregion
             // Still persist approval to DB and notify UI even without QB link
             let persistR = { ok: true }; // no checkId = nothing to persist = not a failure
             if (msg.checkId) {
@@ -2157,14 +2057,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             const { confirmedNote, noteStamped, status: qbStatus, readOnlyClearedStatus } = clearResult;
             const didClear = qbStatus === 'already_cleared';
             log(`APPROVE_AND_CLEAR: ${qbStatus} ${txnType} #${qbIntuitId} in QB`, { noteStamped, readOnlyClearedStatus });
-            // #region agent log
-            debugAgentLog({
-              hypothesisId: 'H4',
-              location: 'service-worker.js:APPROVE_AND_CLEAR',
-              message: `qb clear ${qbStatus}`,
-              data: { txnType, intuitIdLen: String(qbIntuitId).length, readOnlyClearedStatus },
-            });
-            // #endregion
             // Log QB clear action to audit_logs (general-purpose table, confirmed in live schema)
             // match_audit_log requires match_id FK and has no tenant_id — wrong table for this flow
             try {
@@ -2242,14 +2134,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             };
           } catch (e) {
             logErr('APPROVE_AND_CLEAR QB clear failed — approving locally only', e);
-            // #region agent log
-            debugAgentLog({
-              hypothesisId: 'H4',
-              location: 'service-worker.js:APPROVE_AND_CLEAR',
-              message: 'qb clear error — local-only approve',
-              data: { txnType, err: String(e?.message || e) },
-            });
-            // #endregion
             // Local-only approve: record status in DB but warn user that QB was not cleared.
             // Still store in local map so the reconciliation page can auto-check the row.
             await storeKyriqApproved().catch(() => {});

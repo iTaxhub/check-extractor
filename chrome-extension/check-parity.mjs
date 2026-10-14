@@ -286,4 +286,42 @@ ok('every page declared, no inline script or handler, icon paths resolve');
   ok(`${PAIRS.length} brand SVGs byte-identical to frontend/public`);
 }
 
+/* --- 11. Every declared permission is actually used ---------------------- */
+// A permission with no code behind it is a standard Chrome Web Store rejection,
+// and it is invisible in review because nothing breaks. This shipped: the
+// manifest declared `identity` and `notifications` with ZERO call sites each,
+// while the uploaded store package declared neither - repo and store had drifted
+// apart. Host permissions get the same treatment: `oauth.platform.intuit.com`
+// was declared and never fetched (OAuth is proxied through kyriq.com so the
+// client secret stays server side), and a localhost debug sink shipped as a
+// host permission in a production manifest.
+{
+  const manifest = JSON.parse(read('manifest.json'));
+  const code = ['background/service-worker.js', 'sidepanel/sidepanel.js',
+                'options/options.js', 'popup/popup.js', 'content/qbo-overlay.js']
+    .filter((f) => existsSync(join(EXT, f)))
+    .map(read)
+    .join(' ');
+
+  for (const perm of manifest.permissions ?? []) {
+    assert.ok(
+      code.includes('chrome.' + perm),
+      `manifest declares "${perm}" but no code calls chrome.${perm} - remove it, ` +
+      'an unused permission is a rejection cause and needs a justification you cannot write'
+    );
+  }
+
+  for (const host of manifest.host_permissions ?? []) {
+    assert.ok(
+      !/localhost|127\.0\.0\.1/.test(host),
+      `manifest ships the dev host "${host}" - a production package must not be able to reach localhost`
+    );
+    assert.ok(
+      !/^https:\/\/\*\./.test(host),
+      `host permission "${host}" is a wildcard across an entire platform; name the one origin actually contacted`
+    );
+  }
+  ok(`${(manifest.permissions ?? []).length} permissions, every one used; no dev or wildcard hosts`);
+}
+
 console.log(`\n${checks} checks passed.`);
