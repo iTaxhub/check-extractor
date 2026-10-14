@@ -84,15 +84,15 @@
     "semantic_hash": ""
   },
   "chrome-extension/background/service-worker.js": {
-    "mtime": 1791537962.862308,
-    "seen": 1791965001.723852,
-    "ast_hash": "dd9919ddc696827036eba4a738084852",
+    "mtime": 1791973301.9744723,
+    "seen": 1791985000.8881838,
+    "ast_hash": "db8e3889bb2bbd1bf6c2031e9bc41b03",
     "semantic_hash": ""
   },
   "chrome-extension/check-parity.mjs": {
-    "mtime": 1791966393.2150638,
-    "seen": 1791968280.6705775,
-    "ast_hash": "8cd96841aedd59134ca01d948705c17a",
+    "mtime": 1791973399.49976,
+    "seen": 1791985000.8881838,
+    "ast_hash": "343de2a5eb4644580e8209671de8e073",
     "semantic_hash": ""
   },
   "chrome-extension/content/qbo-overlay.js": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "chrome-extension/manifest.json": {
-    "mtime": 1791958095.0030777,
-    "seen": 1791965001.723852,
-    "ast_hash": "2c308643dca29a4210a2c32e97feb730",
+    "mtime": 1791973409.6058912,
+    "seen": 1791985000.8881838,
+    "ast_hash": "61258cb32ca784320be4eeb1815587c2",
     "semantic_hash": ""
   },
   "chrome-extension/options/options.js": {
@@ -282,9 +282,9 @@
     "semantic_hash": ""
   },
   "frontend/app/(app)/dashboard/components/ConfigureExtractionDialog.tsx": {
-    "mtime": 1791470792.4256113,
-    "seen": 1791965001.723852,
-    "ast_hash": "eb6683b777ba254872b6e46aad790b83",
+    "mtime": 1791972927.6131363,
+    "seen": 1791985000.8881838,
+    "ast_hash": "8fed04794ac357b2430c8217d38fd2c9",
     "semantic_hash": ""
   },
   "frontend/app/(app)/dashboard/components/DocumentSidebar.tsx": {
@@ -612,9 +612,9 @@
     "semantic_hash": ""
   },
   "frontend/app/layout.tsx": {
-    "mtime": 1791470792.520551,
-    "seen": 1791965001.723852,
-    "ast_hash": "9e5b37bb2fccb9b5b25317535983da49",
+    "mtime": 1791988549.1392753,
+    "seen": 1791988847.452134,
+    "ast_hash": "7763818c28004e1bf051b0599ad7a3b1",
     "semantic_hash": ""
   },
   "frontend/app/mfa/page.tsx": {
@@ -1056,15 +1056,15 @@
     "semantic_hash": ""
   },
   "frontend/components/landing/KyriqMark.tsx": {
-    "mtime": 1791958095.1274848,
-    "seen": 1791965001.7248514,
-    "ast_hash": "30b4ddca85e6b90f8a9218b6065ae06c",
+    "mtime": 1791985643.1372879,
+    "seen": 1791988847.452134,
+    "ast_hash": "ac8bc74d0ac4d0b6250b78c7d0c30c3b",
     "semantic_hash": ""
   },
   "frontend/components/landing/LandingPage.tsx": {
-    "mtime": 1791970248.5978599,
-    "seen": 1791970742.8017817,
-    "ast_hash": "4131dc56634cfde92cb000e2e6379997",
+    "mtime": 1791985437.8024316,
+    "seen": 1791988847.452134,
+    "ast_hash": "d3c2ed19af776875d33d2db231473280",
     "semantic_hash": ""
   },
   "frontend/components/landing/LegalShell.tsx": {
@@ -1146,9 +1146,9 @@
     "semantic_hash": ""
   },
   "frontend/components/ui/dialog.tsx": {
-    "mtime": 1791470792.5767221,
-    "seen": 1791965001.7248514,
-    "ast_hash": "6318152f554c9ff4d1d9bb739ff822e8",
+    "mtime": 1791973176.8432722,
+    "seen": 1791985000.8887224,
+    "ast_hash": "08a7ea9c4839d9902d1e37e0368457c0",
     "semantic_hash": ""
   },
   "frontend/components/ui/glass-card.tsx": {
@@ -1542,8 +1542,8 @@
     "semantic_hash": ""
   },
   "frontend/lib/supabase/proxy.ts": {
-    "mtime": 1791969667.0840693,
-    "seen": 1791970742.8017817,
+    "mtime": 1791973570.3211274,
+    "seen": 1791985000.8887224,
     "ast_hash": "114aa9bdd820505cd13cda922540e3e7",
     "semantic_hash": ""
   },
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "frontend/scripts/check-shell-tokens.ts": {
-    "mtime": 1791964896.751102,
-    "seen": 1791965001.7248514,
-    "ast_hash": "e4514a6d0ca538092b47aa1100ebe8ec",
+    "mtime": 1791973159.368911,
+    "seen": 1791985000.8887224,
+    "ast_hash": "4c48d8e6cad6b0c8f956d9962acd040f",
     "semantic_hash": ""
   },
   "frontend/scripts/check-stripe-billing.ts": {
@@ -2718,9 +2718,9 @@
     "semantic_hash": ""
   },
   "chrome-extension/WEB-STORE-SUBMISSION.md": {
-    "mtime": 1789479281.1725743,
-    "seen": 1791965001.7248514,
-    "ast_hash": "58c332bd8981dfd616b18576f0666870",
+    "mtime": 1791973644.1869323,
+    "seen": 1791985000.8887224,
+    "ast_hash": "fdfd5808140b0d70ff2c4681430eb830",
     "semantic_hash": ""
   },
   "chrome-extension/options/options.html": {
@@ -3585,6 +3585,132 @@
     "mtime": 1791969766.4925282,
     "seen": 1791970742.8017817,
     "ast_hash": "8024c7d02640964839a58ccef8d7db28",
+    "semantic_hash": ""
+  },
+  "chrome-extension/store-assets/build_tiles.py": {
+    "mtime": 1791973506.0957508,
+    "seen": 1791985000.8881838,
+    "ast_hash": "d1b6669ec2d5a6a25ce37c959a3a80ae",
+    "semantic_hash": ""
+  },
+  "docs/chrome-web-store/SUBMISSION.md": {
+    "mtime": 1791973634.349306,
+    "seen": 1791985000.8887224,
+    "ast_hash": "6528b645f2be488f10cb458bb8016707",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/README.md": {
+    "mtime": 1791985690.9765122,
+    "seen": 1791988847.4532313,
+    "ast_hash": "89857a124597ee1778ffdcd37ae81b47",
+    "semantic_hash": ""
+  },
+  "chrome-extension/store-assets/marquee-promo-tile-1400x560.png": {
+    "mtime": 1791973506.5489223,
+    "seen": 1791985000.8892686,
+    "ast_hash": "e3221abb4938e44dbb2a60e79b71476f",
+    "semantic_hash": ""
+  },
+  "chrome-extension/store-assets/small-promo-tile-440x280.png": {
+    "mtime": 1791973506.4058032,
+    "seen": 1791985000.8892686,
+    "ast_hash": "6766b1d2d6b389598a5c21ea6291c4ad",
+    "semantic_hash": ""
+  },
+  "chrome-extension/store-assets/store-icon-128.png": {
+    "mtime": 1791973433.4530218,
+    "seen": 1791985000.8892686,
+    "ast_hash": "4cbb275c33a77579b3c9cc2dedb89100",
+    "semantic_hash": ""
+  },
+  "docs/design/kyriq-landing-page-concept-v1.png": {
+    "mtime": 1791983103.608246,
+    "seen": 1791985000.8892686,
+    "ast_hash": "501d3b867c66709c2c1cb61135638733",
+    "semantic_hash": ""
+  },
+  "docs/design/kyriq-landing-page-concept-v2.png": {
+    "mtime": 1791983294.5236595,
+    "seen": 1791985000.8892686,
+    "ast_hash": "840883112a9952df0a6049013aa9e35d",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/closing-cta-ribbons-4k-v1.png": {
+    "mtime": 1791983741.8127525,
+    "seen": 1791985000.8892686,
+    "ast_hash": "6c2354905154a2e020f57386f171453e",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/hero-match-sculpture-4k-v1.png": {
+    "mtime": 1791983732.5786235,
+    "seen": 1791985000.8892686,
+    "ast_hash": "c335245110b380d7f5e754ae32cefba1",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/kyriq-iq-characters-4k-v1.png": {
+    "mtime": 1791983730.2189689,
+    "seen": 1791985000.8892686,
+    "ast_hash": "af007dad00ec4d61b246eec3f8078bd2",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/match-review-dashboard-4k-v1.png": {
+    "mtime": 1791983736.8936992,
+    "seen": 1791985000.8892686,
+    "ast_hash": "fe4ee579beb008cbabd816bc317451e9",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/quickbooks-extension-4k-v1.png": {
+    "mtime": 1791983739.2857385,
+    "seen": 1791985000.8892686,
+    "ast_hash": "5598c72c45e31d2be579109e2f0d8119",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/statement-to-quickbooks-4k-v1.png": {
+    "mtime": 1791983734.672187,
+    "seen": 1791985000.8892686,
+    "ast_hash": "ecb8ec090cbe6106541e2dadbe0b7587",
+    "semantic_hash": ""
+  },
+  "frontend/scripts/build-og-card.py": {
+    "mtime": 1791988568.6132505,
+    "seen": 1791988847.4532313,
+    "ast_hash": "9775f1cfe61f9b72260580256e267f91",
+    "semantic_hash": ""
+  },
+  "frontend/public/brand/README.md": {
+    "mtime": 1791985650.603272,
+    "seen": 1791988847.4532313,
+    "ast_hash": "f1ffd399ce3450fc478277173a01f6bc",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/faq-background-4k-v1.png": {
+    "mtime": 1791985284.169423,
+    "seen": 1791988847.4532313,
+    "ast_hash": "ac03384cff9bb02948e5850b6bf87fbe",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/firms-background-4k-v1.png": {
+    "mtime": 1791985280.9571872,
+    "seen": 1791988847.4532313,
+    "ast_hash": "378069050658a3bbe0436d1589ad2f49",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/og-card-1200x630.jpg": {
+    "mtime": 1791988569.3241608,
+    "seen": 1791988847.4532313,
+    "ast_hash": "40f4131386971a42f45960aa3d24386e",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/pricing-background-4k-v1.png": {
+    "mtime": 1791985282.3011124,
+    "seen": 1791988847.4532313,
+    "ast_hash": "5dfb10b09363924b7134ed0726738306",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/workflow-background-4k-v1.png": {
+    "mtime": 1791985279.8629236,
+    "seen": 1791988847.4532313,
+    "ast_hash": "4ecdd670f4cee564062790f72bb8e67e",
     "semantic_hash": ""
   }
 }

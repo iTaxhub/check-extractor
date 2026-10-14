@@ -84,15 +84,15 @@
     "semantic_hash": ""
   },
   "chrome-extension/background/service-worker.js": {
-    "mtime": 1791537962.862308,
-    "seen": 1791965001.723852,
-    "ast_hash": "dd9919ddc696827036eba4a738084852",
+    "mtime": 1791973301.9744723,
+    "seen": 1791985000.8881838,
+    "ast_hash": "db8e3889bb2bbd1bf6c2031e9bc41b03",
     "semantic_hash": ""
   },
   "chrome-extension/check-parity.mjs": {
-    "mtime": 1791966393.2150638,
-    "seen": 1791968280.6705775,
-    "ast_hash": "8cd96841aedd59134ca01d948705c17a",
+    "mtime": 1791973399.49976,
+    "seen": 1791985000.8881838,
+    "ast_hash": "343de2a5eb4644580e8209671de8e073",
     "semantic_hash": ""
   },
   "chrome-extension/content/qbo-overlay.js": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "chrome-extension/manifest.json": {
-    "mtime": 1791958095.0030777,
-    "seen": 1791965001.723852,
-    "ast_hash": "2c308643dca29a4210a2c32e97feb730",
+    "mtime": 1791973409.6058912,
+    "seen": 1791985000.8881838,
+    "ast_hash": "61258cb32ca784320be4eeb1815587c2",
     "semantic_hash": ""
   },
   "chrome-extension/options/options.js": {
@@ -282,9 +282,9 @@
     "semantic_hash": ""
   },
   "frontend/app/(app)/dashboard/components/ConfigureExtractionDialog.tsx": {
-    "mtime": 1791470792.4256113,
-    "seen": 1791965001.723852,
-    "ast_hash": "eb6683b777ba254872b6e46aad790b83",
+    "mtime": 1791972927.6131363,
+    "seen": 1791985000.8881838,
+    "ast_hash": "8fed04794ac357b2430c8217d38fd2c9",
     "semantic_hash": ""
   },
   "frontend/app/(app)/dashboard/components/DocumentSidebar.tsx": {
@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "frontend/app/mfa/page.tsx": {
-    "mtime": 1791958095.0744503,
-    "seen": 1791965001.723852,
-    "ast_hash": "7c8ffaa435ab9676012d42f303bc6df6",
+    "mtime": 1791968903.5455685,
+    "seen": 1791970742.8007836,
+    "ast_hash": "a7048932b7c8cc4b3a52536b664b79e3",
     "semantic_hash": ""
   },
   "frontend/app/not-found.tsx": {
@@ -924,9 +924,9 @@
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/components/UserDetailDrawer.tsx": {
-    "mtime": 1791958095.108465,
-    "seen": 1791965001.7248514,
-    "ast_hash": "5db214edeea6451e05418332ca034f90",
+    "mtime": 1791970142.3066466,
+    "seen": 1791970742.8017817,
+    "ast_hash": "326206f5517a7581b241868702d7a3d3",
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/components/UserMenu.tsx": {
@@ -996,9 +996,9 @@
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/pages/ProfitCalculatorPage.tsx": {
-    "mtime": 1791964896.737872,
-    "seen": 1791965001.7248514,
-    "ast_hash": "0ea5a3162625f80113f10e70c0c9dd0b",
+    "mtime": 1791970509.0415053,
+    "seen": 1791970742.8017817,
+    "ast_hash": "70b5aac25c2e5f6bf82bcaef31440d7a",
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/pages/PulsePage.tsx": {
@@ -1008,9 +1008,9 @@
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/pages/RevenuePage.tsx": {
-    "mtime": 1791964896.7481046,
-    "seen": 1791965001.7248514,
-    "ast_hash": "a4fdeb9a548e43586052f604dbe01d20",
+    "mtime": 1791970165.4569676,
+    "seen": 1791970742.8017817,
+    "ast_hash": "b933d5fc801da68aab258947dc53a97b",
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/pages/SettingsPage.tsx": {
@@ -1062,9 +1062,9 @@
     "semantic_hash": ""
   },
   "frontend/components/landing/LandingPage.tsx": {
-    "mtime": 1791967559.244475,
-    "seen": 1791968280.6705775,
-    "ast_hash": "9e8f8053613d41f9779cc7e2ded5c4ba",
+    "mtime": 1791970248.5978599,
+    "seen": 1791970742.8017817,
+    "ast_hash": "4131dc56634cfde92cb000e2e6379997",
     "semantic_hash": ""
   },
   "frontend/components/landing/LegalShell.tsx": {
@@ -1146,9 +1146,9 @@
     "semantic_hash": ""
   },
   "frontend/components/ui/dialog.tsx": {
-    "mtime": 1791470792.5767221,
-    "seen": 1791965001.7248514,
-    "ast_hash": "6318152f554c9ff4d1d9bb739ff822e8",
+    "mtime": 1791973176.8432722,
+    "seen": 1791985000.8887224,
+    "ast_hash": "08a7ea9c4839d9902d1e37e0368457c0",
     "semantic_hash": ""
   },
   "frontend/components/ui/glass-card.tsx": {
@@ -1158,9 +1158,9 @@
     "semantic_hash": ""
   },
   "frontend/components/ui/index.ts": {
-    "mtime": 1791470792.5789542,
-    "seen": 1791965001.7248514,
-    "ast_hash": "dd48ec6078b626397440757c1f6a4c82",
+    "mtime": 1791968811.1048584,
+    "seen": 1791970742.8017817,
+    "ast_hash": "62c4d2808bb739ce1de0b846eac141d7",
     "semantic_hash": ""
   },
   "frontend/components/ui/input.tsx": {
@@ -1542,8 +1542,8 @@
     "semantic_hash": ""
   },
   "frontend/lib/supabase/proxy.ts": {
-    "mtime": 1791960345.4398458,
-    "seen": 1791965001.7248514,
+    "mtime": 1791973570.3211274,
+    "seen": 1791985000.8887224,
     "ast_hash": "114aa9bdd820505cd13cda922540e3e7",
     "semantic_hash": ""
   },
@@ -2196,9 +2196,9 @@
     "semantic_hash": ""
   },
   "frontend/scripts/check-landing.ts": {
-    "mtime": 1791958095.2039855,
-    "seen": 1791965001.7248514,
-    "ast_hash": "c933b49e524617b75b6f559b2b93e830",
+    "mtime": 1791970060.9660087,
+    "seen": 1791970742.8017817,
+    "ast_hash": "c4009da6e39d36c25acec5c8f2581cd7",
     "semantic_hash": ""
   },
   "frontend/scripts/check-parcel-d.ts": {
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "frontend/scripts/check-shell-tokens.ts": {
-    "mtime": 1791964896.751102,
-    "seen": 1791965001.7248514,
-    "ast_hash": "e4514a6d0ca538092b47aa1100ebe8ec",
+    "mtime": 1791973159.368911,
+    "seen": 1791985000.8887224,
+    "ast_hash": "4c48d8e6cad6b0c8f956d9962acd040f",
     "semantic_hash": ""
   },
   "frontend/scripts/check-stripe-billing.ts": {
@@ -2718,9 +2718,9 @@
     "semantic_hash": ""
   },
   "chrome-extension/WEB-STORE-SUBMISSION.md": {
-    "mtime": 1789479281.1725743,
-    "seen": 1791965001.7248514,
-    "ast_hash": "58c332bd8981dfd616b18576f0666870",
+    "mtime": 1791973644.1869323,
+    "seen": 1791985000.8887224,
+    "ast_hash": "fdfd5808140b0d70ff2c4681430eb830",
     "semantic_hash": ""
   },
   "chrome-extension/options/options.html": {
@@ -3555,6 +3555,120 @@
     "mtime": 1791967194.7899346,
     "seen": 1791968280.6705775,
     "ast_hash": "6b67384aee032a877c1bdcbf6411642a",
+    "semantic_hash": ""
+  },
+  "frontend/components/admin-kit/lib/profit-model.ts": {
+    "mtime": 1791970534.274621,
+    "seen": 1791970742.8017817,
+    "ast_hash": "91752e20f4191359baecaab03f9bd83a",
+    "semantic_hash": ""
+  },
+  "frontend/components/ui/otp-input.tsx": {
+    "mtime": 1791968790.5670364,
+    "seen": 1791970742.8017817,
+    "ast_hash": "9ca76c7e12e91a51c0f4520b99ba24ef",
+    "semantic_hash": ""
+  },
+  "frontend/lib/pricing.ts": {
+    "mtime": 1791969996.2433004,
+    "seen": 1791970742.8017817,
+    "ast_hash": "9cfa9be5403990f3891bf42170f08ec4",
+    "semantic_hash": ""
+  },
+  "frontend/scripts/check-profit-model.ts": {
+    "mtime": 1791970517.4414833,
+    "seen": 1791970742.8017817,
+    "ast_hash": "1e80cb469c806940b0b68cdf8fa75f58",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/042_export_history_matches_schema.sql": {
+    "mtime": 1791969766.4925282,
+    "seen": 1791970742.8017817,
+    "ast_hash": "8024c7d02640964839a58ccef8d7db28",
+    "semantic_hash": ""
+  },
+  "chrome-extension/store-assets/build_tiles.py": {
+    "mtime": 1791973506.0957508,
+    "seen": 1791985000.8881838,
+    "ast_hash": "d1b6669ec2d5a6a25ce37c959a3a80ae",
+    "semantic_hash": ""
+  },
+  "docs/chrome-web-store/SUBMISSION.md": {
+    "mtime": 1791973634.349306,
+    "seen": 1791985000.8887224,
+    "ast_hash": "6528b645f2be488f10cb458bb8016707",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/README.md": {
+    "mtime": 1791984086.9087622,
+    "seen": 1791985000.8887224,
+    "ast_hash": "30932a12b4b6537f6245a1f76e119c4f",
+    "semantic_hash": ""
+  },
+  "chrome-extension/store-assets/marquee-promo-tile-1400x560.png": {
+    "mtime": 1791973506.5489223,
+    "seen": 1791985000.8892686,
+    "ast_hash": "e3221abb4938e44dbb2a60e79b71476f",
+    "semantic_hash": ""
+  },
+  "chrome-extension/store-assets/small-promo-tile-440x280.png": {
+    "mtime": 1791973506.4058032,
+    "seen": 1791985000.8892686,
+    "ast_hash": "6766b1d2d6b389598a5c21ea6291c4ad",
+    "semantic_hash": ""
+  },
+  "chrome-extension/store-assets/store-icon-128.png": {
+    "mtime": 1791973433.4530218,
+    "seen": 1791985000.8892686,
+    "ast_hash": "4cbb275c33a77579b3c9cc2dedb89100",
+    "semantic_hash": ""
+  },
+  "docs/design/kyriq-landing-page-concept-v1.png": {
+    "mtime": 1791983103.608246,
+    "seen": 1791985000.8892686,
+    "ast_hash": "501d3b867c66709c2c1cb61135638733",
+    "semantic_hash": ""
+  },
+  "docs/design/kyriq-landing-page-concept-v2.png": {
+    "mtime": 1791983294.5236595,
+    "seen": 1791985000.8892686,
+    "ast_hash": "840883112a9952df0a6049013aa9e35d",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/closing-cta-ribbons-4k-v1.png": {
+    "mtime": 1791983741.8127525,
+    "seen": 1791985000.8892686,
+    "ast_hash": "6c2354905154a2e020f57386f171453e",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/hero-match-sculpture-4k-v1.png": {
+    "mtime": 1791983732.5786235,
+    "seen": 1791985000.8892686,
+    "ast_hash": "c335245110b380d7f5e754ae32cefba1",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/kyriq-iq-characters-4k-v1.png": {
+    "mtime": 1791983730.2189689,
+    "seen": 1791985000.8892686,
+    "ast_hash": "af007dad00ec4d61b246eec3f8078bd2",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/match-review-dashboard-4k-v1.png": {
+    "mtime": 1791983736.8936992,
+    "seen": 1791985000.8892686,
+    "ast_hash": "fe4ee579beb008cbabd816bc317451e9",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/quickbooks-extension-4k-v1.png": {
+    "mtime": 1791983739.2857385,
+    "seen": 1791985000.8892686,
+    "ast_hash": "5598c72c45e31d2be579109e2f0d8119",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/statement-to-quickbooks-4k-v1.png": {
+    "mtime": 1791983734.672187,
+    "seen": 1791985000.8892686,
+    "ast_hash": "ecb8ec090cbe6106541e2dadbe0b7587",
     "semantic_hash": ""
   }
 }

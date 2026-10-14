@@ -1,29 +1,29 @@
 # Graph Report - cheque-extractor  (2026-10-14)
 
 ## Corpus Check
-- 525 files · ~654,584 words
+- 530 files · ~3,896,208 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 4929 nodes · 9480 edges · 276 communities (191 shown, 49 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 150 edges (avg confidence: 0.85)
+- 4954 nodes · 9501 edges · 286 communities (197 shown, 53 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 151 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ad6fb0c6`
+- Built from commit: `b857464c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - sidepanel.js
-- requireCapability
+- dropdown-menu.tsx
 - admin-fns/index.ts
 - check_extractor.py
 - cn
 - Chrome Extension: Background Service Worker
 - check-email.ts
 - qbo-overlay.js
-- team-helpers.ts
+- batch-state.ts
 - command.tsx
 - popup.js
 - next
@@ -36,7 +36,7 @@
 - API Keys & Security Management
 - 🚀 Production-Ready Summary
 - QB Comparisons - Implementation Summary
-- createServiceClient
+- history/page.tsx
 - QuickBooks Production Readiness Package
 - service-worker.js
 - 🏠 Local Development Setup
@@ -46,11 +46,11 @@
 - start_extraction
 - reconcile/page.tsx
 - app.py
-- dashboard/page.tsx
+- frontend/lib/pricing.ts
 - qb-comparisons/page.tsx
-- react
+- SettingsPage.tsx
 - voice/page.tsx
-- history/page.tsx
+- firm-dashboard/page.tsx
 - Chrome Web Store Assets Guide
 - 🚀 Deployment Guide - Railway + QuickBooks OAuth
 - Railway One-Click Deployment Setup — Complete ✅
@@ -66,17 +66,17 @@
 - Kyriq — Railway Deployment Guide
 - ⚠️ KNOWN LIMITATIONS
 - QuickBooks OAuth URLs Configuration Guide
-- auditLog
+- lab/page.tsx
 - Google Cloud Console Billing Integration Guide
 - isSuperAdmin
-- devDependencies
+- email-report.ts
 - compilerOptions
 - 🎯 Intuit App URLs - Quick Reference
 - matching-algorithm.ts
-- lucide-react
+- react
 - Kyriq — Automated Cheque Extraction
 - ✅ PRE-SUBMISSION CHECKLIST
-- email-report.ts
+- send-test-emails.ts
 - 5. Approved Email Copy
 - Critical Bug Fixes - Job Completion Errors
 - Kyriq System Audit — Critical Findings & Action Plan
@@ -84,7 +84,7 @@
 - Fix: "QuickBooks OAuth not configured" Error
 - How OAuth Works (n8n-style) vs Current Implementation
 - upload/page.tsx
-- batch-state.ts
+- templates.ts
 - 🔧 Railway Deployment Fix
 - Real-Time Progress Tracking & UI Communication
 - QuickBooks Production - Compliance Statements
@@ -96,19 +96,19 @@
 - qbo-state.check.ts
 - _sb_headers
 - service.ts
-- firm-dashboard/page.tsx
+- ProfitCalculatorPage.tsx
 - tenants Table
 - Architecture
-- templates.ts
-- qb-token.ts
+- check-stripe-billing.ts
+- lucide-react
 - update_integration_settings
-- review/[id]/page.tsx
+- GlassCard
 - ✅ Your Data IS Saved in Supabase!
 - clear-transaction.ts
 - Kyriq v17 build + premium glass redesign
 - Kyriq build checklist
 - check-parity.mjs
-- useQBConnections.tsx
+- Supabase API Client Library
 - frontend/package.json
 - APPLY_PENDING_MIGRATIONS.sql
 - 4. Conflicts to resolve
@@ -149,18 +149,18 @@
 - router.tsx
 - Pre-flight (both single-company and multi-company tenants)
 - usage-gate.ts
-- sendEmail
+- notices.ts
 - 033_stripe_billing.sql
 - deploy
-- lab/page.tsx
+- webhook.ts
 - Kyriq build handover
 - Quick Start Testing (5 Minutes)
 - Prototype v12 review (kyriq-developer-handoff-v12-final)
 - Stripe and Vercel setup
-- FieldEditor.tsx
+- MatchRow.tsx
 - RevenuePage.tsx
 - 029_comp_grants_and_trial_gate.sql
-- Badge
+- check-parcel-h.ts
 - 030_roles_team_rls_and_mfa.sql
 - 013_qb_multi_company_match.sql
 - UserDetailDrawer.tsx
@@ -168,7 +168,7 @@
 - check_detection_check.py
 - public.record_check_processed
 - Kyriq v2 — progress update
-- send-test-emails.ts
+- check-qb-switchers.ts
 - _supabase_select
 - public.tenants
 - 027_usage_ledger.sql
@@ -212,8 +212,8 @@
 - trg_tenants_trial_window
 - trg_usage_ledger_append_only
 - BaseModel
-- dropdown-menu.tsx
-- frontend/components/ui/dialog.tsx
+- UsersPage.tsx
+- Chrome Web Store submission — Kyriq
 - public.processing_stages
 - check-parcel-f.ts
 - public.qb_connections
@@ -224,7 +224,7 @@
 - public.app_settings
 - public.audit_logs
 - build.mjs
-- scripts
+- formatting.ts
 - public.app_settings
 - public.audit_logs
 - public.check_jobs
@@ -244,20 +244,30 @@
 - 006_fix_signup_trigger.sql
 - 007_fix_table_name_mismatch.sql
 - public.matches
-- summary.ts
+- report-pdf.ts
 - 040_waitlist.sql
 - public.waitlist
 - public.qb_entries
 - public.quickbooks_entries
 - public.export_history
 - public.export_history
+- provision-stripe.ts
+- VoicePage
+- build_tiles.py
+- next.config.js
+- landing/README.md
+- sendEmail
+- accounts.ts
+- unsubscribe.ts
+- brand/README.md
+- build-og-card.py
 - .mcp.json
 - tailwind.config.js
 - setup.sh script
 - verify-deployment.sh
 
 ## God Nodes (most connected - your core abstractions)
-1. `cn()` - 251 edges
+1. `cn()` - 252 edges
 2. `react` - 133 edges
 3. `next` - 100 edges
 4. `lucide-react` - 96 edges
@@ -271,14 +281,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `toQBEntries()` --references--> `DB Table: qb_entries`  [INFERRED]
   frontend/lib/utils/qboParser.ts → supabase/migrations/001_schema.sql
+- `handler()` --shares_data_with--> `DB Table: checks`  [INFERRED]
+  frontend/pages/api/matches/index.ts → supabase/migrations/001_schema.sql
+- `handler()` --shares_data_with--> `DB Table: qb_transactions`  [INFERRED]
+  frontend/pages/api/matches/index.ts → supabase/migrations/001_schema.sql
 - `handler()` --conceptually_related_to--> `DB Table: integrations`  [INFERRED]
   frontend/pages/api/qbo/pull-checks.ts → supabase/migrations/001_schema.sql
 - `Job By ID Handler` --references--> `DB Table: check_jobs`  [EXTRACTED]
   frontend/pages/api/jobs/[id].ts → supabase/migrations/001_schema.sql
-- `Migration 024: Add cleared_status to qb_transactions` --conceptually_related_to--> `Service Worker: pullQBTransactions()`  [INFERRED]
-  supabase/migrations/024_add_cleared_status_to_qb_transactions.sql → chrome-extension/background/service-worker.js
-- `_supabase_insert()` --references--> `api_usage_logs Table`  [EXTRACTED]
-  backend/api_server.py → supabase/migrations/012_add_api_usage_tracking.sql
 
 ## Import Cycles
 - None detected.
@@ -322,15 +332,15 @@
 - **QuickBooks OAuth Flow** — frontend_pages_api_qbo_auth_handler, frontend_pages_api_qbo_callback_handler, db_integrations, db_qb_connections, external_intuit_oauth [INFERRED 0.95]
 - **Supabase Client Factory Layer** — frontend_lib_supabase_api_createauthenticatedclient, frontend_lib_supabase_api_createclientfromcookies, supabaseapi_createserviceclient, supabaseclient_createclient, supabaseserver_createclient, supabaseserver_createserviceclient [INFERRED 0.95]
 
-## Communities (276 total, 49 thin omitted)
+## Communities (286 total, 53 thin omitted)
 
 ### Community 0 - "sidepanel.js"
 Cohesion: 0.08
 Nodes (81): appendLog(), approveAndClear(), attentionFlags(), autoApproveCleared(), barColor(), bindEvents(), handleLogin(), handleSignup() (+73 more)
 
-### Community 1 - "requireCapability"
-Cohesion: 0.31
-Nodes (20): BATCH_COLUMNS, BatchError, cleanText(), isMissingObject(), isUuid(), loadBatch(), loadBatchCounts(), sendBatchError() (+12 more)
+### Community 1 - "dropdown-menu.tsx"
+Cohesion: 0.09
+Nodes (20): UserMenu(), Avatar(), AvatarFallback(), AvatarImage(), DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent(), DropdownMenuItem() (+12 more)
 
 ### Community 2 - "admin-fns/index.ts"
 Cohesion: 0.09
@@ -342,7 +352,7 @@ Nodes (25): CheckExtractorApp Class, _box_overlaps_any(), _cluster_positions(), 
 
 ### Community 4 - "cn"
 Cohesion: 0.04
-Nodes (63): Framer Motion Animation Library, ContinueCard(), UploadSlot(), Props, UploadProgress(), UploadStatus, NotFound(), DataTable() (+55 more)
+Nodes (67): Framer Motion Animation Library, DocumentSidebar(), Job, Props, STATUS_KEY, StatusIcon(), ContinueCard(), UploadSlot() (+59 more)
 
 ### Community 5 - "Chrome Extension: Background Service Worker"
 Cohesion: 0.06
@@ -356,21 +366,21 @@ Nodes (20): emailConfig, EmailRenderError, renderTemplate(), behaviouralChecks()
 Cohesion: 0.11
 Nodes (61): accountMatches(), applyOverlayVisibility(), buildLookup(), createStatusBar(), dismissEl(), fetchInitialUIState(), findClearedCheckbox(), findDgridRegisterRows() (+53 more)
 
-### Community 8 - "team-helpers.ts"
-Cohesion: 0.14
-Nodes (26): RFC-5322, AuthContext, ALL_CAPABILITIES, can(), CAPABILITIES, Capability, ADMINISTRATOR, Expect (+18 more)
+### Community 8 - "batch-state.ts"
+Cohesion: 0.06
+Nodes (83): RFC-5322, BATCH_COLUMNS, BatchError, cleanText(), isIsoDate(), isMissingObject(), isUuid(), loadBatch() (+75 more)
 
 ### Community 9 - "command.tsx"
-Cohesion: 0.13
-Nodes (17): Command(), CommandDialog(), CommandEmpty(), CommandGroup(), CommandInput(), CommandItem(), CommandList(), CommandSeparator() (+9 more)
+Cohesion: 0.08
+Nodes (26): CommandPalette(), TopBar(), useDateRange(), Command(), CommandDialog(), CommandEmpty(), CommandGroup(), CommandInput() (+18 more)
 
 ### Community 10 - "popup.js"
 Cohesion: 0.20
 Nodes (27): approveAndClear(), barColor(), bindEvents(), bindMatchEvents(), connections, extractedChecks, fileToBase64(), fmt() (+19 more)
 
 ### Community 11 - "next"
-Cohesion: 0.08
-Nodes (44): clearQBTransactionServer Function, DB Table: integrations, DB Table: qb_connections, DB Table: qb_entries, DB Table: vouched_checks, Vouched Checks DB Table, Extension QB Refresh Token Handler, Intuit OAuth Token Endpoint (+36 more)
+Cohesion: 0.07
+Nodes (45): DB Table: qb_entries, DB Table: vouched_checks, External QuickBooks Online API, allowedExtensionOrigin(), applyExtensionCors(), classifyRefreshFailure(), QbConnectionStatus, cred() (+37 more)
 
 ### Community 12 - "check-history-reports.ts"
 Cohesion: 0.06
@@ -385,16 +395,16 @@ Cohesion: 0.04
 Nodes (47): 1.1 Prepare Repository, 1.2 Deploy to Vercel, 1.3 Configure Environment Variables, 1.4 Verify Deployment, 2.1 Prepare Backend, 2.2 Deploy to Railway, 2.3 Configure Environment Variables, 2.4 Verify Backend (+39 more)
 
 ### Community 15 - "ui/index.ts"
-Cohesion: 0.05
-Nodes (53): ExportFormat, ExportPage(), Job, ComparisonControlsBar(), ComparisonControlsBarProps, Props, Role, ROLE_TONE (+45 more)
+Cohesion: 0.06
+Nodes (55): CheckRangeMode, ConfigureExtractionDialog(), ExtractionConfig, Job, JobCheck, PageRangeMode, Props, ComparisonControlsBar() (+47 more)
 
 ### Community 16 - "api_server.py"
 Cohesion: 0.09
 Nodes (30): _ext_conf(), get_api_keys_status(), get_check_image(), get_integration_settings(), get_job(), get_job_pdf(), get_ocr_result(), get_page_image() (+22 more)
 
 ### Community 17 - "AnalyticsPage.tsx"
-Cohesion: 0.05
-Nodes (48): callEdgeFn(), formatNumber(), AdminHealth, adminKeys, AdminMetrics, DateRange, useAdminHealth(), useAdminMetrics() (+40 more)
+Cohesion: 0.07
+Nodes (38): callEdgeFn(), formatNumber(), BreakdownCard(), ConversionTab(), EventsQueryResponse, EventsTab(), EventSummary, FeatureRow (+30 more)
 
 ### Community 18 - "API Keys & Security Management"
 Cohesion: 0.04
@@ -408,9 +418,9 @@ Nodes (43): **1. Login Page** - `/login`, **1. Logout Button** - `frontend/compo
 Cohesion: 0.05
 Nodes (43): 1. Modular Component Architecture, 2. Advanced Features Implemented, 3. UI/UX Improvements, 4. Performance Optimizations, After (Modular), Before (Monolithic), Best Practices, Code Quality (+35 more)
 
-### Community 21 - "createServiceClient"
-Cohesion: 0.13
-Nodes (20): generateRecoveryCode(), hashRecoveryCode(), RECOVERY_CODE_COUNT, createServiceClient(), handler(), handler(), handler(), escapeHtml() (+12 more)
+### Community 21 - "history/page.tsx"
+Cohesion: 0.17
+Nodes (24): approverLabel(), fmtDate(), HistoryPage(), STATUS_PILL, STATUS_TABS, monthWindow(), ReportsPage(), SOURCE_LABELS (+16 more)
 
 ### Community 22 - "QuickBooks Production Readiness Package"
 Cohesion: 0.05
@@ -418,7 +428,7 @@ Nodes (42): 1. **MASTER-CHECKLIST.md** ⭐ START HERE, 1. Switch to Production K
 
 ### Community 23 - "service-worker.js"
 Cohesion: 0.12
-Nodes (41): applyDevConfigOverride(), BOOTSTRAP_CONFIG, broadcastOverlayState(), buildKyriqNote(), clearQBTransaction(), clearSessionAndNotify(), debugAgentLog(), DEV_OVERRIDABLE (+33 more)
+Nodes (40): applyDevConfigOverride(), BOOTSTRAP_CONFIG, broadcastOverlayState(), buildKyriqNote(), clearQBTransaction(), clearSessionAndNotify(), DEV_OVERRIDABLE, extractCheckData() (+32 more)
 
 ### Community 24 - "🏠 Local Development Setup"
 Cohesion: 0.05
@@ -441,32 +451,32 @@ Cohesion: 0.11
 Nodes (28): _assert_processing_allowed(), _auth_context(), _claims_from_request(), _duplicate_guard(), lab_run(), _parse_iif_format(), post, Upload a PDF file, start detection + extraction in background. (+20 more)
 
 ### Community 29 - "reconcile/page.tsx"
-Cohesion: 0.10
+Cohesion: 0.09
 Nodes (30): Reconcile(), ApprovePanel(), ApprovePanelProps, ConnectQuickBooksCard(), MatchProgress(), MatchProgressProps, labelFor(), StartBatchCard() (+22 more)
 
 ### Community 30 - "app.py"
 Cohesion: 0.09
 Nodes (37): Any, _Act, approve_all_exact(), approve_match(), chat(), ChatIn, _check_card(), flag_check() (+29 more)
 
-### Community 31 - "dashboard/page.tsx"
-Cohesion: 0.08
-Nodes (28): CheckRangeMode, ConfigureExtractionDialog(), ExtractionConfig, Job, JobCheck, PageRangeMode, Props, DocumentSidebar() (+20 more)
+### Community 31 - "frontend/lib/pricing.ts"
+Cohesion: 0.17
+Nodes (13): CalcInputs, MonthResult, ServiceItem, TierRow, INCLUDED_IN_EVERY_PLAN, OVERAGE_USD_PER_CHECK, Plan, planByTier() (+5 more)
 
 ### Community 32 - "qb-comparisons/page.tsx"
 Cohesion: 0.08
-Nodes (53): COLUMNS, ColumnSettings(), ColumnSettingsProps, ComparisonTable(), ComparisonTableProps, DENSE_GRID, MATCH_STATUS, BANNER (+45 more)
+Nodes (51): COLUMNS, ColumnSettings(), ColumnSettingsProps, ComparisonTable(), ComparisonTableProps, DENSE_GRID, MATCH_STATUS, BANNER (+43 more)
 
-### Community 33 - "react"
-Cohesion: 0.06
-Nodes (49): ChartCard(), ChartCardProps, EmptyState(), EmptyStateProps, KpiTile(), KpiTileProps, PageHeader(), PageHeaderProps (+41 more)
+### Community 33 - "SettingsPage.tsx"
+Cohesion: 0.15
+Nodes (11): ChartCard(), EmptyState(), EmptyStateProps, AdminHealth, adminKeys, AdminMetrics, DateRange, useAdminMetrics() (+3 more)
 
 ### Community 34 - "voice/page.tsx"
-Cohesion: 0.06
-Nodes (28): Action, CheckCard, firstMatch(), FocusPanel(), IssueRow, MatchLite, money(), pct() (+20 more)
+Cohesion: 0.11
+Nodes (16): Action, CheckCard, firstMatch(), FocusPanel(), IssueRow, MatchLite, money(), pct() (+8 more)
 
-### Community 35 - "history/page.tsx"
-Cohesion: 0.17
-Nodes (24): approverLabel(), fmtDate(), HistoryPage(), STATUS_PILL, STATUS_TABS, monthWindow(), ReportsPage(), SOURCE_LABELS (+16 more)
+### Community 35 - "firm-dashboard/page.tsx"
+Cohesion: 0.08
+Nodes (34): AuditEntry, avgConfidence(), extConf(), extVal(), FirmDashboardPage(), fmtTime(), isExtracted(), Job (+26 more)
 
 ### Community 36 - "Chrome Web Store Assets Guide"
 Cohesion: 0.06
@@ -514,7 +524,7 @@ Nodes (32): 1. **Dual-Column Comparison Table**, 2. **QuickBooks Connection & Co
 
 ### Community 47 - "match-helpers.ts"
 Cohesion: 0.10
-Nodes (41): Check Fields Update Handler, Check Update Handler, DB Table: audit_logs, DB Table: checks, DB Table: match_audit_log, DB Table: matches, DB Table: qb_transactions, qb_connections DB Table (+33 more)
+Nodes (32): qb_connections DB Table, user_profiles DB Table, audit(), getActiveRealm(), getAuthContext(), getValidToken(), readAal(), generateRecoveryCode() (+24 more)
 
 ### Community 48 - "Kyriq — Railway Deployment Guide"
 Cohesion: 0.06
@@ -528,21 +538,21 @@ Nodes (31): 1. Missing Authorization Headers in QB Comparison Page, 1. QuickBook
 Cohesion: 0.06
 Nodes (31): ⚠️ COMMON ERRORS AND SOLUTIONS, Complete URL Configuration for Intuit Developer Portal, Critical Requirements, 🌐 CUSTOM DOMAIN SETUP (Optional), Custom Domain Setup Steps, Custom Domain URLs, Development Configuration Steps, 🔧 DEVELOPMENT ENVIRONMENT (Localhost) (+23 more)
 
-### Community 51 - "auditLog"
-Cohesion: 0.27
-Nodes (12): AcceptInvitePage(), productRoleLabel(), createClientFromRequest(), auditLog(), inviteUrl(), normaliseEmail(), firmRow(), handler() (+4 more)
+### Community 51 - "lab/page.tsx"
+Cohesion: 0.15
+Nodes (9): agreementText(), CHECK_FIELDS, CheckTable(), DocType, EngineResult, ENGINES, LabResponse, OcrLabPage() (+1 more)
 
 ### Community 52 - "Google Cloud Console Billing Integration Guide"
 Cohesion: 0.06
 Nodes (30): 1. Regular Reconciliation, 1. Run Database Migration, 2. Monitor Anomalies, 2. System Behavior, 3. Per-Tenant Billing, A. Using Cloud Billing API, API Usage Tracking Flow, B. Enable BigQuery Export in GCC (+22 more)
 
 ### Community 53 - "isSuperAdmin"
-Cohesion: 0.11
-Nodes (30): DB Table: check_jobs, DB Table: tenants, DB Table: user_profiles, ADMIN_FNS, isSuperAdmin(), MaybeUser, handler(), requireSuperAdmin() (+22 more)
+Cohesion: 0.10
+Nodes (32): DB Table: check_jobs, DB Table: tenants, DB Table: user_profiles, ReviewPage(), SuperAdminLink(), ADMIN_FNS, createClient(), createServiceClient() (+24 more)
 
-### Community 54 - "devDependencies"
-Cohesion: 0.20
-Nodes (10): devDependencies, autoprefixer, eslint, eslint-config-next, postcss, tailwindcss, @types/node, @types/react (+2 more)
+### Community 54 - "email-report.ts"
+Cohesion: 0.19
+Nodes (11): C, emailShell(), escapeHtml(), ShellOptions, SITE, REPLY_TO, SENDER, config (+3 more)
 
 ### Community 55 - "compilerOptions"
 Cohesion: 0.11
@@ -553,12 +563,12 @@ Cohesion: 0.07
 Nodes (28): 🐛 **COMMON ISSUES**, "Connection not showing", Copy-Paste Ready URLs for Your Intuit App Setup, 📋 **DEPLOYMENT WORKFLOW**, 🏠 **DEVELOPMENT ENVIRONMENT**, Disconnect URL, Disconnect URL, 🔧 **ENVIRONMENT VARIABLES NEEDED** (+20 more)
 
 ### Community 57 - "matching-algorithm.ts"
-Cohesion: 0.22
-Nodes (16): ALGO_MONTH_NAMES, dateDiffDays(), levenshtein(), MatchFlag, MatchReasons, MatchStatus, normalizeAmount(), normalizeCheckNum() (+8 more)
+Cohesion: 0.17
+Nodes (22): Check Fields Update Handler, Check Update Handler, DB Table: audit_logs, DB Table: checks, DB Table: qb_transactions, ALGO_MONTH_NAMES, dateDiffDays(), levenshtein() (+14 more)
 
-### Community 58 - "lucide-react"
-Cohesion: 0.07
-Nodes (33): NOTICE_TONES, SettingsPageContent(), TABS, ForgotPasswordPage(), LoginForm(), ResetPasswordPage(), FieldName, SignupPage() (+25 more)
+### Community 58 - "react"
+Cohesion: 0.06
+Nodes (43): useComparisonData(), FieldEditor(), FieldKey, FIELDS, STATUS_TONE, NOTICE_TONES, SettingsPageContent(), TABS (+35 more)
 
 ### Community 59 - "Kyriq — Automated Cheque Extraction"
 Cohesion: 0.07
@@ -568,9 +578,9 @@ Nodes (26): 1. Clone & configure, 2. Set up Supabase database, 3. Install & run,
 Cohesion: 0.07
 Nodes (26): 10. OAUTH IMPLEMENTATION VERIFICATION, 11. PRODUCTION DEPLOYMENT CHECKLIST, 12. FINAL PRE-SUBMISSION VERIFICATION, 1. INTUIT DEVELOPER ACCOUNT SETUP, 2. APP CONFIGURATION (Intuit Developer Portal), 3. LEGAL COMPLIANCE PAGES (MANDATORY - PUBLICLY HOSTED), 4. REGULATED INDUSTRY DISCLOSURE, 5. HOSTING & INFRASTRUCTURE DISCLOSURE (+18 more)
 
-### Community 61 - "email-report.ts"
-Cohesion: 0.19
-Nodes (11): C, emailShell(), escapeHtml(), ShellOptions, SITE, REPLY_TO, SENDER, config (+3 more)
+### Community 61 - "send-test-emails.ts"
+Cohesion: 0.14
+Nodes (13): TEMPLATE_KEYS, arg(), envKey(), Mail, mails, main(), now, preview (+5 more)
 
 ### Community 62 - "5. Approved Email Copy"
 Cohesion: 0.06
@@ -597,12 +607,12 @@ Cohesion: 0.08
 Nodes (24): 1. **Credentials Input UI** ✅ Already exists, 1. **Initial Setup (One-time)**, 2. **OAuth Callback** ⚠️ Needs fix, 2. **OAuth Flow (Automatic)**, 3. **Token Refresh (Automatic)**, 3. **Token Refresh** ❌ Missing, ❌ Current Implementation Issues, First Time Setup: (+16 more)
 
 ### Community 68 - "upload/page.tsx"
-Cohesion: 0.09
-Nodes (22): defaultPageSelection(), PageSelectGrid(), PageSelectGridProps, SelectablePage, selectedRange(), AnalyzeResult, CheckInfo, DuplicateSkipped (+14 more)
+Cohesion: 0.08
+Nodes (24): DropzoneUpload(), Props, defaultPageSelection(), PageSelectGrid(), PageSelectGridProps, SelectablePage, selectedRange(), AnalyzeResult (+16 more)
 
-### Community 69 - "batch-state.ts"
-Cohesion: 0.11
-Nodes (20): BATCH_STEPS, BatchCounts, BatchStatus, BatchStepKey, BatchStepState, canEnterStep(), deriveBatchSteps(), EMPTY_COUNTS (+12 more)
+### Community 69 - "templates.ts"
+Cohesion: 0.15
+Nodes (7): appUrl(), EmailBody, EmailCta, EmailTemplate, RenderedEmail, TEMPLATES, unsubscribeUrl()
 
 ### Community 70 - "🔧 Railway Deployment Fix"
 Cohesion: 0.08
@@ -641,36 +651,36 @@ Cohesion: 0.14
 Nodes (16): clear_quickbooks_entries(), delete_job(), _get_billing_fallback(), get_billing_usage(), _log_api_usage(), Log API usage to database for accurate billing tracking., Fallback billing calculation for when api_usage_logs table doesn't exist.…, Get actual API usage and costs from database for accurate billing. Returns real… (+8 more)
 
 ### Community 80 - "service.ts"
-Cohesion: 0.05
-Nodes (111): ANNUAL_FLAG, ANNUAL_UNVERIFIED_MESSAGE, annualEnabled(), createAnnualSubscription(), allowanceForPlan(), BillingInterval, isInterval(), isPlanKey() (+103 more)
+Cohesion: 0.17
+Nodes (28): ANNUAL_UNVERIFIED_MESSAGE, annualEnabled(), createAnnualSubscription(), BillingInterval, isInterval(), isPlanKey(), PlanKey, StripeEnv (+20 more)
 
-### Community 81 - "firm-dashboard/page.tsx"
-Cohesion: 0.05
-Nodes (77): AdminFirmsPage(), CompGrant, dash(), date(), Firm, Sources, tone(), AdminTenantsPage() (+69 more)
+### Community 81 - "ProfitCalculatorPage.tsx"
+Cohesion: 0.04
+Nodes (82): AdminFirmsPage(), CompGrant, dash(), date(), Firm, Sources, tone(), checkTone() (+74 more)
 
 ### Community 82 - "tenants Table"
 Cohesion: 0.10
-Nodes (36): Storage Sync Utility Syncs orphaned files in Supabase Storage with the…, flatten_checks_from_job RPC Function, handle_new_user Trigger Function, update_job_api_usage RPC Function, auth.user_tenant_id() RLS Helper, accounting_connections Table, api_usage_logs Table, audit_logs Table (+28 more)
+Nodes (38): Storage Sync Utility Syncs orphaned files in Supabase Storage with the…, flatten_checks_from_job RPC Function, handle_new_user Trigger Function, update_job_api_usage RPC Function, auth.user_tenant_id() RLS Helper, accounting_connections Table, api_usage_logs Table, audit_logs Table (+30 more)
 
 ### Community 83 - "Architecture"
 Cohesion: 0.10
 Nodes (19): Architecture, Backend Only (Python FastAPI), Chrome Extension, Database Migrations, Database (Supabase PostgreSQL), Development Commands, Docker (full stack), Environment Variables (+11 more)
 
-### Community 84 - "templates.ts"
-Cohesion: 0.15
-Nodes (7): appUrl(), EmailBody, EmailCta, EmailTemplate, RenderedEmail, TEMPLATES, unsubscribeUrl()
+### Community 84 - "check-stripe-billing.ts"
+Cohesion: 0.14
+Nodes (21): ANNUAL_FLAG, allowanceForPlan(), overageEstimate(), overageRateForPlan(), Plan, PLAN_KEYS, planByKey(), PLANS (+13 more)
 
-### Community 85 - "qb-token.ts"
-Cohesion: 0.16
-Nodes (16): classifyRefreshFailure(), EMAILABLE_STATUSES, markQbConnection(), QbConnectionStatus, cred(), DEFAULT_EXPIRY_SKEW_MS, isStale(), persist() (+8 more)
+### Community 85 - "lucide-react"
+Cohesion: 0.12
+Nodes (15): AdminLayout(), AdminLayoutProps, MobileTabBar(), morePages, primaryTabs, SideNav(), SideNavProps, useIsMobile() (+7 more)
 
 ### Community 86 - "update_integration_settings"
 Cohesion: 0.20
 Nodes (10): IntegrationSettings, BaseModel, QuickBooksEntry, QuickBooks entry model for comparison, Integration settings model, Field names and value lengths only — never the values. This used to print…, Update integration settings. Stores API keys securely in Supabase., _redact_settings() (+2 more)
 
-### Community 87 - "review/[id]/page.tsx"
-Cohesion: 0.09
-Nodes (21): ApprovalActions(), Props, AuditHistory(), Props, ComparisonPanel(), FIELDS, Props, ConfidenceBadge() (+13 more)
+### Community 87 - "GlassCard"
+Cohesion: 0.05
+Nodes (46): ExportFormat, ExportPage(), Job, ApprovalActions(), Props, AuditHistory(), Props, CheckImageViewer() (+38 more)
 
 ### Community 88 - "✅ Your Data IS Saved in Supabase!"
 Cohesion: 0.11
@@ -692,13 +702,13 @@ Nodes (25): 0. Ground rules, 10. P2 — bank statement extraction, 11. P2 — Ch
 Cohesion: 0.08
 Nodes (20): after, caseBody, caseStart, clearLoops, CSS_FILES, EXT, globals, html (+12 more)
 
-### Community 93 - "useQBConnections.tsx"
-Cohesion: 0.08
-Nodes (27): accountLabel(), AccountSwitcher(), formatBalance(), GROUPS, QbAccount, Avatar(), CompanySwitcher(), initials() (+19 more)
+### Community 93 - "Supabase API Client Library"
+Cohesion: 0.13
+Nodes (27): clearQBTransactionServer Function, DB Table: integrations, DB Table: match_audit_log, DB Table: matches, DB Table: qb_connections, Vouched Checks DB Table, Extension QB Refresh Token Handler, Intuit OAuth Token Endpoint (+19 more)
 
 ### Community 94 - "frontend/package.json"
-Cohesion: 0.07
-Nodes (25): DropzoneUpload(), Props, Switch(), name, private, version, autoprefixer, clsx (+17 more)
+Cohesion: 0.05
+Nodes (37): devDependencies, autoprefixer, eslint, eslint-config-next, postcss, tailwindcss, @types/node, @types/react (+29 more)
 
 ### Community 96 - "4. Conflicts to resolve"
 Cohesion: 0.08
@@ -754,7 +764,7 @@ Nodes (31): Kyriq App Icon 128x128, Kyriq App Icon 16x16, Kyriq App Icon 32x32, 
 
 ### Community 109 - "ReviewStep.tsx"
 Cohesion: 0.06
-Nodes (37): Pagination(), PaginationProps, PER_PAGE, confidenceTone(), EditQBPanel(), fmt(), fmtDate(), MATCH_STATUS (+29 more)
+Nodes (40): Pagination(), PaginationProps, PER_PAGE, Avatar(), CompanySwitcher(), initials(), StatusLine(), DeleteConfirmModal() (+32 more)
 
 ### Community 110 - "Kyriq-Prototype-v12-Proposal_c228be4d.md"
 Cohesion: 0.12
@@ -773,8 +783,8 @@ Cohesion: 0.27
 Nodes (6): readAalClaim(), updateSession(), createClient Server Function, createServiceClient (server.ts), config, proxy()
 
 ### Community 114 - "TransactionsPage.tsx"
-Cohesion: 0.09
-Nodes (24): ChargeLike, emailOf(), failureReason(), Row(), statusStyle, TransactionDetailDrawer(), Sheet(), SheetContent() (+16 more)
+Cohesion: 0.08
+Nodes (27): ChargeLike, emailOf(), failureReason(), Row(), statusStyle, TransactionDetailDrawer(), Badge(), badgeVariants (+19 more)
 
 ### Community 115 - "qboParser.ts"
 Cohesion: 0.32
@@ -841,8 +851,8 @@ Cohesion: 0.29
 Nodes (9): recipientPreference, SendEmailArgs, SendOnceArgs, SendResult, SendStatus, RFC-8058, EmailCategory, TemplateKey (+1 more)
 
 ### Community 131 - "router.tsx"
-Cohesion: 0.05
-Nodes (46): Admin Overview Page, Admin Overview API Endpoint, AdminLayout(), AdminLayoutProps, CommandPalette(), MobileTabBar(), morePages, primaryTabs (+38 more)
+Cohesion: 0.09
+Nodes (23): Admin Overview Page, Admin Overview API Endpoint, RequireAdmin(), RequireAdminProps, DateRange, DateRangeContext, DateRangeProvider(), Preset (+15 more)
 
 ### Community 132 - "Pre-flight (both single-company and multi-company tenants)"
 Cohesion: 0.18
@@ -852,9 +862,9 @@ Nodes (10): Data sync, Error states, Extension OAuth flow, Kyriq QB Stability �
 Cohesion: 0.24
 Nodes (9): External Python Backend API, ProcessingGateResult, requireProcessingAllowed(), handler(), config, handler(), Job Export Handler, Job By ID Handler (+1 more)
 
-### Community 134 - "sendEmail"
-Cohesion: 0.36
-Nodes (7): logAttempt(), sendEmail(), clean(), handler(), MAX, rateLimited(), RECENT
+### Community 134 - "notices.ts"
+Cohesion: 0.18
+Nodes (24): cronAuthorised(), isMissingSchema(), planLabel(), sendMeterEvent(), adminRecipients(), sendOnce(), EMAILABLE_STATUSES, markQbConnection() (+16 more)
 
 ### Community 135 - "033_stripe_billing.sql"
 Cohesion: 0.18
@@ -864,9 +874,9 @@ Nodes (6): public.log_billing_refund, public.billing_notices, public.stripe_even
 Cohesion: 0.17
 Nodes (11): build, builder, dockerfilePath, watchPatterns, deploy, healthcheckPath, healthcheckTimeout, numReplicas (+3 more)
 
-### Community 137 - "lab/page.tsx"
-Cohesion: 0.17
-Nodes (8): agreementText(), CHECK_FIELDS, CheckTable(), DocType, EngineResult, ENGINES, LabResponse, OcrLabPage()
+### Community 137 - "webhook.ts"
+Cohesion: 0.24
+Nodes (19): planFromPriceId(), intervalOfPrice(), service(), tenantIdForStripeObject(), idOf(), readRawBody(), stripeTime(), verifyStripeSignature() (+11 more)
 
 ### Community 138 - "Kyriq build handover"
 Cohesion: 0.18
@@ -884,21 +894,21 @@ Nodes (9): Current-app problems the redesign should fix at the same time, Effort
 Cohesion: 0.20
 Nodes (9): 0. First, roll the key that was shared in chat, 1. Restricted key permissions, 2. Create the products and prices, 3. Create the webhook endpoint, 4. Which Vercel project, 5. Environment variables, 6. Test before live, 7. Order of operations (+1 more)
 
-### Community 142 - "FieldEditor.tsx"
-Cohesion: 0.33
-Nodes (6): FieldEditor(), FieldKey, FIELDS, Props, STATUS_TONE, Check
+### Community 142 - "MatchRow.tsx"
+Cohesion: 0.14
+Nodes (14): confidenceTone(), EditQBPanel(), fmt(), fmtDate(), MATCH_STATUS, MatchRow(), MatchRowProps, ResolvePanel() (+6 more)
 
 ### Community 143 - "RevenuePage.tsx"
-Cohesion: 0.04
-Nodes (72): checkTone(), jobTone(), planTone(), TenantDetailPage(), SparklineProps, Tooltip(), TooltipContent(), TooltipProvider() (+64 more)
+Cohesion: 0.09
+Nodes (29): Tooltip(), TooltipContent(), TooltipProvider(), TooltipTrigger(), formatCurrency(), formatPct(), ChartTooltip(), buildColumns() (+21 more)
 
 ### Community 144 - "029_comp_grants_and_trial_gate.sql"
 Cohesion: 0.24
 Nodes (7): public.usage_ledger, public.comp_grants, public.tenant_usage_state(), auth.users, public.log_comp_grant_change, public.tenants, trg_comp_grants_audit
 
-### Community 145 - "Badge"
-Cohesion: 0.08
-Nodes (23): Badge, BadgeProps, badgeVariants, STATUS_TONES, StatusPillProps, code(), OWNED, PALETTE (+15 more)
+### Community 145 - "check-parcel-h.ts"
+Cohesion: 0.22
+Nodes (8): code(), OWNED, PALETTE, read(), repo, root, ROW_LOOPS, ROW_METRICS
 
 ### Community 146 - "030_roles_team_rls_and_mfa.sql"
 Cohesion: 0.24
@@ -910,7 +920,7 @@ Nodes (10): match_audit_log, matches, matches_updated_at, qb_connections, qb_con
 
 ### Community 148 - "UserDetailDrawer.tsx"
 Cohesion: 0.09
-Nodes (29): formatGrantExpiry(), GRANT_OPTIONS, GrantDuration, InvoiceEntry, isGrantActive(), JobEntry, UserActionResponse, UserDetail (+21 more)
+Nodes (28): formatGrantExpiry(), GRANT_OPTIONS, GrantDuration, InvoiceEntry, isGrantActive(), JobEntry, UserActionResponse, UserDetail (+20 more)
 
 ### Community 149 - "Kyriq Chrome Extension Testing Guide"
 Cohesion: 0.20
@@ -928,9 +938,9 @@ Nodes (9): anon, authenticated, information_schema.tables, public.%I, public.rec
 Cohesion: 0.22
 Nodes (8): 🔴 Blocking you right now — neither is development work, ⚪ Deliberately unfinished, and we are not pretending otherwise, ✅ Done and merged, Kyriq v2 — progress update, 🟠 Needed from you, On the date, 🔒 One security item, to action with the migrations, 🟡 Your decisions
 
-### Community 153 - "send-test-emails.ts"
-Cohesion: 0.14
-Nodes (13): TEMPLATE_KEYS, arg(), envKey(), Mail, mails, main(), now, preview (+5 more)
+### Community 153 - "check-qb-switchers.ts"
+Cohesion: 0.23
+Nodes (10): behaviourChecks(), CALL_SITES, code(), fakeDb(), ok(), read(), repo, root (+2 more)
 
 ### Community 154 - "_supabase_select"
 Cohesion: 0.12
@@ -961,8 +971,8 @@ Cohesion: 0.29
 Nodes (5): body, OWNED, root, rowGlass, table
 
 ### Community 161 - "check-reconcile.ts"
-Cohesion: 0.12
-Nodes (20): AppLayout(), QBProviderWrapper(), activeNavHref(), isActiveHref(), NAV_GROUPS, ShellNavItem, clientCode, code() (+12 more)
+Cohesion: 0.07
+Nodes (32): AppLayout(), accountLabel(), AccountSwitcher(), formatBalance(), GROUPS, QbAccount, QBProviderWrapper(), AccountSwitcher (+24 more)
 
 ### Community 162 - "public.batch_counts"
 Cohesion: 0.33
@@ -1052,13 +1062,13 @@ Nodes (3): public.email_log, public.email_preferences, public.tenants
 Cohesion: 0.29
 Nodes (6): crons, functions, pages/api/**/*.ts, pages/api/upload-analyze.ts, maxDuration, maxDuration
 
-### Community 198 - "dropdown-menu.tsx"
-Cohesion: 0.11
-Nodes (17): Avatar(), AvatarFallback(), AvatarImage(), DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent(), DropdownMenuItem(), DropdownMenuLabel() (+9 more)
+### Community 198 - "UsersPage.tsx"
+Cohesion: 0.07
+Nodes (37): ChartCardProps, DataTable(), DataTableProps, KpiTile(), KpiTileProps, Select(), SelectContent(), SelectItem() (+29 more)
 
-### Community 200 - "frontend/components/ui/dialog.tsx"
-Cohesion: 0.48
-Nodes (6): DialogProps, OverlayBaseProps, Sheet(), sheetPanelVariants, SheetProps, useDismiss()
+### Community 200 - "Chrome Web Store submission — Kyriq"
+Cohesion: 0.17
+Nodes (11): 1. Store listing, 2. Privacy, 3. Distribution, 4. Test instructions, 5. Packaging, Before you submit, confirm by hand, Chrome Web Store submission — Kyriq, Data usage — tick all five (+3 more)
 
 ### Community 202 - "check-parcel-f.ts"
 Cohesion: 0.33
@@ -1072,45 +1082,69 @@ Nodes (3): Deploy on Vercel, Getting Started, Learn More
 Cohesion: 0.25
 Nodes (6): HERE, payload, REPO, TEMPLATES, TOKEN, tokLine
 
-### Community 212 - "scripts"
-Cohesion: 0.33
-Nodes (6): scripts, build, dev, lint, start, type-check
+### Community 212 - "formatting.ts"
+Cohesion: 0.19
+Nodes (7): ConfidenceBadge(), Props, tone(), formatConfidence(), getStatusColor(), STATUS_LABELS, STATUS_LABELS Constant
 
 ### Community 226 - "LegalShell.tsx"
-Cohesion: 0.21
-Nodes (5): metadata, metadata, metadata, LegalShell(), PROSE
+Cohesion: 0.19
+Nodes (6): metadata, metadata, metadata, KyriqLogo(), LegalShell(), PROSE
 
 ### Community 229 - "backend-auth.ts"
 Cohesion: 0.13
 Nodes (18): backendAuthHeaders(), jobAccessHeaders(), notifyAdmins(), handler(), handler(), extractionEmail(), getServiceClient(), handler() (+10 more)
 
-### Community 236 - "summary.ts"
-Cohesion: 0.48
-Nodes (6): isIsoDate(), csvCell(), handler(), monthWindow(), toCsv(), RFC-4180
+### Community 236 - "report-pdf.ts"
+Cohesion: 0.24
+Nodes (8): buildReportPdf(), date(), logoDataUrl(), money(), ReportInput, ReportRow, jspdf, jspdf-autotable
+
+### Community 245 - "provision-stripe.ts"
+Cohesion: 0.35
+Nodes (11): stripeEnvFromKey(), apply, findOrCreateMeter(), findPriceByLookupKey(), findProductByName(), form(), lookupKey(), main() (+3 more)
+
+### Community 246 - "VoicePage"
+Cohesion: 0.33
+Nodes (4): VoicePage(), ask(), report(), toggleMic()
+
+### Community 247 - "build_tiles.py"
+Cohesion: 0.50
+Nodes (4): build(), gradient(), Build the Chrome Web Store promo tiles from the real brand art. python chrome-…, Radial brand wash from the top-left, matching the landing hero.
+
+### Community 250 - "sendEmail"
+Cohesion: 0.36
+Nodes (7): logAttempt(), sendEmail(), clean(), handler(), MAX, rateLimited(), RECENT
+
+### Community 251 - "accounts.ts"
+Cohesion: 0.39
+Nodes (7): group(), handler(), lastFourOf(), QbAccountRow, readCache(), SYNCED_TYPES, syncFromQbo()
+
+### Community 252 - "unsubscribe.ts"
+Cohesion: 0.60
+Nodes (4): escapeHtml(), handler(), respond(), RFC-8058
 
 ## Ambiguous Edges - Review These
 - `AIKeyWarning.tsx` → `marquee.tsx`  [AMBIGUOUS]
   frontend/components/common/AIKeyWarning.tsx · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **1928 isolated node(s):** `supabase`, `BOOTSTRAP_CONFIG`, `DEV_OVERRIDABLE`, `_sidepanelPorts`, `QB_TXN_PATH` (+1923 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2471 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **49 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **1936 isolated node(s):** `supabase`, `BOOTSTRAP_CONFIG`, `DEV_OVERRIDABLE`, `_sidepanelPorts`, `QB_TXN_PATH` (+1931 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2486 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **53 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `AIKeyWarning.tsx` and `marquee.tsx`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `next` connect `next` to `app/layout.tsx`, `requireCapability`, `usage-gate.ts`, `sendEmail`, `team-helpers.ts`, `check-history-reports.ts`, `createServiceClient`, `match-helpers.ts`, `auditLog`, `isSuperAdmin`, `matching-algorithm.ts`, `email-report.ts`, `qbo-state.check.ts`, `service.ts`, `clear-transaction.ts`, `frontend/package.json`, `handler`, `backend-auth.ts`, `summary.ts`, `qboParser.ts`, `firms.ts`?**
-  _High betweenness centrality (0.075) - this node is a cross-community bridge._
-- **Why does `react` connect `react` to `router.tsx`, `cn`, `lab/page.tsx`, `command.tsx`, `FieldEditor.tsx`, `RevenuePage.tsx`, `ui/index.ts`, `AnalyticsPage.tsx`, `Badge`, `UserDetailDrawer.tsx`, `reconcile/page.tsx`, `dashboard/page.tsx`, `qb-comparisons/page.tsx`, `check-reconcile.ts`, `voice/page.tsx`, `history/page.tsx`, `useCheckProcessing.ts`, `billing/page.tsx`, `lucide-react`, `upload/page.tsx`, `dropdown-menu.tsx`, `frontend/components/ui/dialog.tsx`, `firm-dashboard/page.tsx`, `review/[id]/page.tsx`, `useQBConnections.tsx`, `frontend/package.json`, `ReviewStep.tsx`, `TransactionsPage.tsx`, `ClientAccountSwitcher.jsx`?**
+- **Why does `next` connect `next` to `app/layout.tsx`, `usage-gate.ts`, `notices.ts`, `batch-state.ts`, `webhook.ts`, `check-history-reports.ts`, `match-helpers.ts`, `isSuperAdmin`, `email-report.ts`, `matching-algorithm.ts`, `qbo-state.check.ts`, `service.ts`, `check-stripe-billing.ts`, `clear-transaction.ts`, `frontend/package.json`, `handler`, `backend-auth.ts`, `qboParser.ts`, `firms.ts`, `sendEmail`, `accounts.ts`, `unsubscribe.ts`?**
+  _High betweenness centrality (0.070) - this node is a cross-community bridge._
+- **Why does `react` connect `react` to `dropdown-menu.tsx`, `router.tsx`, `cn`, `command.tsx`, `MatchRow.tsx`, `ui/index.ts`, `RevenuePage.tsx`, `AnalyticsPage.tsx`, `UserDetailDrawer.tsx`, `history/page.tsx`, `reconcile/page.tsx`, `qb-comparisons/page.tsx`, `check-reconcile.ts`, `voice/page.tsx`, `firm-dashboard/page.tsx`, `SettingsPage.tsx`, `useCheckProcessing.ts`, `billing/page.tsx`, `lab/page.tsx`, `isSuperAdmin`, `upload/page.tsx`, `UsersPage.tsx`, `ProfitCalculatorPage.tsx`, `lucide-react`, `GlassCard`, `frontend/package.json`, `ReviewStep.tsx`, `TransactionsPage.tsx`, `ClientAccountSwitcher.jsx`?**
   _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **Why does `check_jobs Table` connect `tenants Table` to `_sb_headers`?**
+- **Why does `checks DB Table` connect `tenants Table` to `ProfitCalculatorPage.tsx`, `matching-algorithm.ts`?**
   _High betweenness centrality (0.052) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `createAuthenticatedClient()` (e.g. with `createClientFromCookies()` and `createServiceClient (api.ts)`) actually correct?**
   _`createAuthenticatedClient()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `supabase`, `BOOTSTRAP_CONFIG`, `DEV_OVERRIDABLE` to the rest of the system?**
-  _1928 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1936 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `sidepanel.js` be split into smaller, more focused modules?**
   _Cohesion score 0.08171603677221655 - nodes in this community are weakly interconnected._
