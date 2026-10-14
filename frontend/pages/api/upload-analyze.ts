@@ -10,6 +10,24 @@ export const config = {
 }
 
 /**
+ * This route gets 300s in vercel.json, against the 60s every other API route
+ * gets. It is the one endpoint that waits on genuinely long work: the backend
+ * rasterises every page, detects cheques, crops each one, and uploads all of
+ * them to storage before it answers. A 30-page bank statement is ~7s of compute
+ * plus 224 storage uploads; a 44-page one, or the 100MB the backend accepts, is
+ * considerably more.
+ *
+ * The 60s cap was not merely slow, it corrupted state. The proxy returned 504
+ * while the backend carried on, finished, wrote check_jobs, registered the
+ * upload fingerprint and charged the usage ledger — so the user saw a failure,
+ * retried, and was told their invisible-but-successful upload was a duplicate.
+ *
+ * The real fix is to make upload-analyze return a job id immediately and do the
+ * work in the background, the way /api/upload-pdf already does. Until then this
+ * buys headroom rather than pretending the problem is solved.
+ */
+
+/**
  * POST /api/upload-analyze?confirm_reupload=true
  *
  * Upload + cheque detection. Gated as well as extraction, so a firm past its
