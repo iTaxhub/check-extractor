@@ -17,8 +17,18 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Kyriq — Automated Check Reconciliation',
-  description: 'Upload check images, let AI extract the data, and auto-match against QuickBooks in seconds. Save 15+ hours per week per client.',
+  metadataBase: new URL('https://kyriq.com'),
+  title: 'Kyriq — Check Reconciliation for QuickBooks Online',
+  description: 'See every processed check, approve exact matches together, and review discrepancies before anything is cleared in QuickBooks Online.',
+  icons: {
+    icon: '/brand/kyriq-app-icon.svg',
+    apple: '/brand/kyriq-app-icon.svg',
+  },
+  openGraph: {
+    title: 'Kyriq — Check Reconciliation for QuickBooks Online',
+    description: 'Reconcile checks with confidence while your team stays in control of every approval.',
+    images: ['/landing/match-review-dashboard-4k-v1.png'],
+  },
 }
 
 export default function RootLayout({

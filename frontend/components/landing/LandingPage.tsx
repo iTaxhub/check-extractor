@@ -24,6 +24,7 @@
 
 import { useState, useEffect, ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
@@ -173,52 +174,53 @@ function Nav() {
 /* ── Hero. Copy from the approved redesign (kyriq-website-redesign, Sep 2026). ── */
 function Hero() {
   return (
-    <section className="relative pt-28 sm:pt-36 lg:pt-40 pb-16 sm:pb-24 px-4 sm:px-6 overflow-hidden">
-      {/* Glass orbs (asset pack 08). Token gradients only, decorative. */}
-      <div aria-hidden className="pointer-events-none absolute -top-24 -left-32 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle_at_35%_35%,hsl(var(--brand-light)/0.55),hsl(var(--brand)/0.18)_55%,transparent_72%)] blur-2xl" />
-      <div aria-hidden className="pointer-events-none absolute top-40 -right-40 h-[480px] w-[480px] rounded-full bg-[radial-gradient(circle_at_60%_40%,hsl(var(--emerald)/0.28),hsl(var(--brand)/0.2)_50%,transparent_72%)] blur-2xl" />
+    <section className="relative min-h-[860px] pt-32 sm:pt-40 lg:pt-44 pb-24 sm:pb-32 px-4 sm:px-6 overflow-hidden">
+      <Image src="/landing/hero-match-sculpture-4k-v1.png" alt="" fill priority sizes="100vw" className="object-cover object-center opacity-70" aria-hidden />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-surface via-surface/95 to-surface/20" />
 
-      <div className="relative max-w-5xl mx-auto text-center">
-        <Rise>
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 sm:mb-8 rounded-full bg-brand-wash border border-brand-tint text-xs font-semibold text-brand-deep tracking-wide">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accentEmerald opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-accentEmerald" />
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.84fr_1.16fr] gap-14 xl:gap-20 items-center">
+        <div className="text-left">
+          <Rise>
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 mb-7 rounded-full bg-surface/80 backdrop-blur-xl border border-brand-tint text-xs font-semibold text-brand-deep tracking-wide shadow-contact">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accentEmerald opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-accentEmerald" />
+              </span>
+              AI-assisted check reconciliation
             </span>
-            The new standard for check reconciliation in QuickBooks Online
-          </span>
-        </Rise>
+          </Rise>
+
+          <Rise>
+            <h1 className="text-5xl sm:text-6xl xl:text-[76px] font-extrabold tracking-[-0.04em] leading-[0.98] text-ink-strong mb-7">
+              See every check.{' '}
+              <span className="bg-gradient-to-r from-brand via-brand-light to-accentEmerald bg-clip-text text-transparent">
+                Approve exact matches together.
+              </span>
+            </h1>
+          </Rise>
+          <Rise>
+            <p className="text-lg sm:text-xl text-ink-soft max-w-[620px] mb-10 leading-relaxed">
+              Start with your bank statement. See every check matched against QuickBooks Online, approve exact
+              matches together, and review discrepancies with confidence.
+            </p>
+          </Rise>
+
+          <Rise>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-5">
+              <CtaLink />
+              <a href="#how" className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }))}>
+                See how it works
+              </a>
+            </div>
+            <p className="text-xs sm:text-[13px] text-ink-faint">{TRIAL_TERMS}</p>
+          </Rise>
+        </div>
 
         <Rise>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[76px] font-extrabold tracking-[-0.03em] leading-[1.03] text-ink-strong mb-6">
-            See every check.{' '}
-            <span className="bg-gradient-to-r from-brand via-brand-light to-accentEmerald bg-clip-text text-transparent">
-              Approve exact matches together.
-            </span>
-          </h1>
-        </Rise>
-        <Rise>
-          <p className="text-base sm:text-lg md:text-xl text-ink-soft max-w-[680px] mx-auto mb-9 leading-relaxed px-2">
-            Start with your bank statement. See every check matched against QuickBooks Online, approve exact
-            matches together, and review discrepancies with confidence.
-          </p>
-        </Rise>
-
-        <Rise>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4 px-4">
-            <CtaLink />
-            <a href="#how" className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }))}>
-              See how it works
-            </a>
-          </div>
-          <p className="text-xs sm:text-[13px] text-ink-faint mb-14 sm:mb-16 px-4">{TRIAL_TERMS}</p>
-        </Rise>
-
-        <Rise>
-          <div className="max-w-[980px] mx-auto relative rounded-card">
-            {/* Magic-UI: border-beam keyframe + --duration. */}
+          <div className="relative rounded-card lg:translate-y-8">
+            <div aria-hidden className="absolute -inset-8 rounded-modal bg-brand/10 blur-3xl" />
             <BorderBeam size={300} duration={12} />
-            <div className="rounded-card overflow-hidden shadow-glass-modal border border-glass-hairline bg-surface">
+            <div className="relative rounded-card overflow-hidden shadow-glass-modal border border-glass-hairline bg-surface/95 backdrop-blur-xl">
               <MatchReviewMock />
             </div>
           </div>
@@ -394,6 +396,15 @@ function SectionHead({ eyebrow, title, blurb, dark }: { eyebrow: string; title: 
   );
 }
 
+function SectionBackdrop({ src, opacity = 'opacity-75' }: { src: string; opacity?: string }) {
+  return (
+    <>
+      <Image src={src} alt="" fill sizes="100vw" className={cn('object-cover object-center', opacity)} aria-hidden />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-surface/35 via-transparent to-surface/50" />
+    </>
+  );
+}
+
 function HowItWorks() {
   const steps = [
     {
@@ -418,16 +429,17 @@ function HowItWorks() {
     },
   ];
   return (
-    <section id="how" className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-[1100px] mx-auto">
+    <section id="how" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 overflow-hidden">
+      <SectionBackdrop src="/landing/workflow-background-4k-v1.png" />
+      <div className="relative max-w-7xl mx-auto">
         <SectionHead
           eyebrow="One clear workflow"
           title="From your bank statement to a completed QuickBooks reconciliation"
         />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 relative stagger">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 relative stagger">
           <div className="hidden lg:block absolute top-[38px] left-[10%] w-[80%] h-px bg-gradient-to-r from-transparent via-brand to-transparent opacity-30" aria-hidden />
           {steps.map((s) => (
-            <div key={s.num} className="animate-glass-rise glass-card rounded-card p-6 relative">
+            <div key={s.num} className="animate-glass-rise bg-surface/85 backdrop-blur-xl border border-glass-hairline shadow-glass rounded-card p-7 lg:p-8 relative min-h-[260px]">
               <div className="flex items-center gap-3 mb-5">
                 <span className="w-11 h-11 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-white shadow-brand-glow relative z-10">
                   {s.icon}
@@ -472,21 +484,27 @@ function BuiltForFirms() {
     },
   ];
   return (
-    <section id="features" className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-[1100px] mx-auto">
-        <SectionHead
-          eyebrow="Built for firms"
-          title="Built for bookkeeping and accounting firms"
-          blurb="Spend less time checking transactions one by one. Kyriq organizes the full batch by match result, so judgment goes where it is needed."
-        />
-        <div className="grid sm:grid-cols-2 gap-4 stagger">
+    <section id="features" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 overflow-hidden">
+      <SectionBackdrop src="/landing/firms-background-4k-v1.png" opacity="opacity-70" />
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-14 lg:gap-20 items-center">
+        <div>
+          <span className="text-eyebrow text-brand mb-4 block">Built for firms</span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.04] text-ink-strong mb-6">
+            Built for bookkeeping and accounting firms
+          </h2>
+          <p className="text-lg text-ink-soft leading-relaxed max-w-[560px] mb-10">
+            Spend less time checking transactions one by one. Kyriq organizes the full batch by match result, so judgment goes where it is needed.
+          </p>
+          <div className="relative aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
+            <Image src="/landing/statement-to-quickbooks-4k-v1.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover" />
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-5 stagger">
           {points.map((f) => (
-            <div key={f.title} className="animate-glass-rise glass-card rounded-card p-7 sm:p-8 hover-lift flex gap-5">
-              <div className={cn('w-12 h-12 shrink-0 rounded-input flex items-center justify-center text-white', f.tone)}>{f.icon}</div>
-              <div>
-                <h3 className="text-lg font-bold tracking-display text-ink-strong mb-2">{f.title}</h3>
-                <p className="text-sm text-ink-body leading-relaxed">{f.desc}</p>
-              </div>
+            <div key={f.title} className="animate-glass-rise bg-surface/88 backdrop-blur-xl border border-glass-hairline shadow-glass rounded-card p-7 sm:p-8 hover-lift min-h-[230px]">
+              <div className={cn('w-12 h-12 rounded-input flex items-center justify-center text-white mb-8', f.tone)}>{f.icon}</div>
+              <h3 className="text-lg font-bold tracking-display text-ink-strong mb-3">{f.title}</h3>
+              <p className="text-sm text-ink-body leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -497,15 +515,29 @@ function BuiltForFirms() {
 
 function ExtensionSection() {
   return (
-    <section id="extension" className="py-16 sm:py-24 px-4 sm:px-6 bg-shell-solid relative overflow-hidden">
-      <div className="max-w-[1100px] mx-auto relative">
-        <SectionHead
-          dark
-          eyebrow="Chrome extension"
-          title="Works right inside QuickBooks"
-          blurb="Approve and clear matched checks without leaving QuickBooks Online. The Kyriq Chrome extension is included with every plan and during the trial."
-        />
-        <ExtensionSlide />
+    <section id="extension" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-shell-solid via-shell-solid to-brand-dark/40" />
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-12 lg:gap-16 items-center">
+        <div>
+          <span className="text-eyebrow text-accentEmerald mb-4 block">Chrome extension</span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.04] text-shell-text mb-6">
+            Works right inside QuickBooks
+          </h2>
+          <p className="text-lg text-shell-muted leading-relaxed mb-9">
+            Approve and clear matched checks without leaving QuickBooks Online. The Kyriq Chrome extension is included with every plan and during the trial.
+          </p>
+          <ul className="space-y-4 text-sm text-shell-text">
+            {['Reconcile without leaving QuickBooks', 'View AI match suggestions in context', 'Approve or flag each result yourself', 'Keep every approval in the audit trail'].map((item) => (
+              <li key={item} className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"><Check size={13} className="text-accentEmerald" aria-hidden /></span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="relative aspect-video overflow-hidden rounded-modal border border-glass-hairline-dark shadow-glass-modal">
+          <Image src="/landing/quickbooks-extension-4k-v1.png" alt="Kyriq Chrome extension reviewing suggested matches inside QuickBooks Online" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover" />
+        </div>
       </div>
     </section>
   );
@@ -523,128 +555,43 @@ const VOICE_PROMPTS = [
  *  still called Voice there — Michael renamed the public-facing section only. */
 function VoiceSection() {
   return (
-    <section id="voice" className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-[1100px] mx-auto">
-        <div className="relative overflow-hidden rounded-modal bg-shell-solid p-8 sm:p-12 lg:p-14 shadow-glass-modal">
-          <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[380px] w-[380px] rounded-full bg-[radial-gradient(circle_at_40%_40%,hsl(var(--brand-light)/0.5),hsl(var(--brand)/0.15)_55%,transparent_72%)] blur-xl" />
-          <div className="relative grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-glass-hairline-dark bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald mb-5">
-                <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
-              </span>
-              <h2 className="text-3xl sm:text-4xl md:text-[44px] font-extrabold tracking-[-0.025em] leading-[1.08] text-shell-text mb-5">
-                Ask. Review. Act&mdash;with your approval.
-              </h2>
-              <p className="text-[15px] sm:text-base text-shell-muted leading-relaxed mb-4">
-                Kyriq IQ brings conversational intelligence to reconciliation.
-              </p>
-              <p className="text-[15px] sm:text-base text-shell-muted leading-relaxed mb-4">
-                Talk to Kyriq like a colleague. Ask what needs attention, have any check read back to you, or find every
-                payment made to a vendor. Kyriq IQ works from your firm&apos;s own data, recognizes your companies and
-                payees, and keeps you in control of every action.
-              </p>
-              <p className="text-[13px] text-shell-muted/80 mb-8">Starting with checks. Full-book reconciliation is next.</p>
-              {/* Was a mailto: link, which left the site for the OS mail client
-                  (and did nothing where none was configured). The form records
-                  the signup and sends its own confirmation. */}
-              <WaitlistForm />
-            </div>
+    <section id="voice" className="relative min-h-[880px] py-24 sm:py-32 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
+      <Image src="/landing/kyriq-iq-characters-4k-v1.png" alt="" fill sizes="100vw" className="object-cover object-center opacity-80" aria-hidden />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-shell-solid via-shell-solid/90 to-shell-solid/15" />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-shell-solid via-transparent to-shell-solid/25" />
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-12 min-h-[620px] items-center">
+        <div className="rounded-modal border border-glass-hairline-dark bg-shell-solid/80 backdrop-blur-xl p-8 sm:p-10 shadow-glass-modal">
+          <span className="inline-flex items-center gap-2 rounded-full border border-glass-hairline-dark bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald mb-6">
+            <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
+          </span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.02] text-shell-text mb-6">
+            Ask. Review. Act&mdash;with your approval.
+          </h2>
+          <p className="text-lg text-shell-muted leading-relaxed mb-4">Kyriq IQ brings conversational intelligence to reconciliation.</p>
+          <p className="text-[15px] text-shell-muted leading-relaxed mb-5">
+            Talk to Kyriq like a colleague. Ask what needs attention, have any check read back to you, or find every payment made to a vendor. Kyriq IQ works from your firm&apos;s own data, recognizes your companies and payees, and keeps you in control of every action.
+          </p>
+          <p className="text-[13px] text-shell-muted/80 mb-8">Starting with checks. Full-book reconciliation is next.</p>
+          <WaitlistForm />
+        </div>
 
-            <div className="rounded-card border border-glass-hairline-dark bg-white/[0.04] p-5 sm:p-6">
-              {/* Waveform. CSS pulse with staggered delays; stops under reduced motion via globals.css. */}
-              <div className="flex items-end justify-center gap-1 h-16 mb-6" aria-hidden>
-                {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
-                  <span
-                    key={i}
-                    className="w-1.5 rounded-full bg-gradient-to-t from-brand to-accentEmerald animate-pulse"
-                    style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }}
-                  />
-                ))}
+        <div className="self-end rounded-card border border-glass-hairline-dark bg-shell-solid/72 backdrop-blur-xl p-5 sm:p-6 shadow-glass-modal">
+          <div className="flex items-end justify-center gap-1 h-14 mb-5" aria-hidden>
+            {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
+              <span key={i} className="w-1.5 rounded-full bg-gradient-to-t from-brand to-accentEmerald animate-pulse" style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
+            ))}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {VOICE_PROMPTS.map((p) => (
+              <div key={p} className="flex items-start gap-3 rounded-input bg-white/[0.07] px-4 py-3 text-[13px] leading-relaxed text-shell-text">
+                <Mic className="w-3.5 h-3.5 mt-0.5 shrink-0 text-accentEmerald" aria-hidden />
+                &ldquo;{p}&rdquo;
               </div>
-              <ul className="space-y-2">
-                {VOICE_PROMPTS.map((p) => (
-                  <li key={p} className="flex items-center gap-3 rounded-input bg-white/[0.06] px-4 py-3 text-[13px] text-shell-text">
-                    <Mic className="w-3.5 h-3.5 shrink-0 text-accentEmerald" aria-hidden />
-                    &ldquo;{p}&rdquo;
-                  </li>
-                ))}
-              </ul>
-            </div>
+            ))}
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function ExtensionSlide() {
-  const qboRows = [
-    { am: '$2,450.00', name: 'Acme Supply Co.', date: 'Mar 12', badge: 'high', score: '98' },
-    { am: '$870.50', name: 'Metro Office Solutions', date: 'Mar 13', badge: 'high', score: '94' },
-    { am: '$3,100.00', name: 'Riverside Contractors', date: 'Mar 14', badge: 'med', score: '72' },
-    { am: '$215.00', name: 'Office Depot', date: 'Mar 15', badge: '', score: '' },
-    { am: '$560.25', name: 'City Utilities LLC', date: 'Mar 16', badge: 'high', score: '97' },
-  ];
-  const extCards = [
-    { am: '$2,450.00', py: 'Acme Supply Co. · Check #1042', sc: '98', warn: false },
-    { am: '$870.50', py: 'Metro Office Solutions · Check #1043', sc: '94', warn: false },
-    { am: '$3,100.00', py: 'Riverside Contractors · Check #1044', sc: '72', warn: true },
-  ];
-
-  return (
-    <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
-      <div className="bg-surface rounded-card overflow-hidden shadow-glass-modal">
-        <div className="bg-success-dark px-4 py-2.5 flex items-center gap-2">
-          <span className="text-[13px] font-bold text-white tracking-display">QuickBooks</span>
-          <span className="text-[10px] text-white/60 ml-auto">Acme Corp</span>
-        </div>
-        <div className="px-3 py-2.5 bg-surface-sunken border-b border-glass-hairline text-[11px] font-semibold text-ink-body">
-          Banking · For Review (24)
-        </div>
-        <div className="p-3 space-y-1">
-          {qboRows.map((r) => (
-            <div
-              key={r.am}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-input text-xs border',
-                r.badge === 'high' ? 'bg-success-bg border-success-border' : r.badge === 'med' ? 'bg-warning-bg border-warning-border' : 'border-transparent'
-              )}
-            >
-              <span className="font-bold text-ink-strong min-w-[72px] nums">{r.am}</span>
-              <span className="flex-1 text-ink-body">{r.name}</span>
-              <span className="text-[11px] text-ink-faint">{r.date}</span>
-              {r.badge && (
-                <span className={cn('text-[9px] font-bold px-2 py-0.5 rounded-full text-white', r.badge === 'high' ? 'bg-success' : 'bg-warning')}>
-                  kyriq {r.score}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-shell-solid rounded-card overflow-hidden shadow-glass-modal border border-glass-hairline-dark">
-        <div className="bg-gradient-to-r from-brand to-brand-dark px-4 py-3 flex items-center gap-2">
-          <KyriqLogo height={22} variant="white" />
-          <span className="ml-auto bg-success text-white text-[10px] font-bold px-2 py-0.5 rounded-full">4 pending</span>
-        </div>
-        <div className="p-2 space-y-1.5">
-          {extCards.map((c) => (
-            <div key={c.am} className={cn('rounded-input p-3 border bg-white/[0.06]', c.warn ? 'border-warning/30' : 'border-glass-hairline-dark')}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[13px] font-extrabold text-shell-text tracking-wordmark nums">{c.am}</span>
-                <span className={cn('text-[10px] font-bold nums', c.warn ? 'text-warning' : 'text-accentEmerald')}>{c.sc}</span>
-              </div>
-              <div className="text-[11px] text-shell-muted mb-2">{c.py}</div>
-              <div className="flex gap-1.5">
-                <span className="text-[10px] font-semibold bg-success text-white px-2.5 py-1 rounded-full">Approve</span>
-                <span className="text-[10px] font-semibold bg-white/[0.08] text-shell-muted px-2.5 py-1 rounded-full">Flag</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -661,8 +608,9 @@ function Pricing() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-[1100px] mx-auto">
+    <section id="pricing" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 overflow-hidden">
+      <SectionBackdrop src="/landing/pricing-background-4k-v1.png" opacity="opacity-80" />
+      <div className="relative max-w-7xl mx-auto">
         <SectionHead
           eyebrow="Simple, flexible pricing"
           title="Choose monthly flexibility or save one month with an annual commitment"
@@ -691,13 +639,13 @@ function Pricing() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5 stagger items-stretch">
+        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 stagger items-stretch">
           {PLANS.map((p) => (
             <div
               key={p.tier}
               className={cn(
-                'animate-glass-rise relative rounded-card p-8 h-full flex flex-col',
-                p.popular ? 'bg-shell-solid text-shell-text shadow-brand-glow' : 'glass-card'
+                'animate-glass-rise relative rounded-card p-8 lg:p-10 h-full flex flex-col min-h-[590px]',
+                p.popular ? 'bg-shell-solid text-shell-text shadow-brand-glow md:-translate-y-4' : 'bg-surface/90 backdrop-blur-xl border border-glass-hairline shadow-glass'
               )}
             >
               {p.popular && (
@@ -847,18 +795,19 @@ const FAQS: { q: string; a: string }[] = [
 
 function Faq() {
   return (
-    <section id="faq" className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-[1100px] mx-auto">
+    <section id="faq" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 overflow-hidden">
+      <SectionBackdrop src="/landing/faq-background-4k-v1.png" opacity="opacity-75" />
+      <div className="relative max-w-7xl mx-auto">
         <SectionHead
           eyebrow="Frequently asked questions"
           title="Everything you need to know before your first reconciliation"
           blurb="How Kyriq extracts checks from your bank statement, compares them with QuickBooks, manages approvals, and calculates plan usage."
         />
-        <div className="grid md:grid-cols-2 gap-3 items-start">
+        <div className="grid md:grid-cols-2 gap-4 items-start">
           {FAQS.map((item, i) => (
             // <details> rather than a JS accordion: keyboard and screen-reader
             // correct for free, and it works before hydration.
-            <details key={item.q} open={i === 0} className="glass-card rounded-card px-6 py-5 group">
+            <details key={item.q} open={i === 0} className="bg-surface/88 backdrop-blur-xl border border-glass-hairline shadow-contact rounded-card px-6 sm:px-7 py-6 group">
               <summary className="cursor-pointer list-none flex items-start justify-between gap-4 text-[15px] font-semibold text-ink-strong">
                 {item.q}
                 <span className="shrink-0 text-brand transition-transform duration-quick ease-settle group-open:rotate-45" aria-hidden>+</span>
@@ -879,10 +828,11 @@ function Faq() {
 function CTASection() {
   const router = useRouter();
   return (
-    <section className="py-16 sm:py-24 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto relative rounded-modal overflow-hidden animate-glass-rise">
-        <div className="relative bg-shell-solid p-8 sm:p-12 md:p-16 text-center">
-          <div aria-hidden className="pointer-events-none absolute -left-20 -bottom-24 h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle_at_50%_50%,hsl(var(--brand)/0.45),transparent_70%)] blur-xl" />
+    <section className="py-24 sm:py-32 px-4 sm:px-6 bg-surface">
+      <div className="max-w-6xl mx-auto relative rounded-modal overflow-hidden animate-glass-rise min-h-[500px] flex items-center">
+        <Image src="/landing/closing-cta-ribbons-4k-v1.png" alt="" fill sizes="100vw" className="object-cover" aria-hidden />
+        <div aria-hidden className="absolute inset-0 bg-shell-solid/35" />
+        <div className="relative w-full p-10 sm:p-16 md:p-24 text-center">
           <h2 className="relative text-2xl sm:text-3xl md:text-4xl font-extrabold text-shell-text tracking-[-0.025em] mb-4">
             Ready to reconcile checks in a fraction of the time?
           </h2>
