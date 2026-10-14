@@ -29,7 +29,7 @@
  * nothing else would notice the app moving out from under it.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
@@ -259,5 +259,31 @@ for (const rel of MARKUP_FILES) {
   }
 }
 ok('every page declared, no inline script or handler, icon paths resolve');
+
+/* --- 10. Brand artwork is byte-identical to the app's copy ---------------- */
+// These SVGs exist twice on disk: the extension cannot reach frontend/public,
+// so each one is copied in. Nothing noticed when only one copy was re-cut,
+// which is how the extension came to ship a mark the app had already replaced.
+{
+  const PAIRS = [
+    ['icons/kyriq-icon-on-brand.svg', 'brand/kyriq-icon-on-brand.svg'],
+    ['icons/kyriq-logo-white.svg',    'brand/kyriq-logo-white.svg'],
+    ['icons/kyriq-logo.svg',          'brand/kyriq-logo.svg'],
+    ['icons/quickbooks.svg',          'integrations/quickbooks.svg'],
+  ];
+  for (const [extRel, appRel] of PAIRS) {
+    const appPath = join(REPO, 'frontend', 'public', appRel);
+    assert.ok(
+      existsSync(appPath),
+      `frontend/public/${appRel} is gone but ${extRel} still copies it - re-point or delete the copy`
+    );
+    assert.ok(
+      readFileSync(join(EXT, extRel)).equals(readFileSync(appPath)),
+      `${extRel} has drifted from frontend/public/${appRel} - re-copy it, or the extension ` +
+      'ships different artwork from the app'
+    );
+  }
+  ok(`${PAIRS.length} brand SVGs byte-identical to frontend/public`);
+}
 
 console.log(`\n${checks} checks passed.`);

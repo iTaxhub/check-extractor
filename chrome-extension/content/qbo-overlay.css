@@ -89,10 +89,14 @@
   border-left-color: var(--k-warning);
 }
 #kyriq-txn-banner .kyriq-icon {
-  font-size: 18px;
-  line-height: 1;
+  /* Was an emoji glyph sized by font-size; it is the real mark now, so the
+     box needs explicit dimensions or QuickBooks' own img rules size it. */
+  width: 18px;
+  height: 18px;
+  display: block;
   flex-shrink: 0;
   margin-top: 1px;
+  border-radius: 4px;
 }
 #kyriq-txn-banner .kyriq-body {
   flex: 1;

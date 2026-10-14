@@ -1440,7 +1440,8 @@
     const banner = document.createElement('div');
     banner.id = 'kyriq-txn-banner';
     banner.innerHTML = `
-      <span class="kyriq-icon">✅</span>
+      <img class="kyriq-icon" alt="Kyriq"
+           src="${chrome.runtime.getURL('icons/icon32.png')}">
       <div class="kyriq-body">
         <div class="kyriq-title">
           Verified by Kyriq
