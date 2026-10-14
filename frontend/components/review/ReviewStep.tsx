@@ -7,6 +7,7 @@ import {
   CheckCircle2, Filter, ArrowUpDown, Building2, ListChecks, BadgeCheck,
 } from 'lucide-react';
 import { useMatches } from '@/hooks/useMatches';
+import { useRealtimeMatches } from '@/hooks/useRealtimeMatches';
 import { useQBConnections } from '@/hooks/useQBConnections';
 import MatchRow from '@/components/MatchRow';
 import SearchQBModal from '@/components/SearchQBModal';
@@ -229,6 +230,11 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
     limit: perPage,
     batchId: effectiveBatchId,
   });
+
+  /** Two reviewers, one batch: an approve/flag/resolve by either refreshes the
+   *  other's view. Best-effort — if realtime is unavailable the screen behaves
+   *  exactly as it did before, polling nothing and waiting on nothing. */
+  useRealtimeMatches(effectiveBatchId, refresh);
 
   /** Live counts. The tab counts are sums over the SAME per-status counts the
    *  chips show, so a tab can never disagree with the chips inside it. */

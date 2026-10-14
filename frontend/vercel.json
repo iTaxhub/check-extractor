@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/qbo/health-check",
-      "schedule": "0 * * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/email/notices",

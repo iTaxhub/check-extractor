@@ -44,8 +44,12 @@ export default function QBConnectionStatus() {
       if (integrationRes.ok) {
         const data = await integrationRes.json();
 
+        // Only ask /api/qbo/company-info when the stored name is missing. It is
+        // the one route that can reach Intuit, and Intuit's free read quota
+        // BLOCKS at 500k a month — a read per mount for a name we already have
+        // is how that gets tripped for every customer at once.
         let companyInfo: any = null;
-        if (data.qboConnected) {
+        if (data.qboConnected && !data.companyName) {
           try {
             const companyRes = await fetch('/api/qbo/company-info');
             if (companyRes.ok) companyInfo = await companyRes.json();

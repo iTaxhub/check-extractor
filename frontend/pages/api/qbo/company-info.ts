@@ -1,27 +1,61 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
-import { getQbToken } from '@/lib/qb-token';
+import { getQbToken, resolveQbConnection } from '@/lib/qb-token';
 
 const QBO_BASE = 'https://quickbooks.api.intuit.com';
 
 /**
- * Fetch QuickBooks Company Information
- * GET /api/qbo/company-info
+ * QuickBooks company information for the ACTIVE company.
+ *
+ *   GET  /api/qbo/company-info            cached read (hits QBO only if the
+ *                                         stored company_name is missing)
+ *   GET  /api/qbo/company-info?refresh=1  force a QBO pull
+ *   POST /api/qbo/company-info            force a QBO pull
+ *
+ * This used to hit `/companyinfo/{realmId}` on EVERY call, from three callers
+ * that only wanted the company name — a name that already sits in
+ * `qb_connections.company_name` (migration 013) and effectively never changes.
+ * Intuit's free read quota BLOCKS rather than bills at 500k reads a month, so a
+ * live read per page load would take every customer's sync down at once when it
+ * tripped. Same shape as qbo/accounts.ts and its qb_accounts cache: serve from
+ * the database, touch QuickBooks only on an explicit refresh or when the stored
+ * value is missing (a freshly connected company, which still gets a name).
+ *
+ * The legalName / email / phone / address fields are NOT stored, so they are
+ * only present on a refreshed response — `cached: true` says which this is.
  */
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const supabase = createAuthenticatedClient(req);
 
-    // One resolver (lib/qb-token.ts). This route used to read ONLY the legacy
-    // integrations row, so on a firm with several connected companies it
-    // reported the WRONG company's name. It now reads qb_connections first.
+    const wantsRefresh =
+      req.method === 'POST' || req.query.refresh === '1' || req.query.refresh === 'true';
+
+    // Cached path: no Intuit read, and no token refresh either — the stored
+    // name needs neither. One resolver (lib/qb-token.ts) so this answers for
+    // the company the switcher says is active, not the legacy single-company
+    // row.
+    if (!wantsRefresh) {
+      const conn = await resolveQbConnection(supabase);
+      if (conn?.companyName) {
+        return res.status(200).json({
+          connected: true,
+          cached: true,
+          realmId: conn.realmId,
+          companyName: conn.companyName,
+        });
+      }
+      // No stored name (just connected, or the legacy row): fall through and
+      // fetch it once, which also stores it for every later page load.
+    }
+
     const token = await getQbToken(supabase);
     if (!token.ok) {
       return res.status(token.reason === 'not_connected' ? 400 : 401).json({
@@ -91,6 +125,7 @@ export default async function handler(
 
     return res.status(200).json({
       connected: true,
+      cached: false,
       realmId: realmId,
       companyName: companyInfo.CompanyName,
       legalName: companyInfo.LegalName,
