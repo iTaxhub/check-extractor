@@ -10,6 +10,21 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Intuit's "Disconnect URL" is where QuickBooks sends the USER when they
+  // disconnect the app from inside QuickBooks — a browser navigation, GET, and
+  // with no guarantee of a Kyriq session cookie. Answering 405 there fails
+  // Intuit's review, which exercises it.
+  //
+  // It deliberately does NOT revoke on GET. A GET that destroys a connection is
+  // CSRF-able from any page that can embed a link. Intuit has already severed
+  // its side by the time the user lands here, and the scheduled health check
+  // marks the connection needs_reconnect, so the honest thing is to land the
+  // user somewhere that explains the state.
+  if (req.method === 'GET') {
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://kyriq.com').replace(/\/$/, '').trim();
+    return res.redirect(302, `${appUrl}/settings?tab=integrations&notice=quickbooks_disconnected`);
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

@@ -174,6 +174,18 @@ function SettingsPageContent() {
             )
             router.replace('/settings?tab=integrations', { scroll: false })
         }
+
+        // Where Intuit lands the user after they disconnect Kyriq from inside
+        // QuickBooks. Intuit has already severed its side, so this explains the
+        // state rather than reporting an error.
+        if (notice === 'quickbooks_disconnected') {
+            handledOAuthRef.current = true
+            toast(
+                'QuickBooks was disconnected from the QuickBooks side. Existing data stays in Kyriq, but new syncs will not run until you reconnect.',
+                { duration: 12000, icon: 'ℹ️' }
+            )
+            router.replace('/settings?tab=integrations', { scroll: false })
+        }
     }, [mounted, searchParams])
 
     useEffect(() => {

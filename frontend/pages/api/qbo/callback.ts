@@ -111,15 +111,22 @@ export default async function handler(
       }
     }
 
-    // Env vars OVERRIDE database values — same priority as auth.ts to guarantee they always match.
-    const clientId = (integration?.qb_client_id || process.env.QUICKBOOKS_CLIENT_ID)?.trim();
-    const clientSecret = (integration?.qb_client_secret || process.env.QUICKBOOKS_CLIENT_SECRET)?.trim();
+    // Env vars OVERRIDE database values. This MUST stay identical to auth.ts:
+    // authorization is requested with auth.ts's client_id and the code is
+    // exchanged with this one, so if the two resolve differently the exchange
+    // fails with invalid_client only AFTER the user has already consented.
+    //
+    // The comment here used to claim they matched while the code read the
+    // database first — the inverse of auth.ts. A stale qb_client_id row would
+    // therefore break every connect, and only at the last step.
+    const clientId = (process.env.QUICKBOOKS_CLIENT_ID || integration?.qb_client_id)?.trim();
+    const clientSecret = (process.env.QUICKBOOKS_CLIENT_SECRET || integration?.qb_client_secret)?.trim();
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://kyriq.com').replace(/\/$/, '').trim();
     const redirectUri = (process.env.QUICKBOOKS_REDIRECT_URI || integration?.qb_redirect_uri || `${appUrl}/api/qbo/callback`).trim();
     
     console.log('🔑 QB Callback credentials source:', {
-      fromDB: !!integration?.qb_client_id,
-      fromEnv: !integration?.qb_client_id && !!clientId,
+      fromEnv: !!process.env.QUICKBOOKS_CLIENT_ID,
+      fromDB: !process.env.QUICKBOOKS_CLIENT_ID && !!integration?.qb_client_id,
       redirectUri,
     });
 

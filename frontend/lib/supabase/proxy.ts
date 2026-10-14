@@ -48,6 +48,11 @@ export async function updateSession(request: NextRequest) {
     '/legal/terms',
     '/legal/eula',
     '/invite',
+    // The Chrome extension's OAuth landing page. Intuit redirects here in a
+    // fresh tab that may carry no session cookie, so gating it bounced the user
+    // to /login at the exact moment the connection had just succeeded. It
+    // renders a confirmation and notifies the extension; it reads no tenant data.
+    '/qb-oauth-complete',
   ];
 
   const isPublicRoute = publicRoutes.some(
