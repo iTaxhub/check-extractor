@@ -1,3 +1,14 @@
+> **SUPERSEDED — do not use this file.**
+>
+> Copying from here will get the submission rejected. It justifies `activeTab` (not in the
+> manifest) and `identity` / `notifications` (removed in 1.0.1 because no code called them),
+> omits `tabs`, `alarms` and `sidePanel` entirely, claims "98.7% accuracy" (an unsubstantiated
+> performance claim), quotes a price that is not current, and every URL is a `yourcompany.com`
+> placeholder.
+>
+> The current, code-accurate version is **`docs/chrome-web-store/SUBMISSION.md`**.
+> This file is kept only for the packaging notes it still contains.
+
 # Chrome Web Store Submission Guide
 
 Complete guide to publishing Kyriq Chrome Extension to the Chrome Web Store.
