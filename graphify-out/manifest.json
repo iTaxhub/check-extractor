@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "frontend/app/mfa/page.tsx": {
-    "mtime": 1791958095.0744503,
-    "seen": 1791965001.723852,
-    "ast_hash": "7c8ffaa435ab9676012d42f303bc6df6",
+    "mtime": 1791968903.5455685,
+    "seen": 1791970742.8007836,
+    "ast_hash": "a7048932b7c8cc4b3a52536b664b79e3",
     "semantic_hash": ""
   },
   "frontend/app/not-found.tsx": {
@@ -924,9 +924,9 @@
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/components/UserDetailDrawer.tsx": {
-    "mtime": 1791958095.108465,
-    "seen": 1791965001.7248514,
-    "ast_hash": "5db214edeea6451e05418332ca034f90",
+    "mtime": 1791970142.3066466,
+    "seen": 1791970742.8017817,
+    "ast_hash": "326206f5517a7581b241868702d7a3d3",
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/components/UserMenu.tsx": {
@@ -996,9 +996,9 @@
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/pages/ProfitCalculatorPage.tsx": {
-    "mtime": 1791964896.737872,
-    "seen": 1791965001.7248514,
-    "ast_hash": "0ea5a3162625f80113f10e70c0c9dd0b",
+    "mtime": 1791970509.0415053,
+    "seen": 1791970742.8017817,
+    "ast_hash": "70b5aac25c2e5f6bf82bcaef31440d7a",
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/pages/PulsePage.tsx": {
@@ -1008,9 +1008,9 @@
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/pages/RevenuePage.tsx": {
-    "mtime": 1791964896.7481046,
-    "seen": 1791965001.7248514,
-    "ast_hash": "a4fdeb9a548e43586052f604dbe01d20",
+    "mtime": 1791970165.4569676,
+    "seen": 1791970742.8017817,
+    "ast_hash": "b933d5fc801da68aab258947dc53a97b",
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/pages/SettingsPage.tsx": {
@@ -1062,9 +1062,9 @@
     "semantic_hash": ""
   },
   "frontend/components/landing/LandingPage.tsx": {
-    "mtime": 1791967559.244475,
-    "seen": 1791968280.6705775,
-    "ast_hash": "9e8f8053613d41f9779cc7e2ded5c4ba",
+    "mtime": 1791970248.5978599,
+    "seen": 1791970742.8017817,
+    "ast_hash": "4131dc56634cfde92cb000e2e6379997",
     "semantic_hash": ""
   },
   "frontend/components/landing/LegalShell.tsx": {
@@ -1158,9 +1158,9 @@
     "semantic_hash": ""
   },
   "frontend/components/ui/index.ts": {
-    "mtime": 1791470792.5789542,
-    "seen": 1791965001.7248514,
-    "ast_hash": "dd48ec6078b626397440757c1f6a4c82",
+    "mtime": 1791968811.1048584,
+    "seen": 1791970742.8017817,
+    "ast_hash": "62c4d2808bb739ce1de0b846eac141d7",
     "semantic_hash": ""
   },
   "frontend/components/ui/input.tsx": {
@@ -1542,8 +1542,8 @@
     "semantic_hash": ""
   },
   "frontend/lib/supabase/proxy.ts": {
-    "mtime": 1791960345.4398458,
-    "seen": 1791965001.7248514,
+    "mtime": 1791969667.0840693,
+    "seen": 1791970742.8017817,
     "ast_hash": "114aa9bdd820505cd13cda922540e3e7",
     "semantic_hash": ""
   },
@@ -2196,9 +2196,9 @@
     "semantic_hash": ""
   },
   "frontend/scripts/check-landing.ts": {
-    "mtime": 1791958095.2039855,
-    "seen": 1791965001.7248514,
-    "ast_hash": "c933b49e524617b75b6f559b2b93e830",
+    "mtime": 1791970060.9660087,
+    "seen": 1791970742.8017817,
+    "ast_hash": "c4009da6e39d36c25acec5c8f2581cd7",
     "semantic_hash": ""
   },
   "frontend/scripts/check-parcel-d.ts": {
@@ -3555,6 +3555,36 @@
     "mtime": 1791967194.7899346,
     "seen": 1791968280.6705775,
     "ast_hash": "6b67384aee032a877c1bdcbf6411642a",
+    "semantic_hash": ""
+  },
+  "frontend/components/admin-kit/lib/profit-model.ts": {
+    "mtime": 1791970534.274621,
+    "seen": 1791970742.8017817,
+    "ast_hash": "91752e20f4191359baecaab03f9bd83a",
+    "semantic_hash": ""
+  },
+  "frontend/components/ui/otp-input.tsx": {
+    "mtime": 1791968790.5670364,
+    "seen": 1791970742.8017817,
+    "ast_hash": "9ca76c7e12e91a51c0f4520b99ba24ef",
+    "semantic_hash": ""
+  },
+  "frontend/lib/pricing.ts": {
+    "mtime": 1791969996.2433004,
+    "seen": 1791970742.8017817,
+    "ast_hash": "9cfa9be5403990f3891bf42170f08ec4",
+    "semantic_hash": ""
+  },
+  "frontend/scripts/check-profit-model.ts": {
+    "mtime": 1791970517.4414833,
+    "seen": 1791970742.8017817,
+    "ast_hash": "1e80cb469c806940b0b68cdf8fa75f58",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/042_export_history_matches_schema.sql": {
+    "mtime": 1791969766.4925282,
+    "seen": 1791970742.8017817,
+    "ast_hash": "8024c7d02640964839a58ccef8d7db28",
     "semantic_hash": ""
   }
 }
