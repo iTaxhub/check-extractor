@@ -90,15 +90,15 @@
     "semantic_hash": ""
   },
   "chrome-extension/check-parity.mjs": {
-    "mtime": 1791470792.364813,
-    "seen": 1791965001.723852,
-    "ast_hash": "df61affb4037ea619207e633830ae320",
+    "mtime": 1791966393.2150638,
+    "seen": 1791968280.6705775,
+    "ast_hash": "8cd96841aedd59134ca01d948705c17a",
     "semantic_hash": ""
   },
   "chrome-extension/content/qbo-overlay.js": {
-    "mtime": 1789479281.179572,
-    "seen": 1791965001.723852,
-    "ast_hash": "907e17afbed09d82e0d6cdd134c63368",
+    "mtime": 1791966318.2168756,
+    "seen": 1791968280.6705775,
+    "ast_hash": "17d5778d6eb44dc8f555c59b06a7d1ce",
     "semantic_hash": ""
   },
   "chrome-extension/manifest.json": {
@@ -960,9 +960,9 @@
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/lib/nav.ts": {
-    "mtime": 1791958095.1144485,
-    "seen": 1791965001.7248514,
-    "ast_hash": "169d4a06c4012067fb257362abe4bbd4",
+    "mtime": 1791967615.8500624,
+    "seen": 1791968280.6705775,
+    "ast_hash": "f5700914e8d817141e790f06ac5ca213",
     "semantic_hash": ""
   },
   "frontend/components/admin-kit/lib/queries.ts": {
@@ -1062,9 +1062,9 @@
     "semantic_hash": ""
   },
   "frontend/components/landing/LandingPage.tsx": {
-    "mtime": 1791961252.5811722,
-    "seen": 1791965001.7248514,
-    "ast_hash": "5ca3f456469ab59281ee9a05c64cecdc",
+    "mtime": 1791967559.244475,
+    "seen": 1791968280.6705775,
+    "ast_hash": "9e8f8053613d41f9779cc7e2ded5c4ba",
     "semantic_hash": ""
   },
   "frontend/components/landing/LegalShell.tsx": {
@@ -1410,9 +1410,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/email/templates.ts": {
-    "mtime": 1791958095.154002,
-    "seen": 1791965001.7248514,
-    "ast_hash": "af3b886159fd13d15706345021c740f1",
+    "mtime": 1791967440.0859084,
+    "seen": 1791968280.6705775,
+    "ast_hash": "13f05e4a74230165c4888cd38f97f7a7",
     "semantic_hash": ""
   },
   "frontend/lib/extension-cors.ts": {
@@ -2184,9 +2184,9 @@
     "semantic_hash": ""
   },
   "frontend/scripts/check-email.ts": {
-    "mtime": 1791958095.2019835,
-    "seen": 1791965001.7248514,
-    "ast_hash": "677fc9cded314a887ae2d2b4085fbae8",
+    "mtime": 1791967702.9290886,
+    "seen": 1791968280.6705775,
+    "ast_hash": "c5921627cf5e4b41b49e718b0f66db32",
     "semantic_hash": ""
   },
   "frontend/scripts/check-history-reports.ts": {
@@ -2400,15 +2400,9 @@
     "semantic_hash": ""
   },
   "supabase/migrations/004_add_qb_entries_table.sql": {
-    "mtime": 1789479282.0359902,
-    "seen": 1791965001.7248514,
-    "ast_hash": "0587a6d370b169a6aa58d44621f615fe",
-    "semantic_hash": ""
-  },
-  "supabase/migrations/004_create_integrations_table.sql": {
-    "mtime": 1789479282.0369916,
-    "seen": 1791965001.7248514,
-    "ast_hash": "d77024adf98d463a0bdddf3cb0ffec4f",
+    "mtime": 1791966135.5947251,
+    "seen": 1791968280.6705775,
+    "ast_hash": "45c15d93363c97795f15de3e23e0930e",
     "semantic_hash": ""
   },
   "supabase/migrations/005_add_user_rls_policies.sql": {
@@ -2430,27 +2424,15 @@
     "semantic_hash": ""
   },
   "supabase/migrations/008_add_company_name_to_integrations.sql": {
-    "mtime": 1789479282.0415046,
-    "seen": 1791965001.7248514,
-    "ast_hash": "9e66e034f26367442197cd18db693051",
-    "semantic_hash": ""
-  },
-  "supabase/migrations/008_fix_rls_tenant_isolation.sql": {
-    "mtime": 1789479282.042724,
-    "seen": 1791965001.7248514,
-    "ast_hash": "80ee625db3c28b462ddc736667d690d5",
+    "mtime": 1791966135.5957248,
+    "seen": 1791968280.6705775,
+    "ast_hash": "928b16ec454a80e0e1d5d38dab192629",
     "semantic_hash": ""
   },
   "supabase/migrations/009_add_tenant_id_to_all_tables.sql": {
-    "mtime": 1789479282.0437253,
-    "seen": 1791965001.7248514,
-    "ast_hash": "c3a5ecf6b0ae31c29f411417f73a2215",
-    "semantic_hash": ""
-  },
-  "supabase/migrations/009_create_vouched_checks.sql": {
-    "mtime": 1789479282.0457227,
-    "seen": 1791965001.7248514,
-    "ast_hash": "1fc1d722fbe7d1907ea229b82f5286c0",
+    "mtime": 1791966135.5957248,
+    "seen": 1791968280.6705775,
+    "ast_hash": "a64a9fd14bc2d3cf7e3f933a4cc866ea",
     "semantic_hash": ""
   },
   "supabase/migrations/010_fix_user_profiles_rls_recursion.sql": {
@@ -2754,9 +2736,9 @@
     "semantic_hash": ""
   },
   "chrome-extension/sidepanel/sidepanel.html": {
-    "mtime": 1791958095.0150595,
-    "seen": 1791965001.7248514,
-    "ast_hash": "f3e06f97cb7f962f91348c296d10446f",
+    "mtime": 1791966326.6007552,
+    "seen": 1791968280.6705775,
+    "ast_hash": "fb3b2336f3eb5ecaec0d5ada63f726a8",
     "semantic_hash": ""
   },
   "docker/docker-compose.yml": {
@@ -3465,6 +3447,114 @@
     "mtime": 1791205553.337675,
     "seen": 1791965001.7248514,
     "ast_hash": "e9cf20cfa4faec9dc0a4e7dc2b1b9188",
+    "semantic_hash": ""
+  },
+  "frontend/app/(admin)/admin/waitlist/page.tsx": {
+    "mtime": 1791967615.7658472,
+    "seen": 1791968280.6705775,
+    "ast_hash": "37b7cb2e775842dbb6bb8b4354bb170d",
+    "semantic_hash": ""
+  },
+  "frontend/components/admin-kit/pages/WaitlistPage.tsx": {
+    "mtime": 1791968143.4460115,
+    "seen": 1791968280.6705775,
+    "ast_hash": "6987738b9790c1368a5c81755b9a918b",
+    "semantic_hash": ""
+  },
+  "frontend/components/landing/WaitlistForm.tsx": {
+    "mtime": 1791968038.5432835,
+    "seen": 1791968280.6705775,
+    "ast_hash": "014178a8aec32d08dbf6f4922c54bed2",
+    "semantic_hash": ""
+  },
+  "frontend/pages/api/admin/waitlist.ts": {
+    "mtime": 1791967487.4181123,
+    "seen": 1791968280.6705775,
+    "ast_hash": "7f8e7968aa3ba3d9def100eabb4f3f48",
+    "semantic_hash": ""
+  },
+  "frontend/pages/api/waitlist.ts": {
+    "mtime": 1791967782.8071342,
+    "seen": 1791968280.6705775,
+    "ast_hash": "486fac391dcd9e93b0bf9f642c150d72",
+    "semantic_hash": ""
+  },
+  "supabase/email-templates/build.mjs": {
+    "mtime": 1791966968.1852157,
+    "seen": 1791968280.6705775,
+    "ast_hash": "b545018aa900c0fe64d5b1f68724b2e5",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/040_waitlist.sql": {
+    "mtime": 1791967400.6078784,
+    "seen": 1791968280.6705775,
+    "ast_hash": "3505fdce2bd82c06c6a3adc52e6ea135",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/041_waitlist_email_unique.sql": {
+    "mtime": 1791967885.6102715,
+    "seen": 1791968280.6705775,
+    "ast_hash": "548c22c4fc62538f8ec6d787a97571e4",
+    "semantic_hash": ""
+  },
+  "supabase/email-templates/confirmation.html": {
+    "mtime": 1791966973.2096589,
+    "seen": 1791968280.6705775,
+    "ast_hash": "5d6ad415f989ca7df799375cee406b64",
+    "semantic_hash": ""
+  },
+  "supabase/email-templates/email_change.html": {
+    "mtime": 1791966973.2118464,
+    "seen": 1791968280.6705775,
+    "ast_hash": "65ff177f4e8e8ead3345a420fe767d78",
+    "semantic_hash": ""
+  },
+  "supabase/email-templates/email_changed_notification.html": {
+    "mtime": 1791966973.2138467,
+    "seen": 1791968280.6705775,
+    "ast_hash": "7b3dc11171b4a52376fc1dcc77a62ca8",
+    "semantic_hash": ""
+  },
+  "supabase/email-templates/invite.html": {
+    "mtime": 1791966973.2106366,
+    "seen": 1791968280.6705775,
+    "ast_hash": "72aca0c29568be885506aff188a40582",
+    "semantic_hash": ""
+  },
+  "supabase/email-templates/magic_link.html": {
+    "mtime": 1791966973.2106366,
+    "seen": 1791968280.6705775,
+    "ast_hash": "ab64bfc817ce5b8711b6f24ac4b1a2b6",
+    "semantic_hash": ""
+  },
+  "supabase/email-templates/password_changed_notification.html": {
+    "mtime": 1791966973.2128463,
+    "seen": 1791968280.6705775,
+    "ast_hash": "4d7eb55283dab7bac689956cd465d72e",
+    "semantic_hash": ""
+  },
+  "supabase/email-templates/recovery.html": {
+    "mtime": 1791966973.206636,
+    "seen": 1791968280.6705775,
+    "ast_hash": "e758f3002b60f949189a900f9285bbab",
+    "semantic_hash": ""
+  },
+  "chrome-extension/icons/quickbooks.svg": {
+    "mtime": 1791966400.841982,
+    "seen": 1791968280.6705775,
+    "ast_hash": "6cd831d4b76f4e295519ff7ff06a6f23",
+    "semantic_hash": ""
+  },
+  "frontend/public/integrations/csv.svg": {
+    "mtime": 1791967194.7507415,
+    "seen": 1791968280.6705775,
+    "ast_hash": "220bdcd34db8f166343e1515532a8036",
+    "semantic_hash": ""
+  },
+  "frontend/public/integrations/iif.svg": {
+    "mtime": 1791967194.7899346,
+    "seen": 1791968280.6705775,
+    "ast_hash": "6b67384aee032a877c1bdcbf6411642a",
     "semantic_hash": ""
   }
 }
