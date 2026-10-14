@@ -352,9 +352,10 @@ const EXPORT_TARGETS: { name: string; logo?: string }[] = [
   { name: 'Sage', logo: '/integrations/sage.svg' },
   { name: 'Zoho Books', logo: '/integrations/zoho.svg' },
   { name: 'Chrome extension', logo: '/integrations/googlechrome.svg' },
-  { name: 'CSV' },
-  { name: 'IIF' },
-  { name: 'QBO' },
+  // 'QBO' used to sit here as a fourth format. It is the same product as the
+  // 'QuickBooks Online' entry above, so the marquee named it twice.
+  { name: 'CSV', logo: '/integrations/csv.svg' },
+  { name: 'IIF', logo: '/integrations/iif.svg' },
 ];
 
 function ExportMarquee() {
