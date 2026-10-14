@@ -124,4 +124,53 @@ for (const rel of SHELLS) {
 }
 console.log('  ok  neither shell wraps content in a second scroll container');
 
+/* --- Overlays must escape the glass chrome ------------------------------ */
+// `backdrop-filter` makes an element the containing block for every
+// position:fixed descendant (so do transform, filter, perspective and contain).
+// The app chrome carries backdrop-filter, so an overlay rendered from a
+// component inside it stops resolving `fixed` against the viewport.
+//
+// Not theoretical. The Disconnect confirmation is rendered by CompanySwitcher,
+// which lives inside ShellTopBar (.glass-chrome). Its `bottom-0` meant "the
+// bottom of the 57px header", so the sheet grew UPWARD off the top of the
+// screen and a destructive action had a confirmation nobody could read.
+// Measured on the real component: an un-portalled fixed element in that header
+// bottoms out at 56px; portalled, at 940px — the viewport edge.
+{
+  const dialog = read('components/ui/dialog.tsx');
+
+  assert.match(
+    dialog,
+    /createPortal\(/,
+    'components/ui/dialog.tsx no longer portals to <body> — a glass ancestor ' +
+      '(backdrop-filter) will re-anchor position:fixed and push the panel off screen'
+  );
+  // Both overlays are position:fixed, so both need it — Sheet is the one that broke.
+  assert.equal(
+    (dialog.match(/createPortal\(/g) ?? []).length,
+    2,
+    'both Dialog and Sheet must portal; one of them lost its createPortal'
+  );
+  assert.match(
+    dialog,
+    /document\.body/,
+    'components/ui/dialog.tsx portals somewhere other than document.body'
+  );
+
+  // The other half of "a dialog you can always reach": the centred container
+  // overflows a too-tall panel equally above and below, and body scroll is
+  // locked, so the top half is unrecoverable without a height bound.
+  assert.match(
+    dialog,
+    /max-h-\[90vh\][^']*flex-col/,
+    'the Dialog panel lost its max-h/flex-col — tall content will overflow above the viewport'
+  );
+  assert.match(
+    dialog,
+    /min-h-0 flex-1 overflow-y-auto/,
+    'the Dialog body is no longer the scrolling region — the panel will grow past max-h instead'
+  );
+}
+console.log('  ok  overlays portal to <body> and bound their own height');
+
 console.log('\nall shell checks passed');

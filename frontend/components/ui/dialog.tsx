@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
@@ -19,10 +20,40 @@ import { IconButton } from './button';
  *
  * Only ONE blurred surface in the stack: the overlay is a plain tinted scrim,
  * the panel carries the blur.
+ *
+ * BOTH ARE PORTALLED TO <body>, and that is load-bearing rather than tidiness.
+ * `backdrop-filter` makes an element the containing block for every
+ * position:fixed descendant — so does transform, filter, perspective and
+ * contain. This design puts backdrop-filter on the app chrome, so an overlay
+ * rendered from a component that happens to live inside the top bar stops
+ * resolving `fixed` against the viewport and resolves it against a ~60px-tall
+ * header instead. That is not hypothetical: the Disconnect confirmation is
+ * rendered by CompanySwitcher, which sits inside ShellTopBar (.glass-chrome),
+ * so its `bottom-0` meant "the bottom of the header" and the sheet grew upward
+ * off the top of the screen — a destructive action whose confirmation could not
+ * be read or reached. Portalling to <body> escapes any such ancestor, whichever
+ * surface a future caller renders from.
  */
 
+/**
+ * True once mounted on the client. The portal target does not exist during the
+ * server render, and `createPortal` against a missing node throws, so the first
+ * client render matches the server's (nothing) and the portal appears after.
+ */
+function useMounted() {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
 export const dialogPanelVariants = cva(
-  'relative w-full glass-modal rounded-modal text-ink-strong animate-dialog-pop',
+  // max-h + flex-col is the other half of "a dialog you can always reach".
+  // The container centres with items-center, so a panel taller than the
+  // viewport overflows EQUALLY above and below — and the half above the top
+  // edge is unrecoverable, because useDismiss locks body scroll. Bounding the
+  // panel and scrolling the body region instead keeps the header on screen
+  // however long the content is.
+  'relative flex max-h-[90vh] w-full flex-col glass-modal rounded-modal text-ink-strong animate-dialog-pop',
   {
     variants: {
       size: {
@@ -95,9 +126,10 @@ export function Dialog({
   size,
 }: DialogProps) {
   useDismiss(open, onClose);
-  if (!open) return null;
+  const mounted = useMounted();
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
@@ -112,7 +144,7 @@ export function Dialog({
       />
       <div className={cn(dialogPanelVariants({ size }), className)}>
         {(title || !hideClose) && (
-          <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4">
+          <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-5 pb-4">
             <div className="min-w-0">
               {title ? (
                 <h2 className="font-heading text-lg font-semibold text-ink-strong">{title}</h2>
@@ -128,14 +160,20 @@ export function Dialog({
             )}
           </div>
         )}
-        {children ? <div className="px-6 pb-5">{children}</div> : null}
+        {/* min-h-0 so this region, not the panel, is what shrinks and scrolls:
+            a flex child's default min-height is its content, which would push
+            the panel past max-h and reintroduce the overflow. */}
+        {children ? (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">{children}</div>
+        ) : null}
         {footer ? (
-          <div className="flex items-center justify-end gap-3 border-t border-glass-hairline px-6 py-4">
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-glass-hairline px-6 py-4">
             {footer}
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -153,9 +191,10 @@ export function Sheet({
   side,
 }: SheetProps) {
   useDismiss(open, onClose);
-  if (!open) return null;
+  const mounted = useMounted();
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50"
       role="dialog"
@@ -186,6 +225,7 @@ export function Sheet({
           <div className="border-t border-glass-hairline px-6 py-4">{footer}</div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

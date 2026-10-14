@@ -153,13 +153,17 @@ export default function ConfigureExtractionDialog({ job, isOpen, onClose, onSubm
   };
 
   return (
+    // `className="max-h-[90vh] overflow-hidden"` used to sit on this Dialog, as
+    // a workaround for a panel primitive that had no height bound. It clipped
+    // tall content rather than scrolling it, because the panel was not a flex
+    // column. The primitive now bounds itself and scrolls its own body region,
+    // so the override would only re-clip what is already handled.
     <Dialog
       open={isOpen}
       onClose={onClose}
       size="xl"
       title="Configure Extraction"
       description={job.pdf_name}
-      className="max-h-[90vh] overflow-hidden"
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>
