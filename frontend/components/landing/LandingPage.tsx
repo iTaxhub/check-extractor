@@ -194,8 +194,8 @@ function Hero() {
         </Rise>
         <Rise>
           <p className="text-base sm:text-lg md:text-xl text-ink-soft max-w-[680px] mx-auto mb-9 leading-relaxed px-2">
-            Upload the bank statement you already download. Kyriq extracts every check, compares it with QuickBooks,
-            and lets your team approve all 100% matches in one step, so review time goes to the checks that need judgment.
+            Start with your bank statement. See every check matched against QuickBooks Online, approve exact
+            matches together, and review discrepancies with confidence.
           </p>
         </Rise>
 
@@ -505,14 +505,16 @@ function ExtensionSection() {
   );
 }
 
+/** Michael's approved examples, verbatim. Do not paraphrase these. */
 const VOICE_PROMPTS = [
-  'Which checks need attention this week?',
-  'Read me check 1042.',
-  'Show every payment to Harbor Supply this quarter.',
-  'How many exact matches are ready to approve?',
+  'What needs my attention before I complete this reconciliation?',
+  'Why was check #1047 marked as a mismatch?',
+  'Show me every payment made to ABC Supply across all my companies this year.',
+  'Which checks are ready for approval, and which ones should I review first?',
 ];
 
-/** Kyriq Voice teaser. The working beta lives at /voice for signed-in firms. */
+/** Kyriq IQ teaser. The working beta lives at /voice for signed-in firms, and is
+ *  still called Voice there — Michael renamed the public-facing section only. */
 function VoiceSection() {
   return (
     <section id="voice" className="py-16 sm:py-24 px-4 sm:px-6">
@@ -522,17 +524,20 @@ function VoiceSection() {
           <div className="relative grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-glass-hairline-dark bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald mb-5">
-                <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq Voice · Coming soon
+                <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
               </span>
               <h2 className="text-3xl sm:text-4xl md:text-[44px] font-extrabold tracking-[-0.025em] leading-[1.08] text-shell-text mb-5">
-                Ask your reconciliation out loud.
+                Ask. Review. Act&mdash;with your approval.
               </h2>
               <p className="text-[15px] sm:text-base text-shell-muted leading-relaxed mb-4">
-                Talk to Kyriq like a colleague. Ask what needs attention, have a check read back, or pull up every payment
-                to a vendor. Kyriq Voice answers from your own firm&apos;s data, remembers your companies and payees, and
-                never clears anything without your approval.
+                Kyriq IQ brings conversational intelligence to reconciliation.
               </p>
-              <p className="text-[13px] text-shell-muted/80 mb-8">Starting with checks. Full-books reconciliation is next.</p>
+              <p className="text-[15px] sm:text-base text-shell-muted leading-relaxed mb-4">
+                Talk to Kyriq like a colleague. Ask what needs attention, have any check read back to you, or find every
+                payment made to a vendor. Kyriq IQ works from your firm&apos;s own data, recognizes your companies and
+                payees, and keeps you in control of every action.
+              </p>
+              <p className="text-[13px] text-shell-muted/80 mb-8">Starting with checks. Full-book reconciliation is next.</p>
               <a
                 href="mailto:support@kyriq.com?subject=Kyriq%20Voice%20waitlist"
                 className={cn(buttonVariants({ variant: 'primary', size: 'lg' }))}
@@ -934,7 +939,7 @@ function Footer() {
     Product: [
       { label: 'How it works', href: '#how' },
       { label: 'Chrome extension', href: '#extension' },
-      { label: 'Kyriq Voice', href: '#voice' },
+      { label: 'Kyriq IQ', href: '#voice' },
       { label: 'Pricing', href: '#pricing' },
       { label: 'FAQs', href: '#faq' },
     ],
