@@ -165,8 +165,12 @@ console.log('  ok  every CTA reads "Start Free Trial" and resolves to /signup');
     { tier: 'scale', name: 'Firm', monthly: 1299, annual: 14289, allowance: 10000, overage: '0.20' },
   ];
 
+  // Plans moved to lib/pricing.ts so the admin side can import them; the
+  // assertion follows the values to their new home rather than checking a
+  // file that now only renders them.
+  const pricingSrc = read('lib/pricing.ts');
   for (const p of EXPECTED) {
-    const row = src.match(new RegExp(`\\{[^}]*tier: '${p.tier}'[^}]*\\}`))?.[0];
+    const row = pricingSrc.match(new RegExp(`\\{[^}]*tier: '${p.tier}'[^}]*\\}`))?.[0];
     assert.ok(row, `${LANDING}: the "${p.tier}" plan is gone from PLANS`);
     assert.match(row!, new RegExp(`name: '${p.name}'`), `${LANDING}: ${p.tier} is no longer named "${p.name}"`);
     assert.match(row!, new RegExp(`monthly: ${p.monthly}\\b`), `${LANDING}: ${p.tier} monthly price drifted from $${p.monthly}`);
@@ -185,11 +189,12 @@ console.log('  ok  every CTA reads "Start Free Trial" and resolves to /signup');
     );
   }
 
-  assert.match(src, /popular: true/, `${LANDING}: no plan is marked Most Popular — Professional is`);
+  // Also in lib/pricing.ts now, for the same reason as the rows above.
+  assert.match(pricingSrc, /popular: true/, `lib/pricing.ts: no plan is marked Most Popular — Professional is`);
   assert.match(
-    src.match(/\{[^}]*tier: 'professional'[^}]*\}/)![0],
+    pricingSrc.match(/\{[^}]*tier: 'professional'[^}]*\}/)![0],
     /popular: true/,
-    `${LANDING}: Most Popular moved off Professional`
+    'lib/pricing.ts: Most Popular moved off Professional'
   );
 
   // The toggle, the extension note, and the annual terms.
@@ -204,8 +209,11 @@ console.log('  ok  every CTA reads "Start Free Trial" and resolves to /signup');
   assert.match(src, /allowances still\s+reset each month/, `${LANDING} lost the allowance-reset term`);
   assert.match(src, /non-refundable except where required/, `${LANDING} lost the annual refund term`);
   assert.match(src, /whichever comes first/, `${LANDING} lost the trial terms`);
+  console.log(
+    `  ok  pricing is ${EXPECTED.map((p) => p.monthly).join(' / ')} monthly, `
+    + `${EXPECTED.map((p) => p.annual).join(' / ')} annual, with overage and terms`
+  );
 }
-console.log('  ok  pricing is 147 / 497 / 997 monthly, 1617 / 5467 / 10967 annual, with overage and terms');
 
 /* --- 5. The FAQ is the approved 15, verbatim ---------------------------- */
 // The 15 pairs come from the client's redesign site. A partial edit or an

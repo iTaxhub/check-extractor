@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import type { OtpInputHandle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import {
   Badge,
@@ -13,6 +14,7 @@ import {
   GlassCardTitle,
   GlassPanel,
   Input,
+  OtpInput,
   Skeleton,
 } from '@/components/ui';
 
@@ -46,7 +48,14 @@ function MfaFlow() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [email, setEmail] = useState<string>('');
   const enrolling = useRef(false);
+  const otpRef = useRef<OtpInputHandle>(null);
+  // Auto-verify must fire ONCE per completed code. Without this guard a
+  // re-render while the request is in flight submits the same code again,
+  // and Supabase rejects a replayed TOTP - so the user sees a failure for a
+  // code that was actually correct.
+  const submitted = useRef<string | null>(null);
 
   const authHeaders = async () => {
     const { data } = await createClient().auth.getSession();
@@ -62,6 +71,12 @@ function MfaFlow() {
   const bootstrap = useCallback(async () => {
     setError('');
     const supabase = createClient();
+
+    // Only so the downloaded recovery-code file can name the account it belongs
+    // to. Someone with codes for more than one account cannot tell two files
+    // apart otherwise.
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user?.email) setEmail(userData.user.email);
 
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalData?.currentLevel === 'aal2') {
@@ -123,9 +138,75 @@ function MfaFlow() {
     bootstrap();
   }, [bootstrap]);
 
-  const verify = async () => {
+  // Save them WITHOUT waiting to be asked. They are shown exactly once, and the
+  // failure this prevents is silent: the person reads "save these", clicks
+  // continue, and finds out months later that they did not. The file is also
+  // offered as a button, because a browser set to ask where to save, or one
+  // that blocks a download the user did not click, will drop this one.
+  const autoSaved = useRef(false);
+  useEffect(() => {
+    if (!backupCodes?.length || autoSaved.current) return;
+    autoSaved.current = true;
+    try {
+      downloadCodes(backupCodes);
+      setNotice('Recovery codes saved to your Downloads folder.');
+    } catch {
+      // A blocked download is not an error worth interrupting enrolment for;
+      // the Download button below is the fallback.
+    }
+    // downloadCodes is stable for this component's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backupCodes]);
+
+  /**
+   * Write the recovery codes out as a .txt the person actually keeps.
+   *
+   * These are shown exactly once. Previously the only way to keep them was the
+   * clipboard, which is one Ctrl-C away from being overwritten and is gone the
+   * moment the machine sleeps — so "I copied them" and "I still have them" were
+   * not the same thing. The file includes what they are and how to use them,
+   * because a bare list of sixteen strings in Downloads is unidentifiable six
+   * months later when it is actually needed.
+   *
+   * CRLF line endings: Windows Notepad renders lone \n as one run-on line, and
+   * this is a file people open on Windows.
+   */
+  const downloadCodes = (codes: string[]) => {
+    const text = [
+      'Kyriq two-factor recovery codes',
+      '',
+      `Account : ${email || 'your Kyriq account'}`,
+      `Issued  : ${new Date().toLocaleString('en-GB')}`,
+      '',
+      'Each code works ONCE. Use one at kyriq.com/mfa if you lose your',
+      'authenticator app. Keep this file somewhere only you can reach —',
+      'anyone holding these can get past two-factor on your account.',
+      '',
+      ...codes,
+      '',
+    ].join('\r\n');
+
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kyriq-recovery-codes-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoking immediately can cancel the download in some browsers; a tick is
+    // enough for it to have started.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  /**
+   * `explicit` exists because auto-submit fires from the input's onComplete, in
+   * the same tick as the onChange that completed it. Reading `code` from state
+   * there would see the PREVIOUS value — five digits — and verify would reject
+   * a code the user entered correctly. The button passes nothing and uses state.
+   */
+  const verify = async (explicit?: string) => {
     if (!factorId) return;
-    const digits = code.replace(/\D/g, '');
+    const digits = (explicit ?? code).replace(/\D/g, '');
     if (digits.length !== 6) {
       setError('Enter the 6-digit code from your authenticator app.');
       return;
@@ -168,10 +249,27 @@ function MfaFlow() {
       }
     } catch (err: any) {
       setError(err?.message || 'That code was not accepted.');
+      // Let the next attempt auto-submit: a TOTP that failed because it expired
+      // between typing and sending is the common case, and the retry is usually
+      // the same six boxes refilled.
+      submitted.current = null;
+      // Clear and put the caret back in box 1, so a retry is just typing.
+      setCode('');
+      otpRef.current?.focusFirst();
     } finally {
       setBusy(false);
-      setCode('');
     }
+  };
+
+  /**
+   * Submit as soon as the sixth digit lands, the way Stripe and the banks do.
+   * The button stays for keyboard and assistive-tech users, and for the case
+   * where auto-submit already fired and failed.
+   */
+  const onCodeComplete = (full: string) => {
+    if (busy || submitted.current === full) return;
+    submitted.current = full;
+    verify(full);
   };
 
   const redeemRecovery = async () => {
@@ -248,19 +346,22 @@ function MfaFlow() {
               )}
 
               <Field label="6-digit code" htmlFor="mfa-code" error={error || undefined}>
-                <Input
+                <OtpInput
+                  ref={otpRef}
                   id="mfa-code"
+                  label="6-digit code"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={7}
-                  placeholder="123456"
-                  state={error ? 'invalid' : undefined}
+                  onChange={setCode}
+                  onComplete={onCodeComplete}
+                  invalid={!!error}
+                  disabled={busy}
                 />
               </Field>
 
-              <Button block onClick={verify} disabled={busy || !factorId}>
+              {/* Kept although the code auto-submits: the sixth digit may arrive
+                  by paste or autofill with the row already complete, and the
+                  button is the retry after a failure. */}
+              <Button block onClick={() => verify()} disabled={busy || !factorId || code.length !== 6}>
                 {busy ? 'Verifying…' : 'Verify and finish'}
               </Button>
               <button
@@ -281,20 +382,20 @@ function MfaFlow() {
               </GlassCardBody>
 
               <Field label="6-digit code" htmlFor="mfa-challenge" error={error || undefined}>
-                <Input
+                <OtpInput
+                  ref={otpRef}
                   id="mfa-challenge"
+                  label="6-digit code"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={7}
-                  placeholder="123456"
+                  onChange={setCode}
+                  onComplete={onCodeComplete}
+                  invalid={!!error}
+                  disabled={busy}
                   autoFocus
-                  state={error ? 'invalid' : undefined}
                 />
               </Field>
 
-              <Button block onClick={verify} disabled={busy}>
+              <Button block onClick={() => verify()} disabled={busy || code.length !== 6}>
                 {busy ? 'Verifying…' : 'Verify'}
               </Button>
               <button
@@ -363,15 +464,20 @@ function MfaFlow() {
                       ))}
                     </div>
                   </GlassPanel>
-                  <Button
-                    block
-                    variant="secondary"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(backupCodes.join('\n')).catch(() => {});
-                    }}
-                  >
-                    Copy codes
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(backupCodes.join('\n')).catch(() => {});
+                        setNotice('Codes copied to the clipboard.');
+                      }}
+                    >
+                      Copy codes
+                    </Button>
+                    <Button variant="secondary" onClick={() => downloadCodes(backupCodes)}>
+                      Download .txt
+                    </Button>
+                  </div>
                   <Button block onClick={() => router.replace(next)}>
                     I have saved them, continue
                   </Button>

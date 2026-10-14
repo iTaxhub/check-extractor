@@ -26,7 +26,6 @@ import {
 import { callEdgeFn } from "../lib/api";
 import { formatRelative } from "../lib/formatters";
 import { EmptyState } from "./EmptyState";
-import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/components/admin-kit/_deps/lib/pricing";
 import { cn } from "@/lib/utils";
 
 interface UserProfile {
@@ -347,16 +346,17 @@ export function UserDetailDrawer({ userId, open, onClose, onActionComplete }: Us
                 <div className="space-y-3">
                   {[
                     {
-                      // Label only — the amount this user is actually billed
-                      // lives on their Stripe subscription (and may be a legacy
-                      // or promo price). These are the CURRENT list prices from
-                      // src/lib/pricing.ts; for the real figure, read the
-                      // Payments tab above, which renders amount_paid_cents.
+                      // Billing PERIOD only, deliberately without an amount.
+                      // This used to print DepthMe's $14.99/mo and $99.99/yr,
+                      // which are not Kyriq prices at all. Kyriq sells three
+                      // tiers ($249 / $649 / $1,299) and this record carries
+                      // only `premium_plan` — monthly or yearly — with no tier,
+                      // so no single figure here can be right. A wrong number
+                      // is worse than none: the Payments tab above renders
+                      // amount_paid_cents, which is what was actually charged.
                       label: "Plan",
                       value: user.is_premium
-                        ? user.premium_plan === "yearly"
-                          ? `Annual (${formatUsd(PRICE_YEARLY_USD)}/yr)`
-                          : `Monthly (${formatUsd(PRICE_MONTHLY_USD)}/mo)`
+                        ? user.premium_plan === "yearly" ? "Annual" : "Monthly"
                         : "Free",
                     },
                     { label: "Member since", value: formatRelative(user.created_at) },

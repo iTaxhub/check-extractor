@@ -25,6 +25,9 @@ export { Button, IconButton, buttonVariants } from './button';
 export type { ButtonProps, IconButtonProps } from './button';
 
 export { Input, Textarea, Select, Field, inputVariants } from './input';
+
+export { OtpInput } from './otp-input';
+export type { OtpInputProps, OtpInputHandle } from './otp-input';
 export type { InputProps, TextareaProps, SelectProps, FieldProps } from './input';
 
 export { Dialog, Sheet, dialogPanelVariants, sheetPanelVariants } from './dialog';

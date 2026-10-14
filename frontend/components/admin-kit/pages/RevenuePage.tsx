@@ -16,7 +16,7 @@ import { PageHeader } from "../components/PageHeader";
 import { DataTable } from "../components/DataTable";
 import { TransactionDetailDrawer, type ChargeLike } from "../components/TransactionDetailDrawer";
 import { useAdminMetrics } from "../lib/queries";
-import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/components/admin-kit/_deps/lib/pricing";
+import { PLANS, annualPerMonth, formatUsd, planByTier } from "@/lib/pricing";
 import { callEdgeFn } from "../lib/api";
 import { formatCurrency, formatNumber, formatPct } from "../lib/formatters";
 import { useDateRange } from "../contexts/DateRangeContext";
@@ -308,8 +308,16 @@ function PlatformBreakdown() {
    These used to be typed out here AND in ProfitCalculatorPage AND in
    UserDetailDrawer, which is how the three pages ended up quoting different
    prices for the same plan. */
-const MONTHLY_PLAN_PRICE = PRICE_MONTHLY_USD;
-const ANNUAL_PLAN_PRICE = PRICE_YEARLY_USD;
+// Kyriq sells THREE tiers, so there is no single "the plan price". These used
+// to be DepthMe's $14.99 / $99.99, which made every figure in this modal wrong
+// by roughly 17x. The per-plan margin rows below are an illustration, not a
+// measurement: they are computed for Professional, the middle and most popular
+// tier, because the subscriber-to-tier mix is not recorded anywhere this page
+// can read. The headline MRR figures above come from real data and are not
+// affected by this choice.
+const REFERENCE_PLAN = planByTier('professional');
+const MONTHLY_PLAN_PRICE = REFERENCE_PLAN.monthly;
+const ANNUAL_PLAN_PRICE = REFERENCE_PLAN.annual;
 const STRIPE_PCT_MODAL = 0.029;
 const STRIPE_FLAT_MODAL = 0.30;
 
@@ -356,7 +364,7 @@ function ProfitBreakdownModal({
   const isProfitable = netProfit > 0;
 
   const monthlyPlanMargin = MONTHLY_PLAN_PRICE * (1 - STRIPE_PCT_MODAL) - STRIPE_FLAT_MODAL - costPerUser;
-  const annualPlanMonthlyEquivalent = ANNUAL_PLAN_PRICE / 12;
+  const annualPlanMonthlyEquivalent = annualPerMonth(REFERENCE_PLAN);
   const annualPlanMargin = annualPlanMonthlyEquivalent - costPerUser; // annual flat fee amortized negligibly per month
 
   const now = new Date();
@@ -445,11 +453,11 @@ function ProfitBreakdownModal({
             <p className="text-[11px] uppercase tracking-wider text-ink-soft mb-2">Per-plan margin (after Stripe fees)</p>
             <div className="grid grid-cols-2 gap-2.5">
               <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
-                <p className="text-[11px] text-ink-soft">Monthly plan (${MONTHLY_PLAN_PRICE})</p>
+                <p className="text-[11px] text-ink-soft">{REFERENCE_PLAN.name} monthly ({formatUsd(MONTHLY_PLAN_PRICE)})</p>
                 <p className={cn("text-base font-bold tabular-nums", monthlyPlanMargin >= 0 ? "text-success-text" : "text-error-text")}>{formatCurrency(monthlyPlanMargin)}/mo</p>
               </div>
               <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
-                <p className="text-[11px] text-ink-soft">Annual plan (${ANNUAL_PLAN_PRICE}/yr)</p>
+                <p className="text-[11px] text-ink-soft">{REFERENCE_PLAN.name} annual ({formatUsd(ANNUAL_PLAN_PRICE)}/yr)</p>
                 <p className={cn("text-base font-bold tabular-nums", annualPlanMargin >= 0 ? "text-success-text" : "text-error-text")}>{formatCurrency(annualPlanMargin)}/mo-equiv</p>
               </div>
             </div>
@@ -692,8 +700,8 @@ export default function RevenuePage() {
 
       {/* ── Bottom 6 KPIs ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Monthly Subs"    value={metrics ? formatNumber(metrics.monthlyUsers) : "—"}              sub={`${formatUsd(PRICE_MONTHLY_USD)}/mo`} loading={metricsLoading}      tooltip={`Customers currently on the ${formatUsd(PRICE_MONTHLY_USD)}/month plan.`} />
-        <KpiCard label="Annual Subs"     value={metrics ? formatNumber(metrics.yearlyUsers) : "—"}               sub={`${formatUsd(PRICE_YEARLY_USD)}/yr`}  loading={metricsLoading}      tooltip={`Customers currently on the ${formatUsd(PRICE_YEARLY_USD)}/year plan.`} />
+        <KpiCard label="Monthly Subs"    value={metrics ? formatNumber(metrics.monthlyUsers) : "—"}              sub={`${formatUsd(PLANS[0].monthly)}–${formatUsd(PLANS[PLANS.length - 1].monthly)}/mo`} loading={metricsLoading}      tooltip={`Firms billed monthly, across all three tiers (${formatUsd(PLANS[0].monthly)}–${formatUsd(PLANS[PLANS.length - 1].monthly)}/mo).`} />
+        <KpiCard label="Annual Subs"     value={metrics ? formatNumber(metrics.yearlyUsers) : "—"}               sub={`${formatUsd(PLANS[0].annual)}–${formatUsd(PLANS[PLANS.length - 1].annual)}/yr`}  loading={metricsLoading}      tooltip={`Firms billed annually, across all three tiers (${formatUsd(PLANS[0].annual)}–${formatUsd(PLANS[PLANS.length - 1].annual)}/yr).`} />
         <KpiCard label="Conversion"      value={metrics ? formatPct(conversionPct) : "—"}                        sub={metrics ? `${metrics.paidCustomers} paid of ${metrics.totalUsers}` : undefined} loading={metricsLoading} tooltip="Percentage of all registered users who are distinct paying customers (deduped by email — duplicate subscriptions count once)." />
         <KpiCard label="Avg Transaction" value={chargesQuery.data ? formatCurrency(avgTx) : "—"}                 sub={`${succeededCharges.length} succeeded`} loading={chargesQuery.isLoading} tooltip="Average charge amount across all succeeded transactions in the selected period." />
       </div>

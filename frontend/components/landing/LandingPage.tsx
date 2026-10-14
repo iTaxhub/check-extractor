@@ -34,6 +34,10 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui';
 import { KyriqIcon, KyriqIconWhite, KyriqLogo } from './KyriqMark';
 import { WaitlistForm } from './WaitlistForm';
+// Plans live in lib/pricing.ts so the admin dashboards can import the same
+// numbers. They used to exist only here, which is why the admin console was
+// still quoting DepthMe's consumer prices.
+import { PLANS, INCLUDED_IN_EVERY_PLAN } from '@/lib/pricing';
 import { Marquee } from '@/components/ui/marquee';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { BorderBeam } from '@/components/ui/border-beam';
@@ -645,34 +649,13 @@ function ExtensionSlide() {
 }
 
 /* =========================================================================
-   Pricing. Every number below is from CHECKLIST 12 / section 7 and must not
-   drift — scripts/check-landing.ts asserts each one.
+   Pricing. The numbers themselves now live in lib/pricing.ts, which is also
+   what the admin dashboards import and what scripts/check-landing.ts asserts
+   against. This section only renders them. The local Plan type that used to
+   sit here went with them.
    ========================================================================= */
 
-type Plan = {
-  tier: string;
-  name: string;
-  monthly: number;
-  annual: number;
-  allowance: number;
-  overage: string;
-  popular?: boolean;
-  extra?: string;
-};
 
-const PLANS: Plan[] = [
-  { tier: 'essential', name: 'Starter', monthly: 249, annual: 2739, allowance: 1200, overage: '0.20' },
-  { tier: 'professional', name: 'Professional', monthly: 649, annual: 7139, allowance: 4500, overage: '0.20', popular: true, extra: 'Priority support' },
-  { tier: 'scale', name: 'Firm', monthly: 1299, annual: 14289, allowance: 10000, overage: '0.20', extra: 'Onboarding assistance' },
-];
-
-/** True of every plan, so it is stated once and rendered on all three. */
-const INCLUDED_IN_EVERY_PLAN = [
-  'Unlimited companies',
-  'Unlimited users',
-  'Kyriq Chrome extension included',
-  'All core features',
-];
 
 function Pricing() {
   const [annual, setAnnual] = useState(false);
