@@ -35,6 +35,10 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui';
 import { KyriqIcon, KyriqIconWhite, KyriqLogo } from './KyriqMark';
 import { WaitlistForm } from './WaitlistForm';
+// Rise is the ON-MOUNT entrance used above the fold. Reveal is the
+// ON-SCROLL one for everything below it, where a mount-time keyframe has
+// already finished by the time the reader arrives.
+import { Reveal, useScrollReveals } from './Reveal';
 // Plans live in lib/pricing.ts so the admin dashboards can import the same
 // numbers. They used to exist only here, which is why the admin console was
 // still quoting DepthMe's consumer prices.
@@ -340,7 +344,7 @@ function FactsBar() {
   ];
   return (
     <section className="bg-shell-solid py-8 sm:py-12">
-      <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-7 lg:gap-y-0 px-4 sm:px-6 stagger">
+      <div data-reveal className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-7 lg:gap-y-0 px-4 sm:px-6 stagger reveal-children">
         {facts.map((s, i) => (
           <div key={s.label} className={cn('animate-glass-rise text-center px-3 sm:px-5', i < 3 && 'lg:border-r lg:border-glass-hairline-dark')}>
             <div className="text-3xl sm:text-4xl font-extrabold text-shell-text tracking-[-0.025em] mb-1 nums">
@@ -394,13 +398,13 @@ function ExportMarquee() {
 
 function SectionHead({ eyebrow, title, blurb, dark }: { eyebrow: string; title: string; blurb?: string; dark?: boolean }) {
   return (
-    <div className="text-center mb-10 sm:mb-14 lg:mb-16 max-w-4xl mx-auto">
+    <Reveal className="text-center mb-10 sm:mb-14 lg:mb-16 max-w-4xl mx-auto">
       <span className={cn('text-eyebrow mb-3 block', dark ? 'text-accentEmerald' : 'text-brand')}>{eyebrow}</span>
       <h2 className={cn('text-[clamp(2rem,4vw,3.25rem)] font-extrabold tracking-[-0.025em] leading-[1.08] mb-5', dark ? 'text-shell-text' : 'text-ink-strong')}>
         {title}
       </h2>
       {blurb && <p className={cn('text-[clamp(1rem,1.35vw,1.125rem)] max-w-[560px] mx-auto leading-relaxed', dark ? 'text-shell-muted' : 'text-ink-soft')}>{blurb}</p>}
-    </div>
+    </Reveal>
   );
 }
 
@@ -444,7 +448,7 @@ function HowItWorks() {
           eyebrow="One clear workflow"
           title="From your bank statement to a completed QuickBooks reconciliation"
         />
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 relative stagger">
+        <div data-reveal className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 relative stagger reveal-children">
           <div className="hidden lg:block absolute top-[38px] left-[10%] w-[80%] h-px bg-gradient-to-r from-transparent via-brand to-transparent opacity-30" aria-hidden />
           {steps.map((s) => (
             <div key={s.num} className="animate-glass-rise bg-surface/85 backdrop-blur-xl border border-glass-hairline shadow-glass rounded-card p-6 sm:p-7 lg:p-8 relative min-h-[220px] xl:min-h-[260px]">
@@ -503,11 +507,11 @@ function BuiltForFirms() {
           <p className="text-[clamp(1rem,1.35vw,1.2rem)] text-ink-soft leading-relaxed max-w-[560px] mb-10">
             Spend less time checking transactions one by one. Kyriq organizes the full batch by match result, so judgment goes where it is needed.
           </p>
-          <div className="relative aspect-[4/3] sm:aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
+          <div data-reveal className="relative aspect-[4/3] sm:aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
             <Image src="/landing/statement-to-quickbooks-kyriq-v6.webp" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover object-center" />
           </div>
         </div>
-        <div className="grid sm:grid-cols-2 gap-5 stagger">
+        <div data-reveal className="grid sm:grid-cols-2 gap-5 stagger reveal-children">
           {points.map((f) => (
             <div key={f.title} className="animate-glass-rise bg-surface/88 backdrop-blur-xl border border-glass-hairline shadow-glass rounded-card p-6 sm:p-8 hover-lift min-h-[210px] sm:min-h-[230px]">
               <div className={cn('w-12 h-12 rounded-input flex items-center justify-center text-white mb-6 sm:mb-8', f.tone)}>{f.icon}</div>
@@ -543,7 +547,7 @@ function ExtensionSection() {
             ))}
           </ul>
         </div>
-        <div className="relative aspect-[4/3] sm:aspect-video overflow-hidden rounded-modal border border-glass-hairline-dark shadow-glass-modal">
+        <div data-reveal className="relative aspect-[4/3] sm:aspect-video overflow-hidden rounded-modal border border-glass-hairline-dark shadow-glass-modal">
           <Image src="/landing/quickbooks-extension-4k-v1.webp" alt="Kyriq Chrome extension reviewing suggested matches inside QuickBooks Online" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover object-center" />
         </div>
       </div>
@@ -647,7 +651,7 @@ function Pricing() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-8 stagger items-stretch">
+        <div data-reveal className="grid md:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-8 stagger items-stretch reveal-children">
           {PLANS.map((p) => (
             <div
               key={p.tier}
@@ -932,6 +936,10 @@ function Footer() {
 }
 
 export default function LandingPage() {
+  // One observer for every [data-reveal] on the page. Marking a new section up
+  // is then just the attribute — no wrapper, no import at the call site.
+  useScrollReveals();
+
   // No `bg-*` on the root: the ambient mesh is mounted in the root layout and
   // sits at z-index -1, so an opaque page background would hide the thing the
   // glass is supposed to refract. One scrollbar — nothing here scrolls inside.

@@ -349,4 +349,65 @@ console.log('  ok  framer-motion branches on useReducedMotion');
 }
 console.log('  ok  one Terms, one Privacy, one legal shell');
 
+/* --- Scroll reveals stay fail-visible, and stay staggered -------------- */
+// Three ways this breaks silently, all of which happened while building it:
+//
+//  1. The hidden state stops being scoped to [data-reveal-active]. Then copy
+//     sits at opacity 0 for anyone whose JS did not run, and the page looks
+//     blank rather than un-animated.
+//  2. The transition moves onto the HIDDEN state. The browser then animates
+//     INTO it, so content already on screen visibly fades OUT before fading
+//     back in — activation happens after first paint.
+//  3. Someone "tidies" the longhands into the `transition` shorthand. The
+//     shorthand also writes transition-delay: 0s, which cancels the per-child
+//     delays .stagger supplies, and a staggered row silently arrives all at
+//     once. Nothing errors; it just stops looking considered.
+{
+  const css = read('app/globals.css');
+  const reveal = 'components/landing/Reveal.tsx';
+  const js = read(reveal);
+
+  assert.match(
+    css,
+    /\[data-reveal-active\] \[data-reveal\]:not\(\[data-revealed\]\)/,
+    'globals.css: the hidden reveal state is no longer scoped to [data-reveal-active] ' +
+      '- content will sit invisible when JS does not run'
+  );
+  assert.doesNotMatch(
+    css.slice(css.indexOf('[data-reveal-active] [data-reveal]:not([data-revealed])')).slice(0, 320),
+    /transition-duration/,
+    'globals.css: the hidden reveal state gained a transition - the browser will animate INTO ' +
+      'it and content already on screen will fade out before fading back in'
+  );
+  // Positive form on purpose: assert the longhands are THERE. The shorthand
+  // also writes transition-delay: 0s, which cancels .stagger's per-child
+  // delays and makes a staggered row arrive all at once, silently.
+  assert.ok(
+    (css.match(/transition-property: opacity, transform/g) ?? []).length === 2,
+    'globals.css: both reveal rules (self and .reveal-children) must use transition longhands - ' +
+      'a `transition` shorthand writes transition-delay: 0s and silently cancels the .stagger delays'
+  );
+  assert.match(
+    css,
+    /\.stagger > \*:nth-child\(2\)[^}]*transition-delay/,
+    'globals.css: .stagger no longer sets transition-delay - scroll reveals will not stagger'
+  );
+
+  // DESIGN-SYSTEM 4.4: rAF is frozen in a hidden document, so nothing may be
+  // hidden unless we know the page is painting.
+  assert.match(
+    js,
+    /visibilityState === 'hidden'/,
+    `${reveal}: lost its hidden-document guard - a backgrounded tab can be left with ` +
+      'invisible content and no animation coming to fix it'
+  );
+  assert.match(
+    js,
+    /boundingClientRect\.bottom <= 0/,
+    `${reveal}: lost the scrolled-past case - an anchor jump skips the observer and ` +
+      'leaves that section permanently invisible'
+  );
+}
+console.log('  ok  scroll reveals fail visible, stagger survives, and skipped sections still arrive');
+
 console.log('\nall landing / legal checks passed');

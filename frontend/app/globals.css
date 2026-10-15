@@ -621,11 +621,16 @@
 
   /* Capped stagger — the fifth child onwards shares a delay so a long list
      does not make the reader wait. */
-  .stagger > * { animation-delay: 0ms; }
-  .stagger > *:nth-child(2) { animation-delay: 45ms; }
-  .stagger > *:nth-child(3) { animation-delay: 90ms; }
-  .stagger > *:nth-child(4) { animation-delay: 135ms; }
-  .stagger > *:nth-child(n + 5) { animation-delay: 180ms; }
+  /* Delays BOTH mechanisms: animation-delay for the mount-time keyframe
+     entrances (Rise / glass-rise), transition-delay for the scroll reveals,
+     which are transitions rather than animations. One class, one set of
+     numbers, so a staggered row cannot drift between the two. */
+  .stagger > *,
+  .stagger[data-reveal] > * { animation-delay: 0ms; transition-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 45ms; transition-delay: 45ms; }
+  .stagger > *:nth-child(3) { animation-delay: 90ms; transition-delay: 90ms; }
+  .stagger > *:nth-child(4) { animation-delay: 135ms; transition-delay: 135ms; }
+  .stagger > *:nth-child(n + 5) { animation-delay: 180ms; transition-delay: 180ms; }
 }
 
 /* ===========================================================================
@@ -689,7 +694,96 @@
    a gentle one.
    =========================================================================== */
 
+/* ===========================================================================
+   SCROLL REVEALS
+   ---------------------------------------------------------------------------
+   The landing page had no scroll motion at all. This adds it as CSS, driven by
+   a class an IntersectionObserver toggles (components/landing/Reveal.tsx) —
+   never a JS tween, per DESIGN-SYSTEM 4.4: rAF is frozen in a hidden document,
+   so a tween starting at opacity 0 can leave content permanently invisible if
+   the tab was backgrounded at mount.
+
+   THE DEFAULT IS VISIBLE. The hidden state below is scoped to
+   [data-reveal-active], which only JS sets, and only once it has confirmed the
+   document is actually painting. With no JS, a JS error, or a backgrounded tab,
+   nothing here applies and the page is simply static — there is no path where
+   copy sits invisible waiting for a script that is not coming.
+
+   Distances are small (14px) and the curve is the house --ease-settle. Long
+   travel and bounce read as a template; a short, well-damped settle reads as
+   considered.
+   =========================================================================== */
+
+[data-reveal] {
+  /* The resting state, and the state anything un-activated keeps. */
+  opacity: 1;
+  transform: none;
+}
+
+/* THE TRANSITION LIVES ON THE REVEALED STATE, NEVER THE HIDDEN ONE.
+   Declared on the hidden state, the browser animates INTO it: activation
+   happens after first paint, so anything already on screen visibly fades OUT
+   before fading back in. Hiding must snap; only arriving is animated. */
+[data-reveal-active] [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition-property: none;
+  will-change: opacity, transform;
+}
+
+[data-reveal-active] [data-reveal][data-revealed] {
+  opacity: 1;
+  transform: none;
+  /* Only these two properties, so the compositor can carry it. */
+  /* Longhands, NOT the `transition` shorthand: the shorthand also writes
+     transition-delay: 0s, which silently cancelled the per-child delays that
+     .stagger sets — the whole row arrived at once instead of in sequence. */
+  transition-property: opacity, transform;
+  transition-duration: var(--dur-slow, 560ms);
+  transition-timing-function: var(--ease-settle);
+  /* Dropped once arrived: a permanent will-change holds a compositor layer
+     for every revealed block on the page. */
+  will-change: auto;
+}
+
+/* A container marked `data-reveal reveal-children` hides its CHILDREN instead
+   of itself, so a mapped grid staggers in without every item needing its own
+   wrapper. The container is what the observer watches; `.stagger` supplies the
+   per-child delay. The container itself never fades, or the children fade
+   twice. */
+[data-reveal-active] [data-reveal].reveal-children {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+[data-reveal-active] [data-reveal].reveal-children:not([data-revealed]) > * {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition-property: none;
+}
+
+[data-reveal-active] [data-reveal].reveal-children[data-revealed] > * {
+  opacity: 1;
+  transform: none;
+  /* Longhands, NOT the `transition` shorthand: the shorthand also writes
+     transition-delay: 0s, which silently cancelled the per-child delays that
+     .stagger sets — the whole row arrived at once instead of in sequence. */
+  transition-property: opacity, transform;
+  transition-duration: var(--dur-slow, 560ms);
+  transition-timing-function: var(--ease-settle);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* Reveals retarget to a plain fade, like every other entrance here: the
+     movement goes, the arrival stays. Removing it entirely would make content
+     appear with no transition at all, which is the more jarring of the two. */
+  [data-reveal-active] [data-reveal],
+  [data-reveal-active] [data-reveal].reveal-children > * {
+    transform: none !important;
+    transition-duration: 160ms !important;
+  }
+
   html {
     scroll-behavior: auto;
   }
