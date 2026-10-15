@@ -55,6 +55,7 @@ import { ShimmerButton } from '@/components/ui/shimmer-button';
 const CTA_LABEL = 'Start Free Trial';
 const CTA_HREF = '/signup';
 const TRIAL_TERMS = '14-day trial or 250 processed checks, whichever comes first · No credit card required';
+const HERO_ASSURANCES = ['No credit card required', 'Setup in minutes', 'Human approval always required'];
 
 /**
  * Entrance. CSS keyframes, not a JS tween — see the file header. `.stagger`
@@ -178,7 +179,7 @@ function Hero() {
       <Image src="/landing/hero-match-sculpture-4k-v1.png" alt="" fill priority sizes="100vw" className="object-cover object-[68%_center] sm:object-center opacity-60" aria-hidden />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-surface via-surface/90 to-surface/70 lg:bg-gradient-to-r lg:from-surface lg:via-surface/95 lg:to-surface/20" />
 
-      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.84fr_1.16fr] gap-12 xl:gap-20 items-center">
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12 xl:gap-20 items-center">
         <div className="text-left">
           <Rise>
             <span className="inline-flex items-center gap-2 px-4 py-1.5 mb-7 rounded-full bg-surface/80 backdrop-blur-xl border border-brand-tint text-xs font-semibold text-brand-deep tracking-wide shadow-contact">
@@ -191,7 +192,7 @@ function Hero() {
           </Rise>
 
           <Rise>
-            <h1 className="text-[clamp(2.5rem,5.2vw,4.75rem)] font-extrabold tracking-[-0.04em] leading-[0.98] text-ink-strong mb-7 max-w-[760px]">
+            <h1 className="text-[clamp(2.75rem,4.4vw,4.25rem)] font-extrabold tracking-[-0.04em] leading-[0.98] text-ink-strong mb-7 max-w-[650px]">
               See every check.{' '}
               <span className="bg-gradient-to-r from-brand via-brand-light to-accentEmerald bg-clip-text text-transparent">
                 Approve exact matches together.
@@ -212,7 +213,14 @@ function Hero() {
                 See how it works
               </a>
             </div>
-            <p className="text-xs sm:text-[13px] text-ink-faint">{TRIAL_TERMS}</p>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs sm:text-[13px] text-ink-faint">
+              {HERO_ASSURANCES.map((item) => (
+                <span key={item} className="inline-flex items-center gap-1.5">
+                  <Check size={14} className="text-brand" aria-hidden />
+                  {item}
+                </span>
+              ))}
+            </div>
           </Rise>
         </div>
 
@@ -497,8 +505,8 @@ function BuiltForFirms() {
           </p>
           <div className="relative aspect-[4/3] sm:aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
             <Image src="/landing/statement-to-quickbooks-user-v1.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-contain object-center p-3 sm:p-5" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-shell-solid/90 p-1.5 shadow-brand-glow ring-1 ring-white/30" aria-hidden>
-              <KyriqIconWhite size={34} />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-24 w-24 items-center justify-center rounded-[20px] bg-shell-solid/95 p-4 shadow-brand-glow ring-1 ring-white/35 backdrop-blur-sm" aria-hidden>
+              <KyriqIconWhite size={52} />
             </div>
           </div>
         </div>
