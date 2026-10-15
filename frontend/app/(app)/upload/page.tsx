@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Suspense, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DropzoneUpload from './components/DropzoneUpload';
+import BatchSegregation from './components/BatchSegregation';
 import PageSelectGrid, {
   defaultPageSelection,
   selectedRange,
@@ -947,6 +948,23 @@ function UploadPageInner() {
                   </div>
                 </GlassPanel>
               )}
+
+              {/* Sorts the batch into statements / cheque sheets / nothing-found
+                  from counts detection already produced. Hides itself below two
+                  analysed files, where grouping says nothing. */}
+              <BatchSegregation
+                files={jobEntries.map((e) => ({
+                  id: e.id,
+                  name: e.file.name,
+                  signals: e.result
+                    ? {
+                        totalPages: e.result.total_pages,
+                        totalCheques: e.result.total_checks,
+                        chequesPerPage: (e.result.pages ?? []).map((pg) => pg.checks_on_page ?? 0),
+                      }
+                    : null,
+                }))}
+              />
 
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setFiles([])} disabled={uploading}>
