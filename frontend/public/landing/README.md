@@ -6,7 +6,7 @@
 
 The supplied visual references are preserved as `statement-to-quickbooks-user-v1.png` and `kyriq-iq-characters-user-v1.png`. They are used as responsive artwork with official Kyriq SVG overlays in the React layer; the screenshots themselves are not embedded.
 
-`statement-to-quickbooks-kyriq-v5.png` is the production workflow artwork regenerated from the supplied reference. The complete supplied Kyriq icon is centered and fully contained inside the central glass cube, so the deliverable is self-contained and contains no AI-drawn approximation of the Kyriq mark.
+`statement-to-quickbooks-kyriq-v6.png` is the production workflow artwork regenerated with the supplied official Kyriq icon as a reference. The complete green-and-white mark is rendered within the central cube face and follows its perspective, glass depth, reflections, and lighting instead of appearing as a flat overlay.
 
 Generated visual direction for the Kyriq landing-page revamp. Keep headings,
 body copy, navigation, pricing, controls, and accessibility labels in HTML.

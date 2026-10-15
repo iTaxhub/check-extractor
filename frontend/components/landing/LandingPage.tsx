@@ -504,7 +504,7 @@ function BuiltForFirms() {
             Spend less time checking transactions one by one. Kyriq organizes the full batch by match result, so judgment goes where it is needed.
           </p>
           <div className="relative aspect-[4/3] sm:aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
-            <Image src="/landing/statement-to-quickbooks-kyriq-v5.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover object-center" />
+            <Image src="/landing/statement-to-quickbooks-kyriq-v6.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover object-center" />
           </div>
         </div>
         <div className="grid sm:grid-cols-2 gap-5 stagger">
