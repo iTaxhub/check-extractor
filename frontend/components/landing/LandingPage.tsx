@@ -496,7 +496,10 @@ function BuiltForFirms() {
             Spend less time checking transactions one by one. Kyriq organizes the full batch by match result, so judgment goes where it is needed.
           </p>
           <div className="relative aspect-[4/3] sm:aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
-            <Image src="/landing/statement-to-quickbooks-4k-v1.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover object-center" />
+            <Image src="/landing/statement-to-quickbooks-user-v1.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-contain object-center p-3 sm:p-5" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-shell-solid/90 p-1.5 shadow-brand-glow ring-1 ring-white/30" aria-hidden>
+              <KyriqIconWhite size={34} />
+            </div>
           </div>
         </div>
         <div className="grid sm:grid-cols-2 gap-5 stagger">
@@ -556,13 +559,13 @@ const VOICE_PROMPTS = [
 function VoiceSection() {
   return (
     <section id="voice" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
-      <Image src="/landing/kyriq-iq-characters-4k-v2.png" alt="" fill sizes="100vw" className="object-cover object-[70%_center] sm:object-center opacity-60 sm:opacity-75" aria-hidden />
+      <Image src="/landing/kyriq-iq-characters-user-v1.png" alt="" fill sizes="100vw" className="object-cover object-[70%_center] sm:object-center opacity-60 sm:opacity-75" aria-hidden />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-shell-solid via-shell-solid/90 to-shell-solid/35 lg:bg-gradient-to-r lg:from-shell-solid lg:via-shell-solid/90 lg:to-shell-solid/15" />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-shell-solid via-transparent to-shell-solid/25" />
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-10 lg:gap-12 items-center">
         <div className="rounded-modal border border-glass-hairline-dark bg-shell-solid/85 backdrop-blur-xl p-6 sm:p-10 shadow-glass-modal">
           <span className="inline-flex items-center gap-2 rounded-full border border-glass-hairline-dark bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald mb-6">
-            <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
+            <KyriqIconWhite size={15} /> <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
           </span>
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.02] text-shell-text mb-6">
             Ask. Review. Act&mdash;with your approval.
