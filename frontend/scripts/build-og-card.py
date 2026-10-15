@@ -17,7 +17,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PUB = os.path.join(HERE, '..', 'public', 'landing')
-SRC = os.path.join(PUB, 'match-review-dashboard-4k-v1.png')
+SRC = os.path.join(PUB, 'match-review-dashboard-4k-v1.webp')
 OUT = os.path.join(PUB, 'og-card-1200x630.jpg')
 TW, TH = 1200, 630
 

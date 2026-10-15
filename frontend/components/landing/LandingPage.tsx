@@ -176,7 +176,7 @@ function Nav() {
 function Hero() {
   return (
     <section className="relative pt-28 sm:pt-36 lg:pt-44 pb-20 sm:pb-28 lg:pb-32 px-4 sm:px-6 overflow-hidden">
-      <Image src="/landing/hero-match-sculpture-4k-v1.png" alt="" fill priority sizes="100vw" className="object-cover object-[68%_center] sm:object-center opacity-60" aria-hidden />
+      <Image src="/landing/hero-match-sculpture-4k-v1.webp" alt="" fill priority sizes="100vw" className="object-cover object-[68%_center] sm:object-center opacity-60" aria-hidden />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-surface via-surface/90 to-surface/70 lg:bg-gradient-to-r lg:from-surface lg:via-surface/95 lg:to-surface/20" />
 
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12 xl:gap-20 items-center">
@@ -438,7 +438,7 @@ function HowItWorks() {
   ];
   return (
     <section id="how" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 overflow-hidden">
-      <SectionBackdrop src="/landing/workflow-background-4k-v1.png" />
+      <SectionBackdrop src="/landing/workflow-background-4k-v1.webp" />
       <div className="relative max-w-7xl mx-auto">
         <SectionHead
           eyebrow="One clear workflow"
@@ -493,7 +493,7 @@ function BuiltForFirms() {
   ];
   return (
     <section id="features" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 overflow-hidden">
-      <SectionBackdrop src="/landing/firms-background-4k-v1.png" opacity="opacity-70" />
+      <SectionBackdrop src="/landing/firms-background-4k-v1.webp" opacity="opacity-70" />
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12 lg:gap-20 items-center">
         <div>
           <span className="text-eyebrow text-brand mb-4 block">Built for firms</span>
@@ -504,7 +504,7 @@ function BuiltForFirms() {
             Spend less time checking transactions one by one. Kyriq organizes the full batch by match result, so judgment goes where it is needed.
           </p>
           <div className="relative aspect-[4/3] sm:aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
-            <Image src="/landing/statement-to-quickbooks-kyriq-v6.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover object-center" />
+            <Image src="/landing/statement-to-quickbooks-kyriq-v6.webp" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover object-center" />
           </div>
         </div>
         <div className="grid sm:grid-cols-2 gap-5 stagger">
@@ -544,7 +544,7 @@ function ExtensionSection() {
           </ul>
         </div>
         <div className="relative aspect-[4/3] sm:aspect-video overflow-hidden rounded-modal border border-glass-hairline-dark shadow-glass-modal">
-          <Image src="/landing/quickbooks-extension-4k-v1.png" alt="Kyriq Chrome extension reviewing suggested matches inside QuickBooks Online" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover object-center" />
+          <Image src="/landing/quickbooks-extension-4k-v1.webp" alt="Kyriq Chrome extension reviewing suggested matches inside QuickBooks Online" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover object-center" />
         </div>
       </div>
     </section>
@@ -564,7 +564,7 @@ const VOICE_PROMPTS = [
 function VoiceSection() {
   return (
     <section id="voice" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
-      <Image src="/landing/kyriq-iq-characters-user-v1.png" alt="" fill sizes="100vw" className="object-cover object-[70%_center] sm:object-center opacity-60 sm:opacity-75" aria-hidden />
+      <Image src="/landing/kyriq-iq-characters-user-v1.webp" alt="" fill sizes="100vw" className="object-cover object-[70%_center] sm:object-center opacity-60 sm:opacity-75" aria-hidden />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-shell-solid via-shell-solid/90 to-shell-solid/35 lg:bg-gradient-to-r lg:from-shell-solid lg:via-shell-solid/90 lg:to-shell-solid/15" />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-shell-solid via-transparent to-shell-solid/25" />
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-10 lg:gap-12 items-center">
@@ -617,7 +617,7 @@ function Pricing() {
 
   return (
     <section id="pricing" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 overflow-hidden">
-      <SectionBackdrop src="/landing/pricing-background-4k-v1.png" opacity="opacity-80" />
+      <SectionBackdrop src="/landing/pricing-background-4k-v1.webp" opacity="opacity-80" />
       <div className="relative max-w-7xl mx-auto">
         <SectionHead
           eyebrow="Simple, flexible pricing"
@@ -804,7 +804,7 @@ const FAQS: { q: string; a: string }[] = [
 function Faq() {
   return (
     <section id="faq" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 overflow-hidden">
-      <SectionBackdrop src="/landing/faq-background-4k-v1.png" opacity="opacity-75" />
+      <SectionBackdrop src="/landing/faq-background-4k-v1.webp" opacity="opacity-75" />
       <div className="relative max-w-7xl mx-auto">
         <SectionHead
           eyebrow="Frequently asked questions"
@@ -838,7 +838,7 @@ function CTASection() {
   return (
     <section className="py-20 sm:py-28 px-4 sm:px-6 bg-surface">
       <div className="max-w-6xl mx-auto relative rounded-modal overflow-hidden animate-glass-rise min-h-[380px] sm:min-h-[500px] flex items-center">
-        <Image src="/landing/closing-cta-ribbons-4k-v1.png" alt="" fill sizes="100vw" className="object-cover" aria-hidden />
+        <Image src="/landing/closing-cta-ribbons-4k-v1.webp" alt="" fill sizes="100vw" className="object-cover" aria-hidden />
         <div aria-hidden className="absolute inset-0 bg-shell-solid/35" />
         <div className="relative w-full p-7 sm:p-16 md:p-24 text-center">
           <h2 className="relative text-[clamp(1.75rem,3.5vw,2.5rem)] font-extrabold text-shell-text tracking-[-0.025em] mb-4">
