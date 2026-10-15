@@ -191,7 +191,7 @@ function Hero() {
           </Rise>
 
           <Rise>
-            <h1 className="text-4xl sm:text-6xl xl:text-[76px] font-extrabold tracking-[-0.04em] leading-[0.98] text-ink-strong mb-7 max-w-[760px]">
+            <h1 className="text-[clamp(2.5rem,5.2vw,4.75rem)] font-extrabold tracking-[-0.04em] leading-[0.98] text-ink-strong mb-7 max-w-[760px]">
               See every check.{' '}
               <span className="bg-gradient-to-r from-brand via-brand-light to-accentEmerald bg-clip-text text-transparent">
                 Approve exact matches together.
@@ -199,7 +199,7 @@ function Hero() {
             </h1>
           </Rise>
           <Rise>
-            <p className="text-lg sm:text-xl text-ink-soft max-w-[620px] mb-10 leading-relaxed">
+            <p className="text-[clamp(1rem,1.45vw,1.25rem)] text-ink-soft max-w-[620px] mb-10 leading-relaxed">
               Start with your bank statement. See every check matched against QuickBooks Online, approve exact
               matches together, and review discrepancies with confidence.
             </p>
@@ -388,10 +388,10 @@ function SectionHead({ eyebrow, title, blurb, dark }: { eyebrow: string; title: 
   return (
     <div className="text-center mb-10 sm:mb-14 lg:mb-16 max-w-4xl mx-auto">
       <span className={cn('text-eyebrow mb-3 block', dark ? 'text-accentEmerald' : 'text-brand')}>{eyebrow}</span>
-      <h2 className={cn('text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-[-0.025em] leading-[1.08] mb-5', dark ? 'text-shell-text' : 'text-ink-strong')}>
+      <h2 className={cn('text-[clamp(2rem,4vw,3.25rem)] font-extrabold tracking-[-0.025em] leading-[1.08] mb-5', dark ? 'text-shell-text' : 'text-ink-strong')}>
         {title}
       </h2>
-      {blurb && <p className={cn('text-lg max-w-[520px] mx-auto leading-relaxed', dark ? 'text-shell-muted' : 'text-ink-soft')}>{blurb}</p>}
+      {blurb && <p className={cn('text-[clamp(1rem,1.35vw,1.125rem)] max-w-[560px] mx-auto leading-relaxed', dark ? 'text-shell-muted' : 'text-ink-soft')}>{blurb}</p>}
     </div>
   );
 }
@@ -489,10 +489,10 @@ function BuiltForFirms() {
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12 lg:gap-20 items-center">
         <div>
           <span className="text-eyebrow text-brand mb-4 block">Built for firms</span>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.04] text-ink-strong mb-6">
+          <h2 className="text-[clamp(2.5rem,5vw,3.75rem)] font-extrabold tracking-[-0.035em] leading-[1.04] text-ink-strong mb-6">
             Built for bookkeeping and accounting firms
           </h2>
-          <p className="text-lg text-ink-soft leading-relaxed max-w-[560px] mb-10">
+          <p className="text-[clamp(1rem,1.35vw,1.2rem)] text-ink-soft leading-relaxed max-w-[560px] mb-10">
             Spend less time checking transactions one by one. Kyriq organizes the full batch by match result, so judgment goes where it is needed.
           </p>
           <div className="relative aspect-[4/3] sm:aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
@@ -523,10 +523,10 @@ function ExtensionSection() {
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-10 lg:gap-16 items-center">
         <div>
           <span className="text-eyebrow text-accentEmerald mb-4 block">Chrome extension</span>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.04] text-shell-text mb-6">
+          <h2 className="text-[clamp(2.5rem,5vw,3.75rem)] font-extrabold tracking-[-0.035em] leading-[1.04] text-shell-text mb-6">
             Works right inside QuickBooks
           </h2>
-          <p className="text-lg text-shell-muted leading-relaxed mb-9">
+          <p className="text-[clamp(1rem,1.35vw,1.2rem)] text-shell-muted leading-relaxed mb-9">
             Approve and clear matched checks without leaving QuickBooks Online. The Kyriq Chrome extension is included with every plan and during the trial.
           </p>
           <ul className="space-y-4 text-sm text-shell-text">
@@ -567,10 +567,10 @@ function VoiceSection() {
           <span className="inline-flex items-center gap-2 rounded-full border border-glass-hairline-dark bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald mb-6">
             <KyriqIconWhite size={15} /> <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
           </span>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.02] text-shell-text mb-6">
+          <h2 className="text-[clamp(2.5rem,5vw,3.75rem)] font-extrabold tracking-[-0.035em] leading-[1.02] text-shell-text mb-6">
             Ask. Review. Act&mdash;with your approval.
           </h2>
-          <p className="text-lg text-shell-muted leading-relaxed mb-4">Kyriq IQ brings conversational intelligence to reconciliation.</p>
+          <p className="text-[clamp(1rem,1.35vw,1.2rem)] text-shell-muted leading-relaxed mb-4">Kyriq IQ brings conversational intelligence to reconciliation.</p>
           <p className="text-[15px] text-shell-muted leading-relaxed mb-5">
             Talk to Kyriq like a colleague. Ask what needs attention, have any check read back to you, or find every payment made to a vendor. Kyriq IQ works from your firm&apos;s own data, recognizes your companies and payees, and keeps you in control of every action.
           </p>
@@ -659,7 +659,7 @@ function Pricing() {
 
               <div className={cn('text-eyebrow mb-2', p.popular ? 'text-accentEmerald' : 'text-brand')}>{p.name}</div>
 
-              <div className={cn('text-[44px] font-extrabold tracking-[-0.025em] leading-none mb-1 nums', p.popular ? 'text-shell-text' : 'text-ink-strong')}>
+                <div className={cn('text-[clamp(2.5rem,4vw,3rem)] font-extrabold tracking-[-0.025em] leading-none mb-1 nums', p.popular ? 'text-shell-text' : 'text-ink-strong')}>
                 <sup className="text-xl font-bold align-super">$</sup>
                 {annual ? p.annual.toLocaleString('en-US') : p.monthly}
               </div>
@@ -836,10 +836,10 @@ function CTASection() {
         <Image src="/landing/closing-cta-ribbons-4k-v1.png" alt="" fill sizes="100vw" className="object-cover" aria-hidden />
         <div aria-hidden className="absolute inset-0 bg-shell-solid/35" />
         <div className="relative w-full p-7 sm:p-16 md:p-24 text-center">
-          <h2 className="relative text-2xl sm:text-3xl md:text-4xl font-extrabold text-shell-text tracking-[-0.025em] mb-4">
+          <h2 className="relative text-[clamp(1.75rem,3.5vw,2.5rem)] font-extrabold text-shell-text tracking-[-0.025em] mb-4">
             Ready to reconcile checks in a fraction of the time?
           </h2>
-          <p className="relative text-sm sm:text-lg text-shell-muted mb-8 max-w-2xl mx-auto">
+          <p className="relative text-[clamp(0.875rem,1.3vw,1.125rem)] text-shell-muted mb-8 max-w-2xl mx-auto">
             See every processed check, approve all 100% matches together, and give lower-confidence matches,
             duplicates, and discrepancies the individual attention they need.
           </p>
