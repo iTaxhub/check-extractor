@@ -1,5 +1,9 @@
 # Kyriq landing-page image assets
 
+## Responsive rebuild assets
+
+`kyriq-iq-characters-4k-v2.png` is the logo-free voice-section backdrop. Brand marks are intentionally rendered by the UI using the official SVGs in `public/brand`, so generated raster art never approximates the Kyriq icon. The artwork is composed right-heavy with a darker left third for copy and uses breakpoint-specific cropping in `LandingPage.tsx`.
+
 Generated visual direction for the Kyriq landing-page revamp. Keep headings,
 body copy, navigation, pricing, controls, and accessibility labels in HTML.
 

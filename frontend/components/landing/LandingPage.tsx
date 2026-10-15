@@ -174,11 +174,11 @@ function Nav() {
 /* ── Hero. Copy from the approved redesign (kyriq-website-redesign, Sep 2026). ── */
 function Hero() {
   return (
-    <section className="relative min-h-[860px] pt-32 sm:pt-40 lg:pt-44 pb-24 sm:pb-32 px-4 sm:px-6 overflow-hidden">
-      <Image src="/landing/hero-match-sculpture-4k-v1.png" alt="" fill priority sizes="100vw" className="object-cover object-center opacity-70" aria-hidden />
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-surface via-surface/95 to-surface/20" />
+    <section className="relative pt-28 sm:pt-36 lg:pt-44 pb-20 sm:pb-28 lg:pb-32 px-4 sm:px-6 overflow-hidden">
+      <Image src="/landing/hero-match-sculpture-4k-v1.png" alt="" fill priority sizes="100vw" className="object-cover object-[68%_center] sm:object-center opacity-60" aria-hidden />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-surface via-surface/90 to-surface/70 lg:bg-gradient-to-r lg:from-surface lg:via-surface/95 lg:to-surface/20" />
 
-      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.84fr_1.16fr] gap-14 xl:gap-20 items-center">
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.84fr_1.16fr] gap-12 xl:gap-20 items-center">
         <div className="text-left">
           <Rise>
             <span className="inline-flex items-center gap-2 px-4 py-1.5 mb-7 rounded-full bg-surface/80 backdrop-blur-xl border border-brand-tint text-xs font-semibold text-brand-deep tracking-wide shadow-contact">
@@ -191,7 +191,7 @@ function Hero() {
           </Rise>
 
           <Rise>
-            <h1 className="text-5xl sm:text-6xl xl:text-[76px] font-extrabold tracking-[-0.04em] leading-[0.98] text-ink-strong mb-7">
+            <h1 className="text-4xl sm:text-6xl xl:text-[76px] font-extrabold tracking-[-0.04em] leading-[0.98] text-ink-strong mb-7 max-w-[760px]">
               See every check.{' '}
               <span className="bg-gradient-to-r from-brand via-brand-light to-accentEmerald bg-clip-text text-transparent">
                 Approve exact matches together.
@@ -217,7 +217,7 @@ function Hero() {
         </div>
 
         <Rise>
-          <div className="relative rounded-card lg:translate-y-8">
+          <div className="relative rounded-card lg:translate-y-8 lg:mt-0 mt-4">
             <div aria-hidden className="absolute -inset-8 rounded-modal bg-brand/10 blur-3xl" />
             <BorderBeam size={300} duration={12} />
             <div className="relative rounded-card overflow-hidden shadow-glass-modal border border-glass-hairline bg-surface/95 backdrop-blur-xl">
@@ -331,10 +331,10 @@ function FactsBar() {
     { value: 0, label: 'Checks cleared without your approval' },
   ];
   return (
-    <section className="bg-shell-solid py-10 sm:py-12">
-      <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-8 px-6 stagger">
+    <section className="bg-shell-solid py-8 sm:py-12">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-y-7 lg:gap-y-0 px-4 sm:px-6 stagger">
         {facts.map((s, i) => (
-          <div key={s.label} className={cn('animate-glass-rise text-center px-3', i < 3 && 'lg:border-r lg:border-glass-hairline-dark')}>
+          <div key={s.label} className={cn('animate-glass-rise text-center px-3 sm:px-5', i < 3 && 'lg:border-r lg:border-glass-hairline-dark')}>
             <div className="text-3xl sm:text-4xl font-extrabold text-shell-text tracking-[-0.025em] mb-1 nums">
               <span className="text-accentEmerald">{s.text ?? <NumberTicker value={s.value ?? 0} />}</span>
               {s.suffix}
@@ -386,7 +386,7 @@ function ExportMarquee() {
 
 function SectionHead({ eyebrow, title, blurb, dark }: { eyebrow: string; title: string; blurb?: string; dark?: boolean }) {
   return (
-    <div className="text-center mb-12 sm:mb-16">
+    <div className="text-center mb-10 sm:mb-14 lg:mb-16 max-w-4xl mx-auto">
       <span className={cn('text-eyebrow mb-3 block', dark ? 'text-accentEmerald' : 'text-brand')}>{eyebrow}</span>
       <h2 className={cn('text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-[-0.025em] leading-[1.08] mb-5', dark ? 'text-shell-text' : 'text-ink-strong')}>
         {title}
@@ -399,7 +399,7 @@ function SectionHead({ eyebrow, title, blurb, dark }: { eyebrow: string; title: 
 function SectionBackdrop({ src, opacity = 'opacity-75' }: { src: string; opacity?: string }) {
   return (
     <>
-      <Image src={src} alt="" fill sizes="100vw" className={cn('object-cover object-center', opacity)} aria-hidden />
+      <Image src={src} alt="" fill sizes="100vw" className={cn('object-cover object-center opacity-50 sm:opacity-65 lg:opacity-75', opacity)} aria-hidden />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-surface/35 via-transparent to-surface/50" />
     </>
   );
@@ -429,17 +429,17 @@ function HowItWorks() {
     },
   ];
   return (
-    <section id="how" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 overflow-hidden">
+    <section id="how" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 overflow-hidden">
       <SectionBackdrop src="/landing/workflow-background-4k-v1.png" />
       <div className="relative max-w-7xl mx-auto">
         <SectionHead
           eyebrow="One clear workflow"
           title="From your bank statement to a completed QuickBooks reconciliation"
         />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 relative stagger">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 relative stagger">
           <div className="hidden lg:block absolute top-[38px] left-[10%] w-[80%] h-px bg-gradient-to-r from-transparent via-brand to-transparent opacity-30" aria-hidden />
           {steps.map((s) => (
-            <div key={s.num} className="animate-glass-rise bg-surface/85 backdrop-blur-xl border border-glass-hairline shadow-glass rounded-card p-7 lg:p-8 relative min-h-[260px]">
+            <div key={s.num} className="animate-glass-rise bg-surface/85 backdrop-blur-xl border border-glass-hairline shadow-glass rounded-card p-6 sm:p-7 lg:p-8 relative min-h-[220px] xl:min-h-[260px]">
               <div className="flex items-center gap-3 mb-5">
                 <span className="w-11 h-11 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-white shadow-brand-glow relative z-10">
                   {s.icon}
@@ -484,9 +484,9 @@ function BuiltForFirms() {
     },
   ];
   return (
-    <section id="features" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 overflow-hidden">
+    <section id="features" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 overflow-hidden">
       <SectionBackdrop src="/landing/firms-background-4k-v1.png" opacity="opacity-70" />
-      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-14 lg:gap-20 items-center">
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-12 lg:gap-20 items-center">
         <div>
           <span className="text-eyebrow text-brand mb-4 block">Built for firms</span>
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.04] text-ink-strong mb-6">
@@ -495,14 +495,14 @@ function BuiltForFirms() {
           <p className="text-lg text-ink-soft leading-relaxed max-w-[560px] mb-10">
             Spend less time checking transactions one by one. Kyriq organizes the full batch by match result, so judgment goes where it is needed.
           </p>
-          <div className="relative aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
-            <Image src="/landing/statement-to-quickbooks-4k-v1.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover" />
+          <div className="relative aspect-[4/3] sm:aspect-[3/2] max-w-[620px] overflow-hidden rounded-modal border border-glass-hairline bg-shell-solid shadow-glass-modal">
+            <Image src="/landing/statement-to-quickbooks-4k-v1.png" alt="Bank statements transformed into matched QuickBooks records through Kyriq" fill sizes="(max-width: 1024px) 100vw, 48vw" className="object-cover object-center" />
           </div>
         </div>
         <div className="grid sm:grid-cols-2 gap-5 stagger">
           {points.map((f) => (
-            <div key={f.title} className="animate-glass-rise bg-surface/88 backdrop-blur-xl border border-glass-hairline shadow-glass rounded-card p-7 sm:p-8 hover-lift min-h-[230px]">
-              <div className={cn('w-12 h-12 rounded-input flex items-center justify-center text-white mb-8', f.tone)}>{f.icon}</div>
+            <div key={f.title} className="animate-glass-rise bg-surface/88 backdrop-blur-xl border border-glass-hairline shadow-glass rounded-card p-6 sm:p-8 hover-lift min-h-[210px] sm:min-h-[230px]">
+              <div className={cn('w-12 h-12 rounded-input flex items-center justify-center text-white mb-6 sm:mb-8', f.tone)}>{f.icon}</div>
               <h3 className="text-lg font-bold tracking-display text-ink-strong mb-3">{f.title}</h3>
               <p className="text-sm text-ink-body leading-relaxed">{f.desc}</p>
             </div>
@@ -515,9 +515,9 @@ function BuiltForFirms() {
 
 function ExtensionSection() {
   return (
-    <section id="extension" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
+    <section id="extension" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
       <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-shell-solid via-shell-solid to-brand-dark/40" />
-      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-12 lg:gap-16 items-center">
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-10 lg:gap-16 items-center">
         <div>
           <span className="text-eyebrow text-accentEmerald mb-4 block">Chrome extension</span>
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-[-0.035em] leading-[1.04] text-shell-text mb-6">
@@ -535,8 +535,8 @@ function ExtensionSection() {
             ))}
           </ul>
         </div>
-        <div className="relative aspect-video overflow-hidden rounded-modal border border-glass-hairline-dark shadow-glass-modal">
-          <Image src="/landing/quickbooks-extension-4k-v1.png" alt="Kyriq Chrome extension reviewing suggested matches inside QuickBooks Online" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover" />
+        <div className="relative aspect-[4/3] sm:aspect-video overflow-hidden rounded-modal border border-glass-hairline-dark shadow-glass-modal">
+          <Image src="/landing/quickbooks-extension-4k-v1.png" alt="Kyriq Chrome extension reviewing suggested matches inside QuickBooks Online" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover object-center" />
         </div>
       </div>
     </section>
@@ -555,12 +555,12 @@ const VOICE_PROMPTS = [
  *  still called Voice there — Michael renamed the public-facing section only. */
 function VoiceSection() {
   return (
-    <section id="voice" className="relative min-h-[880px] py-24 sm:py-32 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
-      <Image src="/landing/kyriq-iq-characters-4k-v1.png" alt="" fill sizes="100vw" className="object-cover object-center opacity-80" aria-hidden />
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-shell-solid via-shell-solid/90 to-shell-solid/15" />
+    <section id="voice" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
+      <Image src="/landing/kyriq-iq-characters-4k-v2.png" alt="" fill sizes="100vw" className="object-cover object-[70%_center] sm:object-center opacity-60 sm:opacity-75" aria-hidden />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-shell-solid via-shell-solid/90 to-shell-solid/35 lg:bg-gradient-to-r lg:from-shell-solid lg:via-shell-solid/90 lg:to-shell-solid/15" />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-shell-solid via-transparent to-shell-solid/25" />
-      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-12 min-h-[620px] items-center">
-        <div className="rounded-modal border border-glass-hairline-dark bg-shell-solid/80 backdrop-blur-xl p-8 sm:p-10 shadow-glass-modal">
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-10 lg:gap-12 items-center">
+        <div className="rounded-modal border border-glass-hairline-dark bg-shell-solid/85 backdrop-blur-xl p-6 sm:p-10 shadow-glass-modal">
           <span className="inline-flex items-center gap-2 rounded-full border border-glass-hairline-dark bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald mb-6">
             <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
           </span>
@@ -575,7 +575,7 @@ function VoiceSection() {
           <WaitlistForm />
         </div>
 
-        <div className="self-end rounded-card border border-glass-hairline-dark bg-shell-solid/72 backdrop-blur-xl p-5 sm:p-6 shadow-glass-modal">
+        <div className="rounded-card border border-glass-hairline-dark bg-shell-solid/80 backdrop-blur-xl p-4 sm:p-6 shadow-glass-modal">
           <div className="flex items-end justify-center gap-1 h-14 mb-5" aria-hidden>
             {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
               <span key={i} className="w-1.5 rounded-full bg-gradient-to-t from-brand to-accentEmerald animate-pulse" style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
@@ -608,7 +608,7 @@ function Pricing() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <section id="pricing" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 overflow-hidden">
+    <section id="pricing" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 overflow-hidden">
       <SectionBackdrop src="/landing/pricing-background-4k-v1.png" opacity="opacity-80" />
       <div className="relative max-w-7xl mx-auto">
         <SectionHead
@@ -639,12 +639,12 @@ function Pricing() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 stagger items-stretch">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-8 stagger items-stretch">
           {PLANS.map((p) => (
             <div
               key={p.tier}
               className={cn(
-                'animate-glass-rise relative rounded-card p-8 lg:p-10 h-full flex flex-col min-h-[590px]',
+                'animate-glass-rise relative rounded-card p-6 sm:p-8 lg:p-10 h-full flex flex-col min-h-[540px] lg:min-h-[590px]',
                 p.popular ? 'bg-shell-solid text-shell-text shadow-brand-glow md:-translate-y-4' : 'bg-surface/90 backdrop-blur-xl border border-glass-hairline shadow-glass'
               )}
             >
@@ -795,7 +795,7 @@ const FAQS: { q: string; a: string }[] = [
 
 function Faq() {
   return (
-    <section id="faq" className="relative py-24 sm:py-32 lg:py-36 px-4 sm:px-6 overflow-hidden">
+    <section id="faq" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 overflow-hidden">
       <SectionBackdrop src="/landing/faq-background-4k-v1.png" opacity="opacity-75" />
       <div className="relative max-w-7xl mx-auto">
         <SectionHead
@@ -803,7 +803,7 @@ function Faq() {
           title="Everything you need to know before your first reconciliation"
           blurb="How Kyriq extracts checks from your bank statement, compares them with QuickBooks, manages approvals, and calculates plan usage."
         />
-        <div className="grid md:grid-cols-2 gap-4 items-start">
+        <div className="grid xl:grid-cols-2 gap-4 items-start">
           {FAQS.map((item, i) => (
             // <details> rather than a JS accordion: keyboard and screen-reader
             // correct for free, and it works before hydration.
@@ -828,11 +828,11 @@ function Faq() {
 function CTASection() {
   const router = useRouter();
   return (
-    <section className="py-24 sm:py-32 px-4 sm:px-6 bg-surface">
-      <div className="max-w-6xl mx-auto relative rounded-modal overflow-hidden animate-glass-rise min-h-[500px] flex items-center">
+    <section className="py-20 sm:py-28 px-4 sm:px-6 bg-surface">
+      <div className="max-w-6xl mx-auto relative rounded-modal overflow-hidden animate-glass-rise min-h-[380px] sm:min-h-[500px] flex items-center">
         <Image src="/landing/closing-cta-ribbons-4k-v1.png" alt="" fill sizes="100vw" className="object-cover" aria-hidden />
         <div aria-hidden className="absolute inset-0 bg-shell-solid/35" />
-        <div className="relative w-full p-10 sm:p-16 md:p-24 text-center">
+        <div className="relative w-full p-7 sm:p-16 md:p-24 text-center">
           <h2 className="relative text-2xl sm:text-3xl md:text-4xl font-extrabold text-shell-text tracking-[-0.025em] mb-4">
             Ready to reconcile checks in a fraction of the time?
           </h2>
