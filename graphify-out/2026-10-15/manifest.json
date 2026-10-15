@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "frontend/app/(app)/upload/page.tsx": {
-    "mtime": 1791958095.0544505,
-    "seen": 1791965001.723852,
-    "ast_hash": "a4bd5ebf0ce113dce0a810b9f68551e6",
+    "mtime": 1792054096.35455,
+    "seen": 1792054360.174508,
+    "ast_hash": "c64f0b59f5b98624c412eab70f648cb9",
     "semantic_hash": ""
   },
   "frontend/app/(auth)/forgot-password/page.tsx": {
@@ -1062,9 +1062,9 @@
     "semantic_hash": ""
   },
   "frontend/components/landing/LandingPage.tsx": {
-    "mtime": 1791985437.8024316,
-    "seen": 1791988847.452134,
-    "ast_hash": "d3c2ed19af776875d33d2db231473280",
+    "mtime": 1792053823.1958985,
+    "seen": 1792054360.174508,
+    "ast_hash": "bbac4ab40d89122504ad27e43efb0cd4",
     "semantic_hash": ""
   },
   "frontend/components/landing/LegalShell.tsx": {
@@ -1542,8 +1542,8 @@
     "semantic_hash": ""
   },
   "frontend/lib/supabase/proxy.ts": {
-    "mtime": 1791973570.3211274,
-    "seen": 1791985000.8887224,
+    "mtime": 1792054148.4951186,
+    "seen": 1792054360.174508,
     "ast_hash": "114aa9bdd820505cd13cda922540e3e7",
     "semantic_hash": ""
   },
@@ -3600,9 +3600,9 @@
     "semantic_hash": ""
   },
   "frontend/public/landing/README.md": {
-    "mtime": 1791985690.9765122,
-    "seen": 1791988847.4532313,
-    "ast_hash": "89857a124597ee1778ffdcd37ae81b47",
+    "mtime": 1792053841.3660882,
+    "seen": 1792054360.1756117,
+    "ast_hash": "74c034a0367fc7ee56209235b5e318f8",
     "semantic_hash": ""
   },
   "chrome-extension/store-assets/marquee-promo-tile-1400x560.png": {
@@ -3635,46 +3635,10 @@
     "ast_hash": "840883112a9952df0a6049013aa9e35d",
     "semantic_hash": ""
   },
-  "frontend/public/landing/closing-cta-ribbons-4k-v1.png": {
-    "mtime": 1791983741.8127525,
-    "seen": 1791985000.8892686,
-    "ast_hash": "6c2354905154a2e020f57386f171453e",
-    "semantic_hash": ""
-  },
-  "frontend/public/landing/hero-match-sculpture-4k-v1.png": {
-    "mtime": 1791983732.5786235,
-    "seen": 1791985000.8892686,
-    "ast_hash": "c335245110b380d7f5e754ae32cefba1",
-    "semantic_hash": ""
-  },
-  "frontend/public/landing/kyriq-iq-characters-4k-v1.png": {
-    "mtime": 1791983730.2189689,
-    "seen": 1791985000.8892686,
-    "ast_hash": "af007dad00ec4d61b246eec3f8078bd2",
-    "semantic_hash": ""
-  },
-  "frontend/public/landing/match-review-dashboard-4k-v1.png": {
-    "mtime": 1791983736.8936992,
-    "seen": 1791985000.8892686,
-    "ast_hash": "fe4ee579beb008cbabd816bc317451e9",
-    "semantic_hash": ""
-  },
-  "frontend/public/landing/quickbooks-extension-4k-v1.png": {
-    "mtime": 1791983739.2857385,
-    "seen": 1791985000.8892686,
-    "ast_hash": "5598c72c45e31d2be579109e2f0d8119",
-    "semantic_hash": ""
-  },
-  "frontend/public/landing/statement-to-quickbooks-4k-v1.png": {
-    "mtime": 1791983734.672187,
-    "seen": 1791985000.8892686,
-    "ast_hash": "ecb8ec090cbe6106541e2dadbe0b7587",
-    "semantic_hash": ""
-  },
   "frontend/scripts/build-og-card.py": {
-    "mtime": 1791988568.6132505,
-    "seen": 1791988847.4532313,
-    "ast_hash": "9775f1cfe61f9b72260580256e267f91",
+    "mtime": 1792053823.1968987,
+    "seen": 1792054360.1756117,
+    "ast_hash": "62486f6c10823ef1a56da4558a389c12",
     "semantic_hash": ""
   },
   "frontend/public/brand/README.md": {
@@ -3683,34 +3647,94 @@
     "ast_hash": "f1ffd399ce3450fc478277173a01f6bc",
     "semantic_hash": ""
   },
-  "frontend/public/landing/faq-background-4k-v1.png": {
-    "mtime": 1791985284.169423,
-    "seen": 1791988847.4532313,
-    "ast_hash": "ac03384cff9bb02948e5850b6bf87fbe",
-    "semantic_hash": ""
-  },
-  "frontend/public/landing/firms-background-4k-v1.png": {
-    "mtime": 1791985280.9571872,
-    "seen": 1791988847.4532313,
-    "ast_hash": "378069050658a3bbe0436d1589ad2f49",
-    "semantic_hash": ""
-  },
   "frontend/public/landing/og-card-1200x630.jpg": {
-    "mtime": 1791988569.3241608,
-    "seen": 1791988847.4532313,
-    "ast_hash": "40f4131386971a42f45960aa3d24386e",
+    "mtime": 1792053847.4908066,
+    "seen": 1792054360.1756117,
+    "ast_hash": "d0e4129e543bd798c1a8520bf9d4b5d9",
     "semantic_hash": ""
   },
-  "frontend/public/landing/pricing-background-4k-v1.png": {
-    "mtime": 1791985282.3011124,
-    "seen": 1791988847.4532313,
-    "ast_hash": "5dfb10b09363924b7134ed0726738306",
+  "frontend/app/(app)/upload/components/BatchSegregation.tsx": {
+    "mtime": 1792054081.5735466,
+    "seen": 1792054360.174508,
+    "ast_hash": "6d263e0aa0401cb50a3628d3d90818b2",
     "semantic_hash": ""
   },
-  "frontend/public/landing/workflow-background-4k-v1.png": {
-    "mtime": 1791985279.8629236,
-    "seen": 1791988847.4532313,
-    "ast_hash": "4ecdd670f4cee564062790f72bb8e67e",
+  "frontend/lib/document-kind.ts": {
+    "mtime": 1792054013.401976,
+    "seen": 1792054360.174508,
+    "ast_hash": "298b989ded1478d0b22bb693a7af29c0",
+    "semantic_hash": ""
+  },
+  "frontend/scripts/check-document-kind.ts": {
+    "mtime": 1792054043.6783812,
+    "seen": 1792054360.1756117,
+    "ast_hash": "ffb4fd80b355371266d2123999333c8f",
+    "semantic_hash": ""
+  },
+  "frontend/scripts/compress-landing-art.py": {
+    "mtime": 1792053798.4087746,
+    "seen": 1792054360.1756117,
+    "ast_hash": "db1199ee742be0113dafdd291017bf84",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/closing-cta-ribbons-4k-v1.webp": {
+    "mtime": 1792053818.1474843,
+    "seen": 1792054360.1756117,
+    "ast_hash": "18cd48b3d42d99e46b5c5d43e82de2bb",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/faq-background-4k-v1.webp": {
+    "mtime": 1792053818.6812754,
+    "seen": 1792054360.1756117,
+    "ast_hash": "4c4acc3f9bac608c90ce09cdf65668e4",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/firms-background-4k-v1.webp": {
+    "mtime": 1792053819.366659,
+    "seen": 1792054360.1756117,
+    "ast_hash": "d8a2483d63b8c20f5b68ce33a2e0d1cd",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/hero-match-sculpture-4k-v1.webp": {
+    "mtime": 1792053820.0868046,
+    "seen": 1792054360.1756117,
+    "ast_hash": "07cf0ed449b81455fd742705fe29cc8e",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/kyriq-iq-characters-user-v1.webp": {
+    "mtime": 1792053820.5175784,
+    "seen": 1792054360.1756117,
+    "ast_hash": "9e3cf9ec04038d57c5bcc78d72cc1bc5",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/match-review-dashboard-4k-v1.webp": {
+    "mtime": 1792053821.19641,
+    "seen": 1792054360.1756117,
+    "ast_hash": "80c814802fef55b8dc3c941e74f1705c",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/pricing-background-4k-v1.webp": {
+    "mtime": 1792053821.7066522,
+    "seen": 1792054360.1756117,
+    "ast_hash": "dc91434fef7ef650e610bd2a23b23cbd",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/quickbooks-extension-4k-v1.webp": {
+    "mtime": 1792053822.383746,
+    "seen": 1792054360.1756117,
+    "ast_hash": "d84e9a6085eab3f5a378029f0926b439",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/statement-to-quickbooks-kyriq-v6.webp": {
+    "mtime": 1792053822.6476386,
+    "seen": 1792054360.1756117,
+    "ast_hash": "7128c1c1b678de316df6739bc54396de",
+    "semantic_hash": ""
+  },
+  "frontend/public/landing/workflow-background-4k-v1.webp": {
+    "mtime": 1792053823.1928935,
+    "seen": 1792054360.1756117,
+    "ast_hash": "0bbf3eb36af47067ff72ad6538b3af8c",
     "semantic_hash": ""
   }
 }

@@ -1062,9 +1062,9 @@
     "semantic_hash": ""
   },
   "frontend/components/landing/LandingPage.tsx": {
-    "mtime": 1792053823.1958985,
-    "seen": 1792054360.174508,
-    "ast_hash": "bbac4ab40d89122504ad27e43efb0cd4",
+    "mtime": 1792054673.6464958,
+    "seen": 1792055363.1578565,
+    "ast_hash": "824c055712443dc3c4f608dc1860e743",
     "semantic_hash": ""
   },
   "frontend/components/landing/LegalShell.tsx": {
@@ -2196,9 +2196,9 @@
     "semantic_hash": ""
   },
   "frontend/scripts/check-landing.ts": {
-    "mtime": 1791970060.9660087,
-    "seen": 1791970742.8017817,
-    "ast_hash": "c4009da6e39d36c25acec5c8f2581cd7",
+    "mtime": 1792055131.0616493,
+    "seen": 1792055363.1578565,
+    "ast_hash": "940fef5c56b77020df6110ebec5ebc93",
     "semantic_hash": ""
   },
   "frontend/scripts/check-parcel-d.ts": {
@@ -3735,6 +3735,12 @@
     "mtime": 1792053823.1928935,
     "seen": 1792054360.1756117,
     "ast_hash": "0bbf3eb36af47067ff72ad6538b3af8c",
+    "semantic_hash": ""
+  },
+  "frontend/components/landing/Reveal.tsx": {
+    "mtime": 1792055111.6319556,
+    "seen": 1792055363.1578565,
+    "ast_hash": "796b34c65cd45b1b524c54892abf2beb",
     "semantic_hash": ""
   }
 }
