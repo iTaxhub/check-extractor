@@ -763,7 +763,7 @@ function SettingsPageContent() {
                                     </Button>
                                 )}
                                 {qboConnected ? (
-                                    <Button variant="destructive" size="sm" onClick={handleQBODisconnect}>
+                                    <Button variant="secondary" size="sm" className="text-error-text" onClick={handleQBODisconnect}>
                                         Disconnect
                                     </Button>
                                 ) : (
