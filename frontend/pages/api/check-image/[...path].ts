@@ -19,12 +19,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const [jobId, checkId] = pathParts
 
+    // `w` asks the backend for a cached WebP thumbnail; only a width is forwarded.
+    const w = Number.parseInt(String(req.query.w ?? ''), 10)
+    const query = Number.isFinite(w) && w > 0 ? `?w=${Math.min(w, 1200)}` : ''
+
     try {
-        const response = await fetch(`${PYTHON_API}/api/checks/${jobId}/${checkId}/image`, { headers: auth })
+        const response = await fetch(`${PYTHON_API}/api/checks/${jobId}/${checkId}/image${query}`, { headers: auth })
 
         if (response.ok) {
             const buffer = Buffer.from(await response.arrayBuffer())
-            res.setHeader('Content-Type', 'image/png')
+            res.setHeader('Content-Type', response.headers.get('content-type') || 'image/png')
             res.setHeader('Cache-Control', 'public, max-age=86400')
             return res.status(200).send(buffer)
         }
