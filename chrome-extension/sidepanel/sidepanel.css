@@ -1311,3 +1311,73 @@ header {
 
 /* Real logo lockup from the brand pack (2.43:1). */
 .logo-lockup { height: 26px; width: auto; flex-shrink: 0; display: block; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Ledger skin: the same visual language as the signed-in app.
+   Opaque paper, a solid navy header, 6-10px radii, flat buttons, sentence-case
+   labels. Glass rules above stay authored (check-parity guards their order);
+   the blur token is switched off here instead, so nothing is half-converted.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --glass-blur: none;
+  --glass-card-bg: var(--surface);
+  --glass-panel-bg: var(--paper);
+  --glass-chrome-bg: var(--paper);
+  --glass-toast-bg: var(--surface);
+  --glass-modal-bg: var(--surface);
+  --glass-border: var(--ledger-border);
+  --glass-hairline: var(--ledger-hair);
+  --shell-bg: var(--ledger-navy);
+  --shell-bg-fallback: var(--ledger-navy);
+  --shadow-glass: 0 1px 0 var(--ledger-hair);
+  --shadow-glass-panel: none;
+  --shadow-glass-hover: 0 1px 0 var(--ledger-hair);
+  --shadow-brand-glow: none;
+  --radius-input: 6px;
+  --radius-btn: 6px;
+  --radius-pill: 6px;
+  --radius-tile: 8px;
+  --radius-card: 10px;
+  --radius-modal: 12px;
+}
+body { background: var(--paper); font-variant-numeric: tabular-nums; }
+header { box-shadow: none; border-bottom: 0; }
+
+/* Buttons: solid fills, no gradient, no glow. */
+.btn-primary, .btn-sync, .btn-qb { background: var(--brand-dark); box-shadow: none; }
+.btn-primary:hover, .btn-sync:hover, .btn-qb:hover { background: var(--brand-deep); }
+.usage-meter-fill { background: var(--brand-dark); }
+.usage-meter.is-warn .usage-meter-fill { background: var(--warning); }
+.usage-meter.is-over .usage-meter-fill { background: var(--error); }
+
+/* Labels read as labels, not shouting. */
+.section-label, .tab-toolbar-title, .step-label, .attention-label,
+.match-score .status-lbl, .score-item .lbl, .form-group label,
+.check-card-status, .qb-type-badge, .debug-header {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.section-label, .tab-toolbar-title, .step-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+
+/* Rows: one hairline register. The status lives in a full-height rule on
+   the left, and approved / flagged rows also carry a tinted ground so the
+   decision is visible at a glance without reading the pill. */
+.match-list, .checks-list { gap: 0; border: 1px solid var(--ledger-border); border-radius: var(--radius-card); overflow: hidden; background: var(--surface); }
+.match-row, .check-card { border: 0; border-radius: 0; border-bottom: 1px solid var(--ledger-hair); box-shadow: none; }
+.match-row:last-child, .check-card:last-child { border-bottom: 0; }
+.match-row:hover, .check-card:hover { box-shadow: none; background: var(--surface-tint); }
+.match-row.status-matched { box-shadow: inset 3px 0 0 var(--success); }
+.match-row.status-approved { box-shadow: inset 3px 0 0 var(--success-text); background: var(--success-bg); }
+.match-row.status-pending { box-shadow: inset 3px 0 0 var(--warning); }
+.match-row.status-discrepancy { box-shadow: inset 3px 0 0 var(--error); }
+.match-row.status-flagged { box-shadow: inset 3px 0 0 var(--error-text); background: var(--error-bg); }
+.match-row.status-unmatched { box-shadow: inset 3px 0 0 var(--neutral-border); }
+.match-row[class*='status-'] { border-left: 0; }
+.match-score .score { border-radius: var(--radius-pill); font-weight: 700; }
+
+/* Empty and loading: a quiet box with a direction, not a giant emoji. */
+.empty-state { padding: 28px 16px; border: 1px dashed var(--ledger-border); border-radius: var(--radius-card); background: var(--surface); }
+.empty-icon { font-size: 22px; opacity: 0.55; margin-bottom: 6px; }
+.empty-state p { font-size: 13px; color: var(--ink-strong); }
+.loading-overlay { background: var(--paper); }
+.loading-spinner { width: 22px; height: 22px; border-width: 2px; border-color: var(--ledger-border); border-top-color: var(--brand-dark); }
