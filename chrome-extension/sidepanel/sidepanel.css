@@ -1381,3 +1381,59 @@ header { box-shadow: none; border-bottom: 0; }
 .empty-state p { font-size: 13px; color: var(--ink-strong); }
 .loading-overlay { background: var(--paper); }
 .loading-spinner { width: 22px; height: 22px; border-width: 2px; border-color: var(--ledger-border); border-top-color: var(--brand-dark); }
+/* Ledger presentation: compact records and opaque, token-based surfaces. */
+:root {
+  --radius-input: 6px;
+  --radius-btn: 6px;
+  --radius-tile: 8px;
+  --radius-card: 10px;
+  --gray-300: var(--neutral-border);
+  --gray-400: var(--ink-soft);
+  --gray-500: var(--ink-soft);
+}
+body { background: var(--app-bg); font-variant-numeric: tabular-nums; }
+header { background: var(--shell-solid); box-shadow: none; }
+#company-bar, #tabs, .attention-bar {
+  background: var(--surface);
+  border-color: var(--neutral-border);
+  box-shadow: none;
+}
+#company-select, #account-select { border-color: var(--neutral-border); }
+.tab { font-size: 11px; min-height: 36px; color: var(--ink-soft); }
+.tab.active { background: var(--brand-wash); color: var(--brand-text); }
+.tab-toolbar { gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.tab-toolbar-title { text-transform: none; letter-spacing: 0; color: var(--ink-strong); }
+.btn-primary, .btn-sync, .kyriq-toast-btn-primary {
+  background: var(--brand-dark);
+  box-shadow: none;
+}
+.btn-primary:hover, .btn-sync:hover, .kyriq-toast-btn-primary:hover {
+  background: var(--brand-deep);
+  box-shadow: none;
+  transform: none;
+}
+.btn-green { background: var(--success-text); color: var(--ink-invert); }
+.btn-green:hover { background: var(--emerald-dark); }
+.btn-red { background: var(--error-text); color: var(--ink-invert); }
+.btn-sm, .btn-xs { border-radius: var(--radius-btn); min-height: 28px; }
+.match-row, .check-card, .qb-card, .doc-card, .history-item {
+  background: var(--surface);
+  border-radius: var(--radius-input);
+  box-shadow: none;
+}
+.match-row:hover, .qb-card:hover, .doc-card:hover {
+  background: var(--surface-tint);
+  box-shadow: none;
+}
+.doc-card, .history-item { padding: 8px 12px; }
+.doc-meta, .history-meta, .check-card-meta, .qb-card-meta, .qb-card-memo,
+.match-qb .detail, .match-check .detail {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.qb-card-amount, .check-card-amount { color: var(--ink-strong); font-weight: 600; }
+.match-score .status-lbl { font-size: 10px; text-transform: none; }
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--brand-deep);
+  outline-offset: 2px;
+}
