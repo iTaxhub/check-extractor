@@ -498,7 +498,7 @@ export default function ProcessingPage() {
                           <Td numeric muted>{idx + 1}</Td>
                           <Td numeric>{check.page}</Td>
                           <Td className="font-medium">{extVal(ext, 'payee') || '—'}</Td>
-                          <Td numeric className="nums-money font-semibold text-success-text">
+                          <Td numeric className="nums-money font-semibold text-ink-strong">
                             {extVal(ext, 'amount') ? `$${extVal(ext, 'amount')}` : '—'}
                           </Td>
                           <Td className="nums">{extVal(ext, 'checkDate') || '—'}</Td>

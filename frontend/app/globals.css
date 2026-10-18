@@ -843,16 +843,16 @@
   --ink: 244 40% 12%;
   --ink-body: 235 14% 30%;
   --ink-soft: 235 10% 38%;
-  --ink-faint: 235 8% 47%;
+  --ink-faint: var(--ink-soft);
 
   --glass-card-bg: hsl(0 0% 100%);
   --glass-panel-bg: hsl(var(--paper));
   --glass-modal-bg: hsl(0 0% 100%);
-  --glass-chrome-bg: hsl(var(--paper) / 0.94);
+  --glass-chrome-bg: hsl(var(--paper));
   --glass-toast-bg: hsl(0 0% 100%);
   --glass-selected-bg: hsl(0 0% 100%);
-  --glass-border: rgba(30, 27, 75, 0.1);
-  --glass-hairline: rgba(30, 27, 75, 0.08);
+  --glass-border: hsl(var(--ink-strong) / 0.16);
+  --glass-hairline: hsl(var(--ink-strong) / 0.12);
 
   --shadow-glass: 0 1px 0 rgba(30, 27, 75, 0.03);
   --shadow-glass-hover: 0 1px 0 rgba(30, 27, 75, 0.04), 0 6px 16px -8px rgba(30, 27, 75, 0.14);
@@ -951,18 +951,25 @@
   background-color: hsl(var(--surface-sunken));
 }
 [data-skin='ledger'] thead th { color: hsl(var(--ink-soft)); font-weight: 600; }
-[data-skin='ledger'] tbody tr:nth-child(even):not(:hover):not([aria-selected]) {
+[data-skin='ledger'] tbody tr:nth-child(even):not(:hover):not([aria-selected='true']) {
   background-color: hsl(var(--surface-sunken) / 0.45);
 }
 [data-skin='ledger'] td { border-color: var(--glass-hairline); }
-[data-skin='ledger'] .kpi-icon { color: hsl(var(--ink-faint)); opacity: 0.7; }
+[data-skin='ledger'] .kpi-icon { color: hsl(var(--ink-soft)); }
 
 /* Tables: status lives in the accent rule and the pill, not a tint across
    every cell — a page of pink rows reads as an alarm, not a ledger. */
-[data-skin='ledger'] tr:is([class*='bg-error-bg'], [class*='bg-warning-bg'], [class*='bg-success-bg']):not(:hover) {
+[data-skin='ledger'] tr:is([class*='bg-error-bg'], [class*='bg-warning-bg'], [class*='bg-success-bg']):not(:hover):not([aria-selected='true']) {
   background-color: transparent;
 }
-[data-skin='ledger'] tr:hover { background-color: hsl(var(--surface-sunken) / 0.7); }
+[data-skin='ledger'] tbody tr:hover { background-color: hsl(var(--surface-sunken)); }
+[data-skin='ledger'] tbody tr[aria-selected='true'] {
+  background-color: hsl(var(--brand) / 0.12);
+  box-shadow: inset 2px 0 0 hsl(var(--brand-deep));
+}
+[data-skin='ledger'] tbody tr[aria-selected='true']:hover {
+  background-color: hsl(var(--brand) / 0.18);
+}
 /* Segmented controls: the chosen segment matches the primary action. */
 [data-skin='ledger'] [aria-pressed='true'].bg-brand {
   background-color: hsl(var(--brand-dark));

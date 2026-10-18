@@ -536,7 +536,7 @@ export default function DashboardPage() {
                             <Td muted className={`${DENSE_CELL} max-w-[100px] truncate`}>{c.pdf_name}</Td>
                           )}
                           <Td className={`${DENSE_CELL} font-medium`}>{extVal(ext, 'payee') || '—'}</Td>
-                          <Td numeric className={`${DENSE_CELL} nums-money font-semibold text-success-text`}>{extVal(ext, 'amount') || '—'}</Td>
+                          <Td numeric className={`${DENSE_CELL} nums-money font-semibold text-ink-strong`}>{extVal(ext, 'amount') || '—'}</Td>
                           <Td className={`${DENSE_CELL} nums text-ink-body`}>{extVal(ext, 'checkDate') || '—'}</Td>
                           <Td numeric className={`${DENSE_CELL} text-ink-body`}>{extVal(ext, 'checkNumber') || '—'}</Td>
                           <Td muted className={DENSE_CELL}>{extVal(ext, 'bankName') || '—'}</Td>
