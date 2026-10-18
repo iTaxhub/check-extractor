@@ -196,7 +196,7 @@ export default function UploadProgress({ files, onComplete }: Props) {
               aria-valuemax={100}
             >
               <div
-                className="h-full rounded-full bg-gradient-to-r from-brand to-brand-dark transition-[width] duration-settle ease-settle"
+                className="h-full rounded-full bg-brand-dark transition-[width] duration-settle ease-settle"
                 style={{ width: `${upload.progress}%` }}
               />
             </div>

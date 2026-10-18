@@ -629,7 +629,6 @@ function SettingsPageContent() {
         <div className="mx-auto max-w-6xl space-y-5 p-5" data-tone="brand">
             <div>
                 <h1 className="font-heading text-2xl font-semibold text-ink-strong">Settings</h1>
-                <p className="mt-0.5 text-sm text-ink-faint">Manage your application settings and integrations</p>
             </div>
 
             {/* Tabs. One recessed track with a transform-driven thumb — not four

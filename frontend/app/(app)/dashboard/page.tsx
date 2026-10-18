@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   FileText, Upload, Download, Trash2, Eye,
-  Loader2, AlertCircle, RefreshCw, CheckCircle, FileCheck,
+  Loader2, AlertCircle, RefreshCw, CheckCircle,
   ImageIcon, ExternalLink, RotateCcw,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -245,6 +245,7 @@ export default function DashboardPage() {
   const totalChecks = jobs.reduce((s, j) => s + (j.total_checks || 0), 0);
   const completedJobs = jobs.filter((j) => j.status === 'complete').length;
   const totalPages = jobs.reduce((s, j) => s + (j.total_pages || 0), 0);
+  const failedJobs = jobs.filter((j) => j.status === 'error' || j.status === 'failed').length;
 
   // Duplicate detection
   const groupedJobs = jobs.reduce((acc, job) => {
@@ -327,7 +328,6 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-semibold text-ink-strong">Dashboard</h1>
-          <p className="mt-0.5 text-sm text-ink-faint">Overview of your cheque processing</p>
         </div>
         <div className="flex items-center gap-2">
           <IconButton aria-label="Refresh" size="icon-sm" onClick={fetchJobs} title="Refresh">
@@ -341,10 +341,10 @@ export default function DashboardPage() {
 
       {/* ── Stats ───────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiTile tone="brand" label="Documents" value={totalJobs} icon={<FileText size={16} />} loading={loading} />
-        <KpiTile tone="brand" label="Total Pages" value={totalPages} icon={<FileCheck size={16} />} loading={loading} />
-        <KpiTile tone="success" label="Cheques Found" value={totalChecks} icon={<ImageIcon size={16} />} loading={loading} />
-        <KpiTile tone="success" label="Completed" value={completedJobs} icon={<CheckCircle size={16} />} loading={loading} />
+        <KpiTile href="/history" label="Documents" value={totalJobs} caption={`${totalPages} pages scanned`} icon={<FileText size={16} />} loading={loading} />
+        <KpiTile href="/reconcile" label="Cheques found" value={totalChecks} caption="Ready to reconcile" icon={<ImageIcon size={16} />} loading={loading} />
+        <KpiTile href="/history" tone="success" label="Extracted" value={completedJobs} caption={`of ${totalJobs} documents`} icon={<CheckCircle size={16} />} loading={loading} />
+        <KpiTile href="/history" tone={failedJobs ? 'error' : 'neutral'} label="Needs attention" value={failedJobs} caption={failedJobs ? 'Failed extractions' : 'Nothing failed'} icon={<AlertCircle size={16} />} loading={loading} />
       </div>
 
       {loading && <DashboardBodySkeleton />}
