@@ -259,16 +259,16 @@ cd chrome-extension
 node check-parity.mjs     # must print 11 checks passed
 ```
 
-Then zip the **contents** of `chrome-extension/` (so `manifest.json` is at the archive root), leaving
-out development files:
+Then build the store zip. The packager drops localhost hosts, narrows Railway to Kyriq's own
+backend, removes unused permissions, and leaves out docs, the parity script and the unmounted popup:
 
 ```bash
-cd chrome-extension
-zip -r ../kyriq-extension-1.0.1.zip . \
-  -x '*.md' -x 'check-parity.mjs' -x 'store-assets/*' -x '.*'
+python chrome-extension/package_store.py   # writes dist/kyriq-extension-1.2.0.zip
 ```
 
-Upload that as a new package, then fill the four forms above.
+Upload that zip to the existing item `apnglhjejjghgmcinkoeganejmkjmkpk` as a new package, fill the
+forms above, add a real 1280x800 screenshot of the running side panel with demo data (not the
+concept boards in docs/premium-redesign), and stop at the review screen. The owner presses Submit.
 
 ### Before you submit, confirm by hand
 
