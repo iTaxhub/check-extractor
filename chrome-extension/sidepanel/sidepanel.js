@@ -248,7 +248,7 @@ let pendingFiles = [];
 let extractedChecks = [];
 let connections = [];
 let session = null;
-let selectedMethod = 'hybrid';
+let selectedMethod = 'hybrid'; // always hybrid: engine choice is not a client decision
 let currentJobId = null;
 let _pollTimer = null;
 // ── State cache (avoid redundant fetches on tab navigation) ──

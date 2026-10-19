@@ -3,7 +3,7 @@
 Every field, ready to paste. Written against what the code actually does, not marketing copy.
 
 - **Item ID**: `apnglhjejjghgmcinkoeganejmkjmkpk` (confirmed by the owner, 19 Oct 2026; the older ID `acmmjfmlpemmigbbpkohebaehnofcdkg` is not the one to update)
-- **Package to upload**: version **1.2.0**, `dist/kyriq-extension-1.2.0.zip` built by `python chrome-extension/package_store.py`
+- **Package to upload**: version **1.2.1**, `dist/kyriq-extension-1.2.1.zip` built by `python chrome-extension/package_store.py`
 - **Status**: Draft, never submitted
 
 > **Do not copy from `chrome-extension/WEB-STORE-SUBMISSION.md`.** It is stale and will get the
@@ -263,7 +263,7 @@ Then build the store zip. The packager drops localhost hosts, narrows Railway to
 backend, removes unused permissions, and leaves out docs, the parity script and the unmounted popup:
 
 ```bash
-python chrome-extension/package_store.py   # writes dist/kyriq-extension-1.2.0.zip
+python chrome-extension/package_store.py   # writes dist/kyriq-extension-1.2.1.zip
 ```
 
 Upload that zip to the existing item `apnglhjejjghgmcinkoeganejmkjmkpk` as a new package, fill the

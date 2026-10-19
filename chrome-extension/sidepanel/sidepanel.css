@@ -1443,3 +1443,5 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 :is(.empty-icon, .connect-icon, .method-icon, .upload-zone-icon, .checks-search-icon):empty { display: none; }
 .checks-search-wrap:has(.checks-search-icon:empty) .checks-search { padding-left: 10px; }
 .icon-btn svg { display: block; }
+
+.config-note { font-size: 12px; color: var(--ink-body); line-height: 1.5; margin: 4px 0 14px; }

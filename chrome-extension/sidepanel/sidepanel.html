@@ -311,12 +311,12 @@
       <div class="step-divider"></div>
       <div class="step-item" data-step="2">
         <div class="step-circle">2</div>
-        <span>Configure</span>
+        <span>Confirm</span>
       </div>
       <div class="step-divider"></div>
       <div class="step-item" data-step="3">
         <div class="step-circle">3</div>
-        <span>Processing</span>
+        <span>Extract</span>
       </div>
     </div>
 
@@ -324,40 +324,24 @@
     <div id="upload-step-1">
       <div class="upload-zone" id="upload-zone">
         <div class="upload-zone-icon"></div>
-        <p class="upload-zone-title">Drop check PDF here</p>
-        <p class="upload-zone-sub">PDF files supported · Multi-page PDFs OK</p>
+        <p class="upload-zone-title">Drop cheque PDFs here</p>
+        <p class="upload-zone-sub">PDF only. Multi-page files are fine.</p>
         <button class="btn-outline btn-browse" id="btn-browse">Browse files</button>
         <input type="file" id="file-input" accept=".pdf,application/pdf" style="display:none;">
       </div>
       <div id="file-queue" style="display:none;" class="file-queue"></div>
       <button id="btn-next-configure" class="btn-primary full" style="display:none;margin-top:12px;">
-        Next: Configure →
+        Continue
       </button>
     </div>
 
     <!-- Step 2: Configure -->
     <div id="upload-step-2" style="display:none;">
-      <p class="step-label">Choose extraction method</p>
-      <div class="method-grid" id="method-grid">
-        <button class="method-card active" data-method="ai">
-          <div class="method-icon"></div>
-          <div class="method-name">Gemini AI</div>
-          <div class="method-desc">Best for handwritten checks</div>
-        </button>
-        <button class="method-card" data-method="tesseract">
-          <div class="method-icon"></div>
-          <div class="method-name">Tesseract</div>
-          <div class="method-desc">Fast offline OCR</div>
-        </button>
-        <button class="method-card" data-method="hybrid">
-          <div class="method-icon"></div>
-          <div class="method-name">Hybrid</div>
-          <div class="method-desc">All engines, best accuracy</div>
-        </button>
-      </div>
+      <p class="step-label">Ready to extract</p>
+      <p class="config-note">Every cheque is read by all of Kyriq's engines and the most confident value is kept for each field.</p>
       <div class="config-actions">
-        <button id="btn-back-upload" class="btn-outline">← Back</button>
-        <button id="btn-start-extract" class="btn-primary">Start Extraction →</button>
+        <button id="btn-back-upload" class="btn-outline">Back</button>
+        <button id="btn-start-extract" class="btn-primary">Extract cheques</button>
       </div>
     </div>
 
@@ -365,18 +349,18 @@
     <div id="upload-step-3" style="display:none;">
       <div class="progress-header">
         <div class="progress-spinner" id="progress-spinner"></div>
-        <span id="progress-summary">Extracting checks...</span>
+        <span id="progress-summary">Extracting cheques…</span>
       </div>
       <div id="progress-log" class="progress-log"></div>
       <div id="extraction-results" style="display:none;">
         <div class="results-header">
-          <span id="results-title">Extracted Checks</span>
+          <span id="results-title">Extracted cheques</span>
           <span id="results-count" class="badge-count"></span>
         </div>
         <div id="extracted-list" class="extracted-list"></div>
         <div class="results-actions">
-          <button id="btn-match-extracted" class="btn-primary full">Match Against QB Transactions</button>
-          <button id="btn-upload-more" class="btn-outline full" style="margin-top:6px;">Upload More Checks</button>
+          <button id="btn-match-extracted" class="btn-primary full">Match against QuickBooks</button>
+          <button id="btn-upload-more" class="btn-outline full" style="margin-top:6px;">Upload more cheques</button>
         </div>
       </div>
     </div>
