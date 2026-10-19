@@ -2329,10 +2329,20 @@ def get_page_image(job_id: str, page_num: int):
 
 
 @app.get("/api/checks/{job_id}/{check_id}/image")
-def get_check_image(job_id: str, check_id: str):
-    """Get the cropped check image. Falls back to Supabase Storage if local file was cleaned up."""
+def get_check_image(job_id: str, check_id: str, w: int = 0):
+    """Get the cropped check image. `w` asks for a WebP thumbnail that many pixels
+    wide (cached beside the original). Falls back to Supabase Storage if the local file was cleaned up."""
     img_path = OUTPUT_DIR / job_id / "images" / f"{check_id}.png"
     if img_path.exists():
+        if w:
+            from PIL import Image  # ponytail: thumbnails are built on first request, cached on disk; a worker queue is the next step
+            width = min(max(w, 120), 1200)
+            thumb = img_path.with_name(f"{check_id}_w{width}.webp")
+            if not thumb.exists():
+                with Image.open(img_path) as im:
+                    im.thumbnail((width, width * 4))
+                    im.save(thumb, "WEBP", quality=80)
+            return FileResponse(str(thumb), media_type="image/webp", headers={"Cache-Control": "public, max-age=86400"})
         return FileResponse(str(img_path), media_type="image/png")
     # Fallback: the job's recorded storage_url (hydrated from the DB if needed)
     job = _job(job_id)

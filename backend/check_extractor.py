@@ -56,6 +56,8 @@ except ImportError:
 # Set Tesseract path explicitly for Windows
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
+import runpod_client
+
 # NuMarkdown via Gradio client (HuggingFace Spaces)
 NUMARKDOWN_ENABLED = True
 try:
@@ -733,6 +735,15 @@ def _get_numarkdown_client():
 def extract_with_numarkdown(img_path):
     """Send check image to NuMarkdown and parse the structured markdown."""
     t0 = time.time()
+    # USE_RUNPOD_OCR=true routes this slot to a self-hosted RunPod endpoint; HF Space is the fallback.
+    engine = os.getenv("RUNPOD_OCR_ENGINE", "numarkdown")
+    if runpod_client.enabled(engine):
+        try:
+            md = runpod_client.run_ocr(engine, img_path)
+            return {"source": "numarkdown", "engine": engine, "raw_markdown": md,
+                    "fields": _parse_numarkdown_output(md), "processing_time_ms": int((time.time() - t0) * 1000)}
+        except Exception as e:
+            print(f"    [RunPod {engine}] failed, falling back to HF Space: {e}")
     if not NUMARKDOWN_ENABLED:
         return {"source": "numarkdown", "error": "gradio_client not installed",
                 "fields": _empty_fields(), "processing_time_ms": 0}

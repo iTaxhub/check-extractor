@@ -346,8 +346,10 @@ export default function ProcessingPage() {
               >
                 <div className="relative aspect-[16/9] overflow-hidden bg-surface-sunken">
                   <img
-                    src={`/api/check-image/${jobId}/${check.check_id}`}
+                    src={`/api/check-image/${jobId}/${check.check_id}?w=480`}
                     alt={`Cheque ${idx + 1}`}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-contain"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
@@ -439,8 +441,10 @@ export default function ProcessingPage() {
                     >
                       <div className="relative aspect-[16/9] overflow-hidden bg-surface-sunken">
                         <img
-                          src={`/api/check-image/${jobId}/${check.check_id}`}
+                          src={`/api/check-image/${jobId}/${check.check_id}?w=480`}
                           alt={`Cheque ${idx + 1}`}
+                          loading="lazy"
+                          decoding="async"
                           className="h-full w-full object-contain"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
@@ -505,8 +509,10 @@ export default function ProcessingPage() {
                           <Td>
                             <div className="h-12 w-20 overflow-hidden rounded-md bg-surface-sunken">
                               <img
-                                src={`/api/check-image/${jobId}/${check.check_id}`}
+                                src={`/api/check-image/${jobId}/${check.check_id}?w=240`}
                                 alt={`Cheque ${idx + 1}`}
+                                loading="lazy"
+                                decoding="async"
                                 className="h-full w-full object-contain"
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                               />

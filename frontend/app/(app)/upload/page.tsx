@@ -1207,8 +1207,10 @@ function UploadPageInner() {
                   >
                     <div className="relative aspect-[2/1] overflow-hidden bg-surface-sunken">
                       <img
-                        src={`/api/check-image/${analyzeResult.job_id}/${check.check_id}`}
+                        src={`/api/check-image/${analyzeResult.job_id}/${check.check_id}?w=480`}
                         alt={`Cheque ${check.check_id}`}
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-contain"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />

@@ -598,7 +598,7 @@ export default function DashboardPage() {
                           <Td className={DENSE_CELL}>
                             <div className="h-7 w-12 overflow-hidden rounded-md bg-surface-sunken">
                               <img
-                                src={`/api/check-image/${c.job_id}/${c.check_id}`}
+                                src={`/api/check-image/${c.job_id}/${c.check_id}?w=240`}
                                 alt=""
                                 loading="lazy"
                                 className="h-full w-full object-contain"

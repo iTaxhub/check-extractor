@@ -24,12 +24,14 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import time
 from typing import Any, Callable
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel
 
@@ -380,6 +382,69 @@ def speak(body: SpeakIn, request: Request):
     return {"audio": _speak(f"Hi, I'm {name}. You have three ninety-one exact matches ready, and thirty-seven that need a closer look.", body.voice_id)}
 
 
+def rule_route(token: str, body: ChatIn) -> dict | None:
+    """Exact answers for questions the data can answer directly. No model call,
+    so these return as soon as the database does. Anything else goes to the LLM."""
+    text = (body.messages[-1].content if body.messages else "").lower()
+    act = _Act()
+    m = re.search(r"\b(?:check|cheque)\s*#?\s*(\d{3,6})\b", text)
+    if m:
+        rows = show_check(token, act, m.group(1))
+        if rows and "error" in rows[0]:
+            reply = rows[0]["error"]
+        else:
+            c = rows[0]
+            reply = f"Check {m.group(1)}: {c.get('payee') or 'no payee'}, {c.get('amount')}, dated {c.get('check_date')}."
+    elif re.search(r"\bnext\b", text):
+        next_check(token, act)
+        reply = "Opening the next check."
+    elif re.search(r"\b(previous|go back)\b", text):
+        previous_check(token, act)
+        reply = "Opening the previous check."
+    elif re.search(r"\bhow many\b.*\bexact\b", text):
+        s = summarize(token)[0]
+        if "error" in s:
+            return None
+        reply = f"{s['exact_100']} checks are exact matches ready to approve."
+    elif re.search(r"\bhow many\b.*\b(attention|discrepanc|flag)", text):
+        s = summarize(token)[0]
+        if "error" in s:
+            return None
+        by = s["by_status"]
+        reply = f"{by.get('discrepancy', 0) + by.get('flagged', 0)} checks need attention."
+    else:
+        return None
+    return {"reply": reply, "tools": [{"name": "rule", "args": {}, "rows": 1}], "actions": act.items,
+            "audio": _speak(reply, body.voice_id) if body.speak else None}
+
+
+class StreamIn(BaseModel):
+    text: str
+    voice_id: str | None = None
+
+
+@app.post("/speak_stream")
+def speak_stream(body: StreamIn, request: Request):
+    """Streams Fish Audio MP3 as it is generated, so playback starts before the
+    whole clip exists. Same auth and voice rules as /chat; the text is capped."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(401, "Missing session")
+    _user(auth[7:])
+    if not FISH_KEY:
+        raise HTTPException(503, "Fish Audio is not configured")
+    voice = body.voice_id if body.voice_id in _VOICE_IDS else DEFAULT_VOICE
+    payload = {"text": body.text[:1500], "format": "mp3", "latency": "low", "reference_id": voice}
+    try:
+        upstream = requests.post("https://api.fish.audio/v1/tts", json=payload, stream=True, timeout=30,
+                                 headers={"Authorization": f"Bearer {FISH_KEY}", "model": FISH_MODEL})
+    except requests.RequestException:
+        raise HTTPException(502, "Fish Audio is unreachable")
+    if upstream.status_code != 200:
+        raise HTTPException(502, f"Fish Audio returned {upstream.status_code}")
+    return StreamingResponse(upstream.iter_content(chunk_size=4096), media_type="audio/mpeg")
+
+
 def run_turn(token: str, body: ChatIn) -> dict:
     if not _llm:
         raise HTTPException(503, "OPENAI_API_KEY is not configured")
@@ -427,4 +492,4 @@ def chat(body: ChatIn, request: Request):
         raise HTTPException(401, "Missing session")
     token = auth[7:]
     _user(token)
-    return run_turn(token, body)
+    return rule_route(token, body) or run_turn(token, body)
