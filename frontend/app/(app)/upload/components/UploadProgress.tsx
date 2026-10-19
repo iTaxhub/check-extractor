@@ -123,13 +123,13 @@ export default function UploadProgress({ files, onComplete }: Props) {
   const getStatusText = (upload: UploadStatus) => {
     switch (upload.status) {
       case 'pending':
-        return 'Waiting...';
+        return 'Waiting';
       case 'uploading':
-        return 'Uploading...';
+        return 'Uploading';
       case 'processing':
-        return 'Processing...';
+        return 'Starting extraction';
       case 'complete':
-        return 'Complete!';
+        return 'Sent for extraction';
       case 'error':
         return upload.error || 'Failed';
     }
@@ -151,7 +151,7 @@ export default function UploadProgress({ files, onComplete }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {uploads.map((upload, index) => (
         <GlassPanel
           key={index}
@@ -166,41 +166,18 @@ export default function UploadProgress({ files, onComplete }: Props) {
               {getStatusIcon(upload.status)}
             </div>
 
-            {/* File Info */}
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-ink-strong">
+              <p className="truncate text-sm font-medium text-ink-strong">
                 {upload.file.name}
               </p>
-              <p className="text-sm text-ink-body">
+              <p className={cn('text-xs', upload.status === 'error' ? 'text-error-text' : 'text-ink-soft')}>
                 {getStatusText(upload)}
               </p>
             </div>
 
-            {/* Progress */}
-            {(upload.status === 'uploading' || upload.status === 'processing') && (
-              <div className="nums flex-shrink-0 text-sm font-medium text-brand-deep">
-                {upload.progress}%
-              </div>
-            )}
           </div>
-
-          {/* Progress Bar. The width HAS to be inline — it is a runtime value.
-              Everything else (colour, radius, height, easing) is a token, so a
-              token change reaches the bar and only the number stays in JS. */}
-          {(upload.status === 'uploading' || upload.status === 'processing') && (
-            <div
-              className="glass-track mt-3 h-1.5 w-full overflow-hidden rounded-full"
-              role="progressbar"
-              aria-valuenow={upload.progress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div
-                className="h-full rounded-full bg-brand-dark transition-[width] duration-settle ease-settle"
-                style={{ width: `${upload.progress}%` }}
-              />
-            </div>
-          )}
+          {/* No bar: `progress` is a placeholder step (0/50/100), not a
+              measured upload, so a determinate bar here would invent it. */}
         </GlassPanel>
       ))}
     </div>

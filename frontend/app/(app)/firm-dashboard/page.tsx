@@ -442,8 +442,7 @@ export default function FirmDashboardPage() {
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <p className="text-eyebrow text-ink-faint">Firm Admin</p>
-          <h1 className="font-heading text-2xl font-semibold tracking-display text-ink-strong">Firm Dashboard</h1>
-          <p className="mt-0.5 text-sm text-ink-body">Cheque reconciliation and processing overview</p>
+          <h1 className="font-heading text-2xl font-semibold tracking-display text-ink-strong">Firm overview</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">

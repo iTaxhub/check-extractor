@@ -224,7 +224,6 @@ function ReconciliationContent() {
           </Link>
           <div>
             <h1 className="font-heading text-2xl font-semibold tracking-display text-ink-strong">Reconciliation</h1>
-            <p className="mt-0.5 text-sm text-ink-body">Compare OCR extractions with QuickBooks data</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

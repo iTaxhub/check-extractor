@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileCheck2, FileX2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui';
 
 interface Props {
   onFilesSelected: (files: File[]) => void;
@@ -31,25 +32,28 @@ export default function DropzoneUpload({ onFilesSelected }: Props) {
     [onFilesSelected]
   );
 
-  const { getRootProps, getInputProps, isDragActive, isDragAccept, isDragReject } = useDropzone({
+  const { getRootProps, getInputProps, open, isDragActive, isDragAccept, isDragReject } = useDropzone({
     onDrop,
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg'],
       'application/pdf': ['.pdf'],
     },
     multiple: true,
+    // The Browse button opens the picker; the zone itself still opens it on
+    // click, Enter or Space (react-dropzone's root is focusable by default).
   });
 
   const state = isDragReject ? 'reject' : isDragAccept || isDragActive ? 'accept' : 'resting';
 
   return (
     <div
-      {...getRootProps()}
+      {...getRootProps({ 'aria-label': 'Drop cheque files here or press Enter to browse' })}
       data-drag-state={state}
       aria-invalid={state === 'reject' || undefined}
       className={cn(
-        'glass-card press cursor-pointer rounded-card border border-dashed p-12 text-center',
+        'glass-card cursor-pointer rounded-card border border-dashed px-6 py-8 text-center',
         'transition-[border-color,background-color,box-shadow] duration-quick ease-settle',
+        'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
         state === 'resting' && 'border-ink-strong/20 hover:border-brand/50',
         // NOT `shadow-glass-selected`: that name exists in tailwind.config.js
         // both as a boxShadow and as the `glass.selected` colour, so it
@@ -62,23 +66,33 @@ export default function DropzoneUpload({ onFilesSelected }: Props) {
 
       {state === 'reject' ? (
         <>
-          <FileX2 className="mx-auto mb-4 text-error" size={48} aria-hidden />
-          <p className="text-lg font-medium text-error-text">That file type is not supported</p>
-          <p className="mt-1 text-sm text-ink-body">PNG, JPG or PDF only.</p>
+          <FileX2 className="mx-auto mb-3 text-error" size={32} aria-hidden />
+          <p className="text-sm font-medium text-error-text">That file type is not supported</p>
+          <p className="mt-1 text-xs text-ink-body">PNG, JPG or PDF only.</p>
         </>
       ) : state === 'accept' ? (
         <>
-          <FileCheck2 className="mx-auto mb-4 text-brand" size={48} aria-hidden />
-          <p className="text-lg font-medium text-brand-deep">Drop the files here</p>
-          <p className="mt-1 text-sm text-ink-body">We&apos;ll detect pages and cheques next.</p>
+          <FileCheck2 className="mx-auto mb-3 text-brand" size={32} aria-hidden />
+          <p className="text-sm font-medium text-brand-dark">Drop the files here</p>
+          <p className="mt-1 text-xs text-ink-body">Pages and cheques are detected next.</p>
         </>
       ) : (
         <>
-          <Upload className="mx-auto mb-4 text-ink-faint" size={48} aria-hidden />
-          <p className="mb-2 text-lg text-ink-strong">
-            Drag &amp; drop cheque images here, or click to select
-          </p>
-          <p className="text-sm text-ink-body">Supports PNG, JPG and PDF, up to 10MB per file.</p>
+          <Upload className="mx-auto mb-3 text-ink-faint" size={32} aria-hidden />
+          <p className="text-sm font-medium text-ink-strong">Drag cheque files here</p>
+          <p className="mt-1 text-xs text-ink-soft">PNG, JPG or PDF, up to 10MB per file</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="mt-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              open();
+            }}
+          >
+            Browse files
+          </Button>
         </>
       )}
     </div>

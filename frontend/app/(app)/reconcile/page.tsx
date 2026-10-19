@@ -13,7 +13,6 @@ import {
   Badge,
   GlassCard,
   GlassCardTitle,
-  GlassPanel,
   Skeleton,
   buttonVariants,
 } from '@/components/ui';
@@ -191,33 +190,22 @@ function Reconcile() {
   const state = batch ? batch.state : deriveBatchSteps(EMPTY_COUNTS, 'open');
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-4 p-4 sm:p-6">
-      <Header />
-
-      {/* The returning user sees this first. */}
+    <div className="mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-6">
       {batch ? (
-        <ContinueCard batch={batch} activeStep={activeStep} />
+        <RunHeader
+          batch={batch}
+          activeStep={activeStep}
+          onReview={() => void selectStep(3)}
+        />
       ) : (
-        <div className="space-y-3">
-          <GlassPanel radius="card" className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-ink-strong">
-                Start your first reconciliation
-              </p>
-              <p className="mt-0.5 text-sm text-ink-body">
-                Nothing is in progress. Open a run for the period you are reconciling and Kyriq
-                takes you through the same four steps every time.
-              </p>
-            </div>
-            <Badge tone="neutral" className="shrink-0">
-              Step 1 of 4
-            </Badge>
-          </GlassPanel>
-          {/* Without this the flow could be rendered but never begun: /resume
-              returns batch: null for a new firm, and upload only attaches to a
-              batch that already exists. */}
-          <StartBatchCard onStarted={adoptBatch} onNeedsConnection={revealConnectCard} />
-        </div>
+        <Header />
+      )}
+
+      {/* Setup only before a run exists. Without this the flow could be
+          rendered but never begun: /resume returns batch: null for a new firm,
+          and upload only attaches to a batch that already exists. */}
+      {batch ? null : (
+        <StartBatchCard onStarted={adoptBatch} onNeedsConnection={revealConnectCard} />
       )}
 
       <Stepper
@@ -257,75 +245,79 @@ function Header() {
   return (
     <div>
       <h1 className="font-heading text-2xl font-semibold text-ink-strong">Reconcile</h1>
-      <p className="mt-0.5 text-sm text-ink-body">
-        Four steps, every period: upload the cheques, let Kyriq match them, review what needs a
-        decision, then approve and clear.
-      </p>
     </div>
   );
 }
 
 /**
- * Continue Reconciliation — Michael's card, rendered from `batch.summary`.
- * Every line is a server-derived string; nothing here is computed locally.
+ * Run header — Michael's continue card folded into the page heading, rendered
+ * from `batch.summary`. Every line is a server-derived string; nothing here is
+ * computed locally.
  */
-function ContinueCard({
+function RunHeader({
   batch,
   activeStep,
+  onReview,
 }: {
   batch: BatchPayload;
   activeStep: BatchStepNumber;
+  onReview: () => void;
 }) {
   const { summary } = batch;
   const complete = batch.status === 'complete';
+  const resumable = !complete && batch.state.current_step !== activeStep;
 
   return (
-    <GlassCard className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">
-          {complete ? 'Last reconciliation' : 'Continue reconciliation'}
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-ink-faint">
+          {complete ? 'Last reconciliation' : 'Reconcile'}
         </p>
-        <p className="mt-1 truncate text-base font-semibold text-ink-strong">{summary.heading}</p>
+        <h1 className="mt-0.5 truncate font-heading text-2xl font-semibold text-ink-strong">
+          {summary.heading}
+        </h1>
         <p className="mt-0.5 text-sm text-ink-body">
           {summary.period} · <span className="nums">{summary.step_label}</span>
-          {summary.attention_label ? (
-            <>
-              {' — '}
-              <span className="font-medium text-warning-text nums">{summary.attention_label}</span>
-            </>
-          ) : null}
         </p>
       </div>
-      {complete ? (
-        <Badge tone="success" className="shrink-0">
-          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Approved
-        </Badge>
-      ) : (
-        <Link
-          href={`/reconcile?batch=${batch.id}`}
-          className={cn(buttonVariants({ size: 'sm' }), 'shrink-0')}
-        >
-          {batch.state.current_step === activeStep ? 'You are on step ' : 'Resume at step '}
-          <span className="nums">{batch.state.current_step}</span>
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </Link>
-      )}
-    </GlassCard>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {summary.attention_label ? (
+          <Badge tone="warning">
+            <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+            <span className="nums">{summary.attention_label}</span>
+          </Badge>
+        ) : null}
+        {summary.attention_label && !complete && activeStep !== 3 ? (
+          <button type="button" onClick={onReview} className={cn(buttonVariants({ size: 'sm', variant: 'secondary' }))}>
+            Review exceptions
+          </button>
+        ) : null}
+        {complete ? (
+          <Badge tone="success">
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Approved
+          </Badge>
+        ) : resumable ? (
+          <Link
+            href={`/reconcile?batch=${batch.id}`}
+            className={cn(buttonVariants({ size: 'sm' }))}
+          >
+            Resume at step <span className="nums">{batch.state.current_step}</span>
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
 /** Step 1 slot. The uploader itself is the existing /upload surface. */
 function UploadSlot({ batchId }: { batchId: string | null }) {
   return (
-    <GlassCard className="space-y-3">
+    <GlassCard className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-2">
-        <UploadIcon className="h-4 w-4 text-brand-deep" aria-hidden />
+        <UploadIcon className="h-4 w-4 text-brand-dark" aria-hidden />
         <GlassCardTitle className="text-sm">Upload this period&apos;s cheques</GlassCardTitle>
       </div>
-      <p className="text-sm text-ink-body">
-        Add the scanned cheque PDFs. Kyriq detects each cheque, extracts the fields, then moves
-        straight on to matching — you will not be asked to choose an engine or a setting.
-      </p>
       <Link
         href={batchId ? `/upload?batch=${batchId}` : '/upload'}
         className={cn(buttonVariants({ size: 'sm' }))}
@@ -370,10 +362,7 @@ function ApproveSlot({
     return (
       <GlassCard className="space-y-2">
         <GlassCardTitle className="text-sm">Approve and clear</GlassCardTitle>
-        <p className="text-sm text-ink-body">
-          No reconciliation is open, so there is nothing to approve. Start a run and come back when
-          Review is finished.
-        </p>
+        <p className="text-sm text-ink-body">No reconciliation is open, so there is nothing to approve.</p>
       </GlassCard>
     );
   }

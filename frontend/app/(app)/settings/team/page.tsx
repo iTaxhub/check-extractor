@@ -145,9 +145,8 @@ export default function TeamPage() {
           Settings
         </Link>
         <h1 className="mt-3 font-heading text-2xl font-semibold text-ink-strong">
-          Team Management
+          Users
         </h1>
-        <p className="mt-0.5 text-sm text-ink-faint">Invite team members and manage access</p>
       </div>
 
       {/* ── Invite ──────────────────────────────────── */}

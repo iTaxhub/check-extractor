@@ -15,7 +15,7 @@ import { Skeleton } from './skeleton';
  */
 export const kpiTileVariants = cva(
   [
-    'relative flex flex-col gap-1.5 rounded-tile p-5',
+    'relative flex min-w-0 flex-col gap-1.5 rounded-tile p-4',
     'glass-card',
     'transition-[box-shadow,transform] duration-settle ease-settle',
   ].join(' '),
@@ -60,7 +60,7 @@ export const KpiTile = React.forwardRef<HTMLDivElement, KpiTileProps>(
     const body = (
     <div ref={ref} className={cn(kpiTileVariants({ tone, interactive: interactive || !!href }), 'h-full', className)} {...props}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-eyebrow text-ink-faint">{label}</p>
+        <p className="text-eyebrow text-ink-body">{label}</p>
         {icon ? (
           <span className="kpi-icon shrink-0 text-[color:var(--kpi-accent)]" aria-hidden>
             {icon}
@@ -74,8 +74,8 @@ export const KpiTile = React.forwardRef<HTMLDivElement, KpiTileProps>(
         <p className="kpi-value nums font-heading text-3xl font-semibold text-ink-strong">{value}</p>
       )}
 
-      <div className="flex items-baseline gap-2">
-        {caption ? <p className="text-xs text-ink-faint">{caption}</p> : null}
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        {caption ? <p className="text-xs text-ink-soft">{caption}</p> : null}
         {delta ? (
           <span
             className={cn(

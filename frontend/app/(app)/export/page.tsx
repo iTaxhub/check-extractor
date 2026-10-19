@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Download, FileText, CheckCircle, FileSpreadsheet, Loader2,
+  Download, FileText, CheckCircle, FileSpreadsheet, Loader2, Upload,
 } from 'lucide-react';
 import {
-  Badge, Button, GlassCard, GlassCardTitle, GlassPanel, Skeleton,
+  Badge, Button, buttonVariants, EmptyState, GlassCard, GlassCardTitle, GlassPanel, Skeleton,
 } from '@/components/ui';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 /**
@@ -126,13 +127,10 @@ export default function ExportPage() {
     .reduce((sum, j) => sum + extractedCount(j), 0);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-5" data-tone="calm">
+    <div className="mx-auto max-w-6xl space-y-5 p-5" data-tone="calm">
       {/* ── Header ──────────────────────────────────── */}
       <div>
         <h1 className="font-heading text-2xl font-semibold text-ink-strong">Export</h1>
-        <p className="mt-0.5 text-sm text-ink-faint">
-          Download extracted cheque data in accounting formats
-        </p>
       </div>
 
       {loadError && (
@@ -141,37 +139,20 @@ export default function ExportPage() {
         </p>
       )}
 
-      {/* ── Format picker ───────────────────────────── */}
-      <GlassCard padding="md">
-        <GlassCardTitle className="text-base">Export format</GlassCardTitle>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {loading && formats.length === 0
-            ? [0, 1, 2].map(i => <Skeleton key={i} shape="block" className="h-[62px] w-full" />)
-            : formats.map(fmt => {
-                const active = selectedFormat === fmt.id;
-                return (
-                  <button
-                    key={fmt.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setSelectedFormat(fmt.id)}
-                    className={cn(
-                      'press rounded-tile border px-3.5 py-2.5 text-left text-sm',
-                      active
-                        ? 'border-brand bg-brand/[0.08] shadow-glass-selected'
-                        : 'border-glass-hairline bg-surface/60 hover:bg-brand/[0.045]'
-                    )}
-                  >
-                    <div className="font-semibold text-ink-strong">{fmt.name}</div>
-                    <div className="nums mt-0.5 text-[11px] text-ink-faint">
-                      {fmt.ext} · {fmt.description.split('.')[0]}
-                    </div>
-                  </button>
-                );
-              })}
-        </div>
-      </GlassCard>
-
+      {!loading && !loadError && jobs.length === 0 ? (
+        <EmptyState
+          icon={<FileSpreadsheet aria-hidden />}
+          title="No completed documents"
+          description="Upload and extract cheques to export them."
+          action={
+            <Link href="/upload" className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5')}>
+              <Upload size={13} aria-hidden />
+              Upload documents
+            </Link>
+          }
+        />
+      ) : (
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
       {/* ── Documents ready to export ───────────────── */}
       <GlassCard padding="none" className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-glass-hairline px-5 py-3.5">
@@ -187,13 +168,6 @@ export default function ExportPage() {
               Documents <span className="nums text-ink-faint">({jobs.length})</span>
             </GlassCardTitle>
           </div>
-          {selectedJobs.size > 0 && (
-            <Button size="sm" icon={<Download size={13} />} onClick={handleBulkExport}>
-              <span className="nums">
-                Export {selectedJobs.size} · {totalChecksSelected} cheques
-              </span>
-            </Button>
-          )}
         </div>
 
         {loading ? (
@@ -201,11 +175,7 @@ export default function ExportPage() {
             {[0, 1, 2].map(i => <Skeleton key={i} shape="text" className="w-full" />)}
           </div>
         ) : jobs.length === 0 ? (
-          <div className="px-5 py-16 text-center">
-            <FileSpreadsheet className="mx-auto mb-3 h-9 w-9 text-ink-faint" aria-hidden />
-            <p className="font-heading text-base font-semibold text-ink-strong">No completed documents</p>
-            <p className="mt-1 text-sm text-ink-body">Upload and extract cheques to export them.</p>
-          </div>
+          <p className="px-5 py-10 text-center text-sm text-ink-body">No documents to show.</p>
         ) : (
           <ul className="divide-y divide-glass-hairline">
             {jobs.map(job => {
@@ -252,6 +222,68 @@ export default function ExportPage() {
         )}
       </GlassCard>
 
+      {/* ── Format and summary ──────────────────────── */}
+      <GlassCard padding="md" className="lg:sticky lg:top-4">
+        <fieldset>
+          <legend className="font-heading text-base font-semibold text-ink-strong">Format</legend>
+          <div className="mt-2 space-y-1">
+            {loading && formats.length === 0
+              ? [0, 1, 2].map(i => <Skeleton key={i} shape="text" className="w-full" />)
+              : formats.map(fmt => (
+                  <label
+                    key={fmt.id}
+                    className="flex cursor-pointer items-center gap-2.5 rounded-tile px-2 py-1.5 text-sm hover:bg-brand/[0.045]"
+                  >
+                    <input
+                      type="radio"
+                      name="export-format"
+                      value={fmt.id}
+                      checked={selectedFormat === fmt.id}
+                      onChange={() => setSelectedFormat(fmt.id)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="flex-1 font-medium text-ink-strong">{fmt.name}</span>
+                    <span className="nums text-[11px] text-ink-faint">{fmt.ext}</span>
+                  </label>
+                ))}
+          </div>
+        </fieldset>
+
+        <dl className="mt-4 space-y-1.5 border-t border-glass-hairline pt-3 text-sm">
+          <div className="flex justify-between gap-2">
+            <dt className="text-ink-soft">Documents</dt>
+            <dd className="nums font-medium text-ink-strong">{selectedJobs.size}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-ink-soft">Cheques</dt>
+            <dd className="nums font-medium text-ink-strong">{totalChecksSelected}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-ink-soft">Format</dt>
+            <dd className="font-medium text-ink-strong">
+              {formats.find(f => f.id === selectedFormat)?.name || selectedFormat.toUpperCase()}
+            </dd>
+          </div>
+        </dl>
+
+        <Button
+          className="mt-4 w-full"
+          icon={<Download size={13} />}
+          disabled={selectedJobs.size === 0}
+          aria-describedby={selectedJobs.size === 0 ? 'export-disabled-reason' : undefined}
+          onClick={handleBulkExport}
+        >
+          Download export
+        </Button>
+        {selectedJobs.size === 0 ? (
+          <p id="export-disabled-reason" className="mt-2 text-xs text-ink-faint">
+            Select at least one document.
+          </p>
+        ) : null}
+      </GlassCard>
+      </div>
+      )}
+
       {/* ── Export log. Session-only; it is labelled as such. ───────── */}
       {exportHistory.length > 0 && (
         <GlassCard padding="none" className="overflow-hidden">
@@ -279,8 +311,8 @@ export default function ExportPage() {
           trusting it as an audit trail; the real log lands with section 13. */}
       <GlassPanel tone="plain" radius="tile" padding="sm">
         <p className="text-xs text-ink-faint">
-          Exports are generated on demand and are not retained. The list above resets when
-          you reload the page — a persistent export history lands with reports and retention.
+          Exports are generated on demand and are not retained. Recent exports reset when you
+          reload the page.
         </p>
       </GlassPanel>
     </div>

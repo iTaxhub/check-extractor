@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ChevronUp, ChevronDown, Eye, CheckCircle, Loader2, Trash2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, CheckCircle, Loader2, Trash2 } from 'lucide-react';
 import {
   Badge,
   StatusPill,
@@ -19,39 +19,24 @@ import { ComparisonRow, SortField, SortDirection, formatCurrency, formatDate, pa
 import { VisibleColumns } from '../hooks/useComparisonState';
 
 /**
- * The comparison grid. This table IS the product, so the rules it is held to
- * are stricter than anywhere else in the app:
+ * The comparison grid. Rules it is held to:
  *
- * 1. Glass is on the SHELL and the STICKY HEADER only — never on a row. Rows
- *    are plain `<Tr>`, which carries background-colour transitions and no
- *    backdrop-filter, so the number of composited blur layers on this page is
- *    a constant and does NOT grow with the row count.
- * 2. Density does not regress. `DENSE_GRID` below restores the pre-redesign
- *    22px row height in exactly ONE place, because the shared `tdVariants`
- *    py-3/text-sm recipe is tuned for the app's other, sparser tables and
- *    would roughly halve the rows on screen here. Everything else (the single
- *    <th> recipe, the hairlines, the tokens) comes from the primitive.
- * 3. No Excel look: no per-cell vertical rules, no zebra striping, no
- *    navy-on-white header blocks. Section boundaries are three hairlines, not
- *    fifteen; state is a tinted row plus one pill.
+ * 1. Glass is on the SHELL and the STICKY HEADER only, never on a row, so the
+ *    number of composited layers does not grow with the row count.
+ * 2. Density does not regress. `DENSE_GRID` pins the 22px row in ONE place.
+ * 3. No Excel look and no whole-row tint: red marks the specific value that is
+ *    wrong (a differing amount, a non-zero difference, an issue), not the row.
+ * 4. Columns follow `visibleColumns`; the default set is the review set and
+ *    everything else stays reachable through the Columns control.
  */
 
-/* The ONE place this grid's row metrics are declared. Pinned to the
-   pre-redesign 22px so no accountant loses a row of the 200-record view; the
-   type is 11px rather than the old 10px, which fits inside the same 22px and
-   is the only thing here that got bigger. */
+/* The ONE place this grid's row metrics are declared. */
 const DENSE_GRID = [
   'text-[11px]',
   '[&_tbody_tr]:h-[22px]',
   '[&_td]:px-1.5 [&_td]:py-0.5',
   '[&_th]:px-1.5 [&_th]:py-1.5',
 ].join(' ');
-
-/** Vertical hairline that opens a column group. Three per row, not fifteen. */
-const GROUP_EDGE = 'border-l border-glass-hairline';
-
-/** Section header cell: the grouped top row, tinted rather than painted navy. */
-const SECTION = 'text-center text-eyebrow text-ink-body bg-brand/[0.06]';
 
 interface ComparisonTableProps {
   data: ComparisonRow[];
@@ -60,7 +45,11 @@ interface ComparisonTableProps {
   visibleColumns: VisibleColumns;
   dateFormat: DateFormat;
   onSort: (field: SortField) => void;
+  /** Selects the row (evidence panel). */
   onRowClick: (row: ComparisonRow) => void;
+  /** Opens the full review dialog for a row. */
+  onReview: (row: ComparisonRow) => void;
+  selectedId?: string | null;
   currentPage: number;
   itemsPerPage: number;
   onVouch: (row: ComparisonRow) => void;
@@ -68,8 +57,7 @@ interface ComparisonTableProps {
   vouchingId: string | null;
   onDeleteQBEntry?: (entryId: string) => void;
   deletingQBEntry?: string | null;
-  /** Rendered inside the table's glass shell, below the scroll region, so the
-   *  pagination bar does not become a second stacked surface. */
+  /** Rendered inside the shell, below the scroll region. */
   footer?: React.ReactNode;
   /** First load: skeleton rows in the real grid, never a false "no records". */
   loading?: boolean;
@@ -90,29 +78,40 @@ const SortIcon: React.FC<{ field: SortField; sortField: SortField; sortDirection
   </span>
 );
 
-/**
- * Match status reuses the shared status vocabulary rather than inventing
- * colours: `StatusPill` maps each key to one tone once, app-wide, so
- * "Mismatch" can never be amber here and red somewhere else. The label is
- * always spelled out — status is never colour alone.
- */
-const MATCH_STATUS: Record<
-  ComparisonRow['matchStatus'],
-  { status: StatusKey; label: string; row: 'success' | 'warning' | 'error' | 'none'; accent: string }
-> = {
-  matched: { status: 'matched', label: 'Matched', row: 'success', accent: 'var(--success)' },
-  mismatch: { status: 'review', label: 'Mismatch', row: 'warning', accent: 'var(--warning)' },
-  'missing-in-qb': { status: 'processing', label: 'Missing in QB', row: 'none', accent: 'var(--brand)' },
-  'missing-in-extraction': { status: 'failed', label: 'Missing in Checks', row: 'error', accent: 'var(--error)' },
+/** Shared status vocabulary; the label is always spelled out. */
+export const MATCH_STATUS: Record<ComparisonRow['matchStatus'], { status: StatusKey; label: string }> = {
+  matched: { status: 'matched', label: 'Matched' },
+  mismatch: { status: 'review', label: 'Mismatch' },
+  'missing-in-qb': { status: 'processing', label: 'Missing in QB' },
+  'missing-in-extraction': { status: 'failed', label: 'Missing in cheques' },
 };
+
+/** The paired values the grid and the evidence panel both read. */
+export function pairedValues(row: ComparisonRow) {
+  const hasExtraction = Boolean(row.extractionData) || row.source === 'matched';
+  const hasQb = Boolean(row.qbData) || row.source === 'matched';
+  const extAmount = hasExtraction && row.amount ? row.amount : '';
+  const qbAmount = hasQb ? row.qbData?.amount || row.amount || '' : '';
+  const difference =
+    extAmount && qbAmount ? parseAmount(extAmount) - parseAmount(qbAmount) : null;
+  return { hasExtraction, hasQb, extAmount, qbAmount, difference };
+}
+
+const isOff = (d: number | null) => d !== null && Math.abs(d) >= 0.005;
+
+const sourceLabel = (qbSource?: string) =>
+  qbSource === 'qbo_file_upload' ? 'File' : qbSource?.includes('cheque') ? 'QB API' : qbSource || 'Unknown';
 
 export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   data,
   sortField,
   sortDirection,
+  visibleColumns: v,
   dateFormat,
   onSort,
   onRowClick,
+  onReview,
+  selectedId,
   currentPage,
   itemsPerPage,
   onVouch,
@@ -140,69 +139,63 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
     return { count: data.length, checksTotal, qbTotal, difference: checksTotal - qbTotal };
   }, [data]);
 
+  // Columns before the money block, used for the totals label colspan.
+  const lead = [v.checkNumber, v.date, v.payee, v.bankAccount, v.memo].filter(Boolean).length;
+  const trail = [v.matchStatus, v.confidence, v.issues, v.qbSource, v.qbType, v.currency, v.pdfName, v.source, v.actions].filter(Boolean).length;
+  const colCount = lead + (v.amount ? 3 : 0) + trail || 1;
+
   return (
-    /* One blurred shell. The scroll region inside it is the page's only table
-       scrollbar; the page itself does not scroll on top of it. */
     <TableShell className="flex min-h-0 flex-1 flex-col">
-      {/* min-h-0 is load-bearing: a flex item defaults to min-height:auto,
-          so without it the scroll region refuses to shrink below its content
-          and the pagination bar gets clipped off the bottom of the page. */}
+      {/* min-h-0 is load-bearing: without it the scroll region refuses to
+          shrink and the pagination bar is clipped. */}
       <TableScroll className="min-h-0 max-h-[60vh] flex-1 md:max-h-none">
         <Table className={DENSE_GRID}>
-          {/* The only glass inside the table: sticky, blurred, one layer. */}
           <Thead>
             <tr>
-              <Th rowSpan={2} className={`${SECTION} align-middle`}>
-                #
-              </Th>
-              <Th colSpan={5} className={`${SECTION} ${GROUP_EDGE}`}>
-                Check Extraction
-              </Th>
-              <Th colSpan={6} className={`${SECTION} ${GROUP_EDGE}`}>
-                QuickBooks
-              </Th>
-              <Th colSpan={3} className={`${SECTION} ${GROUP_EDGE}`}>
-                Comparison
-              </Th>
-              <Th rowSpan={2} className={`${SECTION} ${GROUP_EDGE} align-middle`}>
-                View
-              </Th>
-            </tr>
-            <tr>
-              {/* Check extraction */}
-              <Th sortable onClick={() => onSort('checkNumber')} className={GROUP_EDGE}>
-                Check #
-                <SortIcon field="checkNumber" sortField={sortField} sortDirection={sortDirection} />
-              </Th>
-              <Th sortable onClick={() => onSort('date')}>
-                Date
-                <SortIcon field="date" sortField={sortField} sortDirection={sortDirection} />
-              </Th>
-              <Th numeric sortable onClick={() => onSort('amount')}>
-                Amount
-                <SortIcon field="amount" sortField={sortField} sortDirection={sortDirection} />
-              </Th>
-              <Th sortable onClick={() => onSort('payee')}>
-                Payee
-                <SortIcon field="payee" sortField={sortField} sortDirection={sortDirection} />
-              </Th>
-              <Th>Bank</Th>
-
-              {/* QuickBooks */}
-              <Th className={GROUP_EDGE}>Check #</Th>
-              <Th>Date</Th>
-              <Th numeric>Amount</Th>
-              <Th>Payee</Th>
-              <Th>Account</Th>
-              <Th>Source</Th>
-
-              {/* Comparison */}
-              <Th sortable onClick={() => onSort('matchStatus')} className={`${GROUP_EDGE} text-center`}>
-                Status
-                <SortIcon field="matchStatus" sortField={sortField} sortDirection={sortDirection} />
-              </Th>
-              <Th numeric>Conf %</Th>
-              <Th>Issue</Th>
+              {v.checkNumber && (
+                <Th sortable onClick={() => onSort('checkNumber')}>
+                  Cheque no.
+                  <SortIcon field="checkNumber" sortField={sortField} sortDirection={sortDirection} />
+                </Th>
+              )}
+              {v.date && (
+                <Th sortable onClick={() => onSort('date')}>
+                  Date
+                  <SortIcon field="date" sortField={sortField} sortDirection={sortDirection} />
+                </Th>
+              )}
+              {v.payee && (
+                <Th sortable onClick={() => onSort('payee')}>
+                  Payee
+                  <SortIcon field="payee" sortField={sortField} sortDirection={sortDirection} />
+                </Th>
+              )}
+              {v.bankAccount && <Th>Bank / account</Th>}
+              {v.memo && <Th>Memo</Th>}
+              {v.amount && (
+                <>
+                  <Th numeric sortable onClick={() => onSort('amount')}>
+                    Extracted
+                    <SortIcon field="amount" sortField={sortField} sortDirection={sortDirection} />
+                  </Th>
+                  <Th numeric>QuickBooks</Th>
+                  <Th numeric>Difference</Th>
+                </>
+              )}
+              {v.matchStatus && (
+                <Th sortable onClick={() => onSort('matchStatus')}>
+                  Status
+                  <SortIcon field="matchStatus" sortField={sortField} sortDirection={sortDirection} />
+                </Th>
+              )}
+              {v.confidence && <Th numeric>Confidence</Th>}
+              {v.issues && <Th>Issues</Th>}
+              {v.qbSource && <Th>QB source</Th>}
+              {v.qbType && <Th>QB type</Th>}
+              {v.currency && <Th>Currency</Th>}
+              {v.pdfName && <Th>Document</Th>}
+              {v.source && <Th>Found in</Th>}
+              {v.actions && <Th className="text-right">Review</Th>}
             </tr>
           </Thead>
 
@@ -210,255 +203,230 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
             {loading ? (
               Array.from({ length: 8 }).map((_, r) => (
                 <Tr key={`sk-${r}`} aria-hidden>
-                  {Array.from({ length: 16 }).map((__, c) => (
+                  {Array.from({ length: colCount }).map((__, c) => (
                     <Td key={c}><Skeleton shape="line" className="w-full min-w-[2.5rem]" /></Td>
                   ))}
                 </Tr>
               ))
             ) : paginatedData.length === 0 ? (
               <TableEmpty
-                colSpan={16}
+                colSpan={colCount}
                 title="No matching records"
                 description="Adjust the filters, or sync QuickBooks data to compare against."
               />
             ) : (
-              paginatedData.map((row, idx) => {
+              paginatedData.map((row) => {
                 const match = MATCH_STATUS[row.matchStatus];
-                const hasRealIssue = row.hasIssue && (row.isDuplicate || row.matchStatus === 'mismatch');
-                const state = hasRealIssue ? 'error' : match.row;
-                const hasExtraction = Boolean(row.extractionData) || row.source === 'matched';
-                const hasQb = Boolean(row.qbData) || row.source === 'matched';
+                const p = pairedValues(row);
+                const off = isOff(p.difference);
+                const qbPayee = row.qbData?.payee;
+                const payeeOff =
+                  Boolean(row.extractionData && qbPayee && row.payee) &&
+                  qbPayee!.trim().toLowerCase() !== row.payee.trim().toLowerCase();
 
                 return (
                   <Tr
                     key={row.id}
                     interactive
-                    state={state}
+                    selected={selectedId === row.id}
+                    tabIndex={0}
                     onClick={() => onRowClick(row)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') onReview(row);
+                      else if (e.key === ' ') {
+                        e.preventDefault();
+                        onRowClick(row);
+                      }
+                    }}
+                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                   >
-                    {/* State accent is an inset shadow on the index cell, not a
-                        border-width change: geometry must never move. */}
-                    <Td
-                      numeric
-                      className="text-center font-semibold text-ink-faint"
-                      style={{ boxShadow: `inset 3px 0 0 0 hsl(${match.accent})` }}
-                    >
-                      {(currentPage - 1) * itemsPerPage + idx + 1}
-                    </Td>
-
-                    {/* Check extraction */}
-                    <Td className={`${GROUP_EDGE} nums font-semibold`}>
-                      {hasExtraction ? row.checkNumber || '—' : '—'}
-                    </Td>
-                    <Td muted className="nums">
-                      {hasExtraction && row.date ? formatDate(row.date, dateFormat) : '—'}
-                    </Td>
-                    <Td className="nums-money font-semibold text-success-text">
-                      {hasExtraction && row.amount ? formatCurrency(row.amount) : '—'}
-                    </Td>
-                    <Td className="max-w-[120px] truncate">
-                      {hasExtraction ? row.payee || '—' : '—'}
-                    </Td>
-                    <Td muted className="max-w-[100px] truncate">
-                      {hasExtraction ? row.bankAccount || '—' : '—'}
-                    </Td>
-
-                    {/* QuickBooks */}
-                    <Td className={`${GROUP_EDGE} nums font-semibold`}>
-                      {hasQb ? row.qbData?.checkNumber || row.checkNumber || '—' : '—'}
-                    </Td>
-                    <Td muted className="nums">
-                      {hasQb && (row.qbData?.date || row.date)
-                        ? formatDate(row.qbData?.date || row.date, dateFormat)
-                        : '—'}
-                    </Td>
-                    <Td className="nums-money font-semibold text-success-text">
-                      {hasQb && (row.qbData?.amount || row.amount)
-                        ? formatCurrency(row.qbData?.amount || row.amount)
-                        : '—'}
-                    </Td>
-                    <Td className="max-w-[120px] truncate">
-                      {hasQb ? row.qbData?.payee || row.payee || '—' : '—'}
-                    </Td>
-                    <Td muted className="max-w-[100px] truncate">
-                      {hasQb ? row.qbData?.account || row.bankAccount || '—' : '—'}
-                    </Td>
-                    <Td className="text-center">
-                      {row.qbData ? (
+                    {v.checkNumber && (
+                      <Td className="nums font-semibold">
+                        {row.checkNumber || row.qbData?.checkNumber || '—'}
+                      </Td>
+                    )}
+                    {v.date && (
+                      <Td muted className="nums">
+                        {row.date || row.qbData?.date ? formatDate(row.date || row.qbData!.date, dateFormat) : '—'}
+                      </Td>
+                    )}
+                    {v.payee && (
+                      <Td className="max-w-[200px] truncate" title={payeeOff ? `QuickBooks: ${qbPayee}` : undefined}>
+                        {row.payee || qbPayee || '—'}
+                        {payeeOff && <span className="ml-1 text-error-text" aria-label="Payee differs in QuickBooks">≠</span>}
+                      </Td>
+                    )}
+                    {v.bankAccount && (
+                      <Td muted className="max-w-[140px] truncate">
+                        {row.qbData?.account || row.bankAccount || '—'}
+                      </Td>
+                    )}
+                    {v.memo && (
+                      <Td muted className="max-w-[160px] truncate" title={row.memo || undefined}>
+                        {row.memo || '—'}
+                      </Td>
+                    )}
+                    {v.amount && (
+                      <>
+                        <Td className="nums-money text-right font-semibold text-ink-strong">
+                          {p.extAmount ? formatCurrency(p.extAmount) : <span className="text-ink-faint">—</span>}
+                        </Td>
+                        <Td className={`nums-money text-right font-semibold ${off ? 'text-error-text' : 'text-ink-strong'}`}>
+                          {p.qbAmount ? formatCurrency(p.qbAmount) : <span className="text-ink-faint">—</span>}
+                        </Td>
+                        <Td className={`nums-money text-right ${off ? 'font-semibold text-error-text' : 'text-ink-faint'}`}>
+                          {p.difference === null ? '—' : formatCurrency(p.difference)}
+                        </Td>
+                      </>
+                    )}
+                    {v.matchStatus && (
+                      <Td>
                         <span className="inline-flex items-center gap-1">
-                          <Badge
-                            size="sm"
-                            tone={
-                              row.qbData.qbSource === 'qbo_file_upload'
-                                ? 'brand'
-                                : row.qbData.qbSource?.includes('cheque')
-                                  ? 'success'
-                                  : 'neutral'
-                            }
-                          >
-                            {row.qbData.qbSource === 'qbo_file_upload'
-                              ? 'File'
-                              : row.qbData.qbSource?.includes('cheque')
-                                ? 'QB API'
-                                : row.qbData.qbSource || 'Unknown'}
-                          </Badge>
-                          {onDeleteQBEntry && row.qbData.id && (
+                          <StatusPill size="sm" status={match.status} label={match.label} />
+                          {row.isDuplicate && <Badge size="sm" tone="warning">Duplicate</Badge>}
+                        </span>
+                      </Td>
+                    )}
+                    {v.confidence && (
+                      <Td numeric>
+                        {row.confidence !== undefined ? (
+                          <span className={row.confidence < 60 ? 'font-semibold text-error-text' : 'text-ink-body'}>
+                            {row.confidence}%
+                          </span>
+                        ) : '—'}
+                      </Td>
+                    )}
+                    {v.issues && (
+                      <Td className="max-w-[220px]">
+                        {row.issues && row.issues.length > 0 ? (
+                          <span className="block truncate text-error-text" title={row.issues.join(' · ')}>
+                            {row.issues[0]}
+                            {row.issues.length > 1 && (
+                              <span className="text-ink-faint"> +{row.issues.length - 1}</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-ink-faint">—</span>
+                        )}
+                      </Td>
+                    )}
+                    {v.qbSource && (
+                      <Td>
+                        {row.qbData ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Badge size="sm" tone={row.qbData.qbSource === 'qbo_file_upload' ? 'brand' : 'neutral'}>
+                              {sourceLabel(row.qbData.qbSource)}
+                            </Badge>
+                            {onDeleteQBEntry && row.qbData.id && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteQBEntry(row.qbData!.id);
+                                }}
+                                disabled={deletingQBEntry === row.qbData.id}
+                                className="press rounded-full p-0.5 text-ink-faint hover:bg-error-bg hover:text-error-text disabled:opacity-disabled"
+                                title="Delete this QB entry"
+                                aria-label="Delete this QB entry"
+                              >
+                                {deletingQBEntry === row.qbData.id ? (
+                                  <Loader2 size={10} className="animate-spin" />
+                                ) : (
+                                  <Trash2 size={10} />
+                                )}
+                              </button>
+                            )}
+                          </span>
+                        ) : '—'}
+                      </Td>
+                    )}
+                    {v.qbType && <Td muted>{row.qbData?.qb_type || '—'}</Td>}
+                    {v.currency && <Td muted>USD</Td>}
+                    {v.pdfName && (
+                      <Td muted className="max-w-[160px] truncate">{row.extractionData?.pdf_name || '—'}</Td>
+                    )}
+                    {v.source && (
+                      <Td muted>
+                        {row.source === 'matched' ? 'Both' : row.source === 'extraction' ? 'Cheques' : 'QuickBooks'}
+                      </Td>
+                    )}
+                    {v.actions && (
+                      <Td className="whitespace-nowrap text-right">
+                        <span className="inline-flex items-center gap-2">
+                          {row.vouched ? (
+                            <>
+                              <span className="inline-flex items-center gap-0.5 font-semibold text-success-text">
+                                <CheckCircle size={10} aria-hidden />
+                                Vouched
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUnvouch(row);
+                                }}
+                                disabled={vouchingId === row.id}
+                                className="font-medium text-ink-soft underline hover:text-ink-strong disabled:opacity-disabled"
+                                title="Remove vouch"
+                              >
+                                {vouchingId === row.id ? <Loader2 size={8} className="animate-spin" /> : 'Unvouch'}
+                              </button>
+                            </>
+                          ) : row.issues && row.issues.length > 0 ? (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDeleteQBEntry(row.qbData!.id);
+                                onVouch(row);
                               }}
-                              disabled={deletingQBEntry === row.qbData.id}
-                              className="press rounded-full p-0.5 text-error-text hover:bg-error-bg disabled:opacity-disabled"
-                              title="Delete this QB entry"
+                              disabled={vouchingId === row.id}
+                              className="font-medium text-ink-soft underline hover:text-ink-strong disabled:opacity-disabled"
+                              title="Mark this issue as acceptable/resolved"
                             >
-                              {deletingQBEntry === row.qbData.id ? (
-                                <Loader2 size={10} className="animate-spin" />
-                              ) : (
-                                <Trash2 size={10} />
-                              )}
+                              {vouchingId === row.id ? <Loader2 size={8} className="animate-spin" /> : 'Vouch'}
                             </button>
-                          )}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </Td>
-
-                    {/* Comparison */}
-                    <Td className={`${GROUP_EDGE} text-center`}>
-                      <StatusPill size="sm" status={match.status} label={match.label} />
-                    </Td>
-                    <Td numeric className="font-semibold">
-                      {row.confidence !== undefined ? (
-                        <span
-                          className={
-                            row.confidence >= 80
-                              ? 'text-success-text'
-                              : row.confidence >= 60
-                                ? 'text-warning-text'
-                                : 'text-error-text'
-                          }
-                        >
-                          {row.confidence}%
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </Td>
-
-                    {/* Issue — vouch / unvouch live here and both stay. */}
-                    <Td className="max-w-[180px]">
-                      {row.vouched ? (
-                        <span className="flex items-center gap-1">
-                          <span className="flex items-center gap-0.5 font-semibold text-success-text">
-                            <CheckCircle size={10} />
-                            Vouched
-                          </span>
+                          ) : null}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onUnvouch(row);
+                              onReview(row);
                             }}
-                            disabled={vouchingId === row.id}
-                            className="text-[10px] font-medium text-error-text underline hover:no-underline disabled:opacity-disabled"
-                            title="Remove vouch"
+                            className="press rounded-input border border-glass-hairline bg-surface px-2 py-0.5 font-semibold text-brand-dark hover:bg-brand/[0.06]"
                           >
-                            {vouchingId === row.id ? (
-                              <Loader2 size={8} className="animate-spin" />
-                            ) : (
-                              'Unvouch'
-                            )}
+                            Review
                           </button>
                         </span>
-                      ) : row.issues && row.issues.length > 0 ? (
-                        <span className="flex items-start justify-between gap-1">
-                          <span className="min-w-0 flex-1">
-                            {row.issues.slice(0, 2).map((issue, i) => (
-                              <span
-                                key={i}
-                                className="block truncate leading-tight text-error-text"
-                                title={issue}
-                              >
-                                {row.isDuplicate && i === 0 ? '⚠ ' : '• '}
-                                {issue}
-                              </span>
-                            ))}
-                            {row.issues.length > 2 && (
-                              <span className="block text-[10px] text-error-text/80">
-                                +{row.issues.length - 2} more
-                              </span>
-                            )}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onVouch(row);
-                            }}
-                            disabled={vouchingId === row.id}
-                            className="press shrink-0 rounded-full bg-success px-1.5 py-0.5 text-[10px] font-semibold text-success-foreground hover:bg-success-dark disabled:opacity-disabled"
-                            title="Mark this issue as acceptable/resolved"
-                          >
-                            {vouchingId === row.id ? (
-                              <Loader2 size={8} className="animate-spin" />
-                            ) : (
-                              'Vouch'
-                            )}
-                          </button>
-                        </span>
-                      ) : (
-                        <span className="text-success-text">✓</span>
-                      )}
-                    </Td>
-
-                    {/* Actions */}
-                    <Td className={`${GROUP_EDGE} text-center`}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRowClick(row);
-                        }}
-                        className="press rounded-full p-0.5 text-ink-faint hover:bg-brand/10 hover:text-brand-deep"
-                        title="View details"
-                      >
-                        <Eye size={12} />
-                      </button>
-                    </Td>
+                      </Td>
+                    )}
                   </Tr>
                 );
               })
             )}
           </Tbody>
 
-          {/* Sticky totals. Deliberately NOT glass: a second blurred sticky
-              band inside a blurred shell is a third composited layer for no
-              visual gain, so this is an opaque surface with a hairline. */}
+          {/* Sticky totals: an opaque surface, not a third blurred band. */}
           <tfoot className="sticky bottom-0 z-10 bg-surface/95 font-semibold text-ink-strong">
             <tr className="h-[24px]">
-              <Td className="border-t border-glass-hairline text-center">Σ</Td>
-              <Td colSpan={2} className={`${GROUP_EDGE} border-t border-glass-hairline`}>
-                Total: <span className="nums">{totals.count}</span>
-              </Td>
-              <Td className="nums-money border-t border-glass-hairline text-success-text">
-                {formatCurrency(totals.checksTotal)}
-              </Td>
-              <Td colSpan={2} className="border-t border-glass-hairline" />
-              <Td colSpan={2} className={`${GROUP_EDGE} border-t border-glass-hairline`} />
-              <Td className="nums-money border-t border-glass-hairline text-success-text">
-                {formatCurrency(totals.qbTotal)}
-              </Td>
-              <Td colSpan={2} className="border-t border-glass-hairline" />
-              <Td className={`${GROUP_EDGE} nums-money border-t border-glass-hairline text-center`}>
-                <span className={totals.difference === 0 ? 'text-success-text' : 'text-error-text'}>
-                  Δ {formatCurrency(Math.abs(totals.difference))}
-                </span>
-              </Td>
-              <Td colSpan={2} className="border-t border-glass-hairline" />
-              <Td colSpan={2} className={`${GROUP_EDGE} border-t border-glass-hairline`} />
+              {lead > 0 && (
+                <Td colSpan={lead} className="border-t border-glass-hairline">
+                  Total <span className="nums">{totals.count}</span>
+                </Td>
+              )}
+              {v.amount && (
+                <>
+                  <Td className="nums-money border-t border-glass-hairline text-right">
+                    {formatCurrency(totals.checksTotal)}
+                  </Td>
+                  <Td className="nums-money border-t border-glass-hairline text-right">
+                    {formatCurrency(totals.qbTotal)}
+                  </Td>
+                  <Td className={`nums-money border-t border-glass-hairline text-right ${isOff(totals.difference) ? 'text-error-text' : 'text-ink-faint'}`}>
+                    {formatCurrency(totals.difference)}
+                  </Td>
+                </>
+              )}
+              {trail > 0 && <Td colSpan={trail} className="border-t border-glass-hairline" />}
             </tr>
           </tfoot>
         </Table>

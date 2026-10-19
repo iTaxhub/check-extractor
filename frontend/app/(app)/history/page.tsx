@@ -9,6 +9,7 @@ import {
   Download,
   History as HistoryIcon,
   Loader2,
+  Search,
 } from 'lucide-react';
 import {
   Badge,
@@ -16,6 +17,7 @@ import {
   GlassCard,
   GlassCardTitle,
   GlassPanel,
+  Input,
   Skeleton,
   StatusPill,
   Table,
@@ -32,7 +34,7 @@ import type { StatusKey } from '@/components/ui';
 import {
   downloadReportCsv,
   loadApprovers,
-  loadHistory,
+  loadHistory as loadHistoryPage,
   loadMyRole,
   type ApproverMap,
   type DataFailure,
@@ -118,6 +120,11 @@ export default function HistoryPage() {
   const [canExport, setCanExport] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [accounts, setAccounts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     // Only to avoid rendering a control that would 403. The endpoint is the gate.
@@ -126,6 +133,9 @@ export default function HistoryPage() {
 
   const fetchPage = useCallback(async () => {
     setLoading(true);
+    // Account and period ride along with every page request, server-side.
+    const loadHistory = (p: Parameters<typeof loadHistoryPage>[0]) =>
+      loadHistoryPage(p, { accountId, from, to });
     const result = await loadHistory({ status, limit: PAGE_SIZE, offset });
     if (result.kind !== 'page') {
       setFailure(result);
@@ -137,11 +147,18 @@ export default function HistoryPage() {
     setFailure(null);
     setBatches(result.batches);
     setTotal(result.total);
+    // ponytail: account options are the accounts seen on pages loaded so far,
+    // not a full list; swap for /api/qbo/accounts if firms need every account.
+    setAccounts((prev) => {
+      const next = { ...prev };
+      for (const b of result.batches) if (b.account_id) next[b.account_id] = b.account_name || b.account_id;
+      return next;
+    });
     setLoading(false);
 
     const ids = result.batches.map((b) => b.approved_by).filter((v): v is string => !!v);
     if (ids.length > 0) setApprovers(await loadApprovers(ids));
-  }, [status, offset]);
+  }, [status, offset, accountId, from, to]);
 
   useEffect(() => {
     fetchPage();
@@ -161,6 +178,15 @@ export default function HistoryPage() {
     [batches]
   );
 
+  // Narrows the page already loaded; pagination stays server-side.
+  const q = query.trim().toLowerCase();
+  const visible = q
+    ? batches.filter((b) =>
+        [b.company_name, b.realm_id, b.account_name, b.account_id, b.summary?.period, b.period_start, b.period_end]
+          .some((v) => (v || '').toLowerCase().includes(q))
+      )
+    : batches;
+
   const exportBatch = async (batch: BatchPayload) => {
     setExporting(batch.id);
     setExportError(null);
@@ -179,9 +205,6 @@ export default function HistoryPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-semibold text-ink-strong">History</h1>
-          <p className="mt-0.5 text-sm text-ink-faint">
-            Every reconciliation this firm has run, with who approved it.
-          </p>
         </div>
         {!loading && !failure && total > 0 ? (
           <p className="nums text-xs text-ink-faint">
@@ -193,6 +216,7 @@ export default function HistoryPage() {
 
       {/* Status filter. Plain buttons rather than Tabs: the selection drives a
           server query, not a panel swap. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
         {STATUS_TABS.map((tab) => {
           const active = status === tab.key;
@@ -216,6 +240,78 @@ export default function HistoryPage() {
             </button>
           );
         })}
+      </div>
+        <div className="relative w-full sm:w-72">
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" aria-hidden />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search company, account or period"
+            aria-label="Search this page"
+            className="pl-8"
+          />
+        </div>
+      </div>
+
+      {/* Account and period narrow the server query, so pagination stays honest. */}
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
+          Account
+          <select
+            value={accountId}
+            onChange={(e) => {
+              setAccountId(e.target.value);
+              setOffset(0);
+            }}
+            className="h-9 rounded-md border border-glass-hairline bg-surface px-2 text-sm text-ink-strong"
+          >
+            <option value="">All accounts</option>
+            {Object.entries(accounts).map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
+          Period from
+          <Input
+            type="date"
+            value={from}
+            max={to || undefined}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              setOffset(0);
+            }}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
+          Period to
+          <Input
+            type="date"
+            value={to}
+            min={from || undefined}
+            onChange={(e) => {
+              setTo(e.target.value);
+              setOffset(0);
+            }}
+          />
+        </label>
+        {accountId || from || to ? (
+          <button
+            type="button"
+            className={ROW_ACTION}
+            onClick={() => {
+              setAccountId('');
+              setFrom('');
+              setTo('');
+              setOffset(0);
+            }}
+          >
+            Clear filters
+          </button>
+        ) : null}
       </div>
 
       {/* A 503 is the honest "not deployed" answer, NOT an empty table. */}
@@ -268,7 +364,7 @@ export default function HistoryPage() {
                   <Th numeric>Cheques</Th>
                   <Th numeric>Needs attention</Th>
                   <Th>Approved by</Th>
-                  <Th>Export</Th>
+                  <Th>Actions</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -297,8 +393,18 @@ export default function HistoryPage() {
                       </Link>
                     }
                   />
+                ) : visible.length === 0 ? (
+                  <TableEmpty
+                    colSpan={7}
+                    title="No matches on this page"
+                    action={
+                      <button type="button" className={ROW_ACTION} onClick={() => setQuery('')}>
+                        Clear search
+                      </button>
+                    }
+                  />
                 ) : (
-                  batches.map((batch) => {
+                  visible.map((batch) => {
                     const pill = STATUS_PILL[batch.status] || {
                       status: 'idle' as StatusKey,
                       label: batch.status,
@@ -345,6 +451,12 @@ export default function HistoryPage() {
                           </div>
                         </Td>
                         <Td>
+                          <div className="flex items-center gap-2">
+                          {batch.status === 'open' ? (
+                            <Link href="/reconcile" className={ROW_ACTION}>
+                              Resume
+                            </Link>
+                          ) : null}
                           {canExport ? (
                             <button
                               type="button"
@@ -361,8 +473,9 @@ export default function HistoryPage() {
                               CSV
                             </button>
                           ) : (
-                            <span className="text-xs text-ink-faint">Administrators only</span>
+                            <span className="text-xs text-ink-faint">Export: administrators only</span>
                           )}
+                          </div>
                         </Td>
                       </Tr>
                     );

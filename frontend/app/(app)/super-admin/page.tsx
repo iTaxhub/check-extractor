@@ -145,7 +145,6 @@ export default function SuperAdminPage() {
             <p className="text-eyebrow text-ink-faint">Super Admin</p>
           </div>
           <h1 className="font-heading text-2xl font-semibold tracking-display text-ink-strong">Platform Overview</h1>
-          <p className="mt-1 text-sm text-ink-body">All tenants, users and revenue</p>
         </div>
         <Button
           variant="secondary"

@@ -37,6 +37,7 @@ export default async function handler(
           companyId: null,
           realmId: null,
           companyName: null,
+          lastSyncedAt: null,
         });
       }
 
@@ -48,7 +49,23 @@ export default async function handler(
       // Check if credentials exist in database
       const credentialsExist = !!(integration?.qb_client_id && integration?.qb_client_secret);
       
+      // Most recent synced_at for this tenant (RLS scopes it). Never fails the route.
+      let lastSyncedAt: string | null = null;
+      try {
+        let syncQuery = supabase
+          .from('qb_transactions')
+          .select('synced_at')
+          .order('synced_at', { ascending: false, nullsFirst: false })
+          .limit(1);
+        if (integration?.realm_id) syncQuery = syncQuery.eq('realm_id', integration.realm_id);
+        const { data: syncRows, error: syncError } = await syncQuery;
+        if (!syncError) lastSyncedAt = syncRows?.[0]?.synced_at ?? null;
+      } catch {
+        lastSyncedAt = null;
+      }
+
       return res.status(200).json({
+        lastSyncedAt,
         qboConnected: !!integration?.access_token,
         qbConfigured: !!(qbClientId && qbClientSecret),
         credentialsExist: credentialsExist,
