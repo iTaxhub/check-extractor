@@ -411,8 +411,10 @@ async function getValidQBToken() {
   if (!res.ok) {
     let errDetail = '';
     try { const errBody = await res.json(); errDetail = errBody?.error || errBody?.detail || ''; } catch (_) {}
-    // 400/401 from Intuit = refresh token expired (invalid_grant) → must re-authorize
-    if (res.status === 400 || res.status === 401) throw new Error('QB_RECONNECT_NEEDED');
+    // 400/401 from Intuit = refresh token expired (invalid_grant) → must re-authorize.
+    // Older deployments of the route answered a dead token with 502 "…reconnect
+    // QuickBooks"; treat that the same so the panel shows its Reconnect prompt.
+    if (res.status === 400 || res.status === 401 || /reconnect/i.test(errDetail)) throw new Error('QB_RECONNECT_NEEDED');
     // 404 = the /api/extension/qb/refresh-token route is not deployed on the frontend yet.
     // Always fall back to existing token — let Intuit decide if it's still valid.
     // If Intuit rejects it (401), that error surfaces as QB_RECONNECT_NEEDED via qbApiRequest.
