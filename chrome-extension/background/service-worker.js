@@ -260,6 +260,15 @@ async function saveSession(session) {
   }
 }
 
+// Everything cached per account. Cleared on every sign-in, sign-up and
+// sign-out so the next account never starts with the previous one's cheques
+// or approvals (tenant data in local storage outlives the session).
+async function resetAccountCaches() {
+  _swChecksCache = null;
+  _tenantIdCache = null;
+  await chrome.storage.local.remove(['kyriqChecksCache', 'kyriqApproved', 'configCache']).catch(() => {});
+}
+
 async function clearSessionAndNotify() {
   const prevSignedIn = _lastBroadcastSignedIn;
   await chrome.storage.local.remove('session');
@@ -1101,6 +1110,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           });
           if (data.user) {
             log('SIGNUP success, auto-logging in');
+            await resetAccountCaches();
             const loginData = await supabaseAuth('token?grant_type=password', {
               email: msg.email, password: msg.password,
             });
@@ -1115,6 +1125,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const data = await supabaseAuth('token?grant_type=password', {
             email: msg.email, password: msg.password,
           });
+          await resetAccountCaches();
           await saveSession(data);
           await chrome.storage.local.remove('configCache');
           log('LOGIN success', { userId: data.user?.id });
@@ -1122,7 +1133,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'LOGOUT': {
           log('LOGOUT');
-          _tenantIdCache = null;
+          await resetAccountCaches();
           await clearSessionAndNotify();
           return { success: true };
         }
@@ -1732,8 +1743,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           try {
             const pollSession = await getSession();
             const pollHeaders = pollSession?.access_token ? { Authorization: `Bearer ${pollSession.access_token}` } : {};
-            const res = await fetch(`${backendUrl}/api/jobs/${msg.jobId}?source=auto`, { headers: pollHeaders });
-            const data = await res.json();
+            let res = await fetch(`${backendUrl}/api/jobs/${msg.jobId}?source=auto`, { headers: pollHeaders });
+            let data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.status) {
+              res = await fetch(`${backendUrl}/api/jobs/${msg.jobId}?source=db`, { headers: pollHeaders });
+              data = await res.json().catch(() => ({}));
+            }
+            if (!res.ok || !data?.status) {
+              return { error: data?.detail || data?.error || `Job lookup failed (${res.status})`, notFound: res.status === 404 };
+            }
             return { success: true, job: data };
           } catch (e) {
             logErr('POLL_JOB failed', e);

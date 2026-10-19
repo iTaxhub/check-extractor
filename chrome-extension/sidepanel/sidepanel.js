@@ -350,7 +350,12 @@ function resetClientState() {
   _inflightChecksMatch = _inflightQB = _inflightDocs = _inflightChecks = null;
   _loginInProgress = false;
   // Clear rendered lists so no stale data lingers visually
-  const listSelectors = ['#qb-list', '#documents-list', '#checks-list', '#history-list', '#matches-list'];
+  // Upload flow belongs to the account that started it.
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  currentJobId = null;
+  pendingFiles = [];
+  try { renderFileQueue(); setUploadStep(1); clearProgressLog(); hide('#extraction-results'); } catch (_) {}
+  const listSelectors = ['#qb-list', '#documents-list', '#checks-list', '#history-list', '#match-list', '#extracted-list'];
   listSelectors.forEach(sel => { const el = $(sel); if (el) el.innerHTML = ''; });
 }
 
@@ -1546,6 +1551,15 @@ async function runExtraction(opts = {}) {
   currentJobId = uploadRes.job_id;
   appendLog(`✓ Uploaded, job ${currentJobId}`, 'ok');
 
+  await startAndPoll(file, opts);
+}
+
+async function startAndPoll(file, opts = {}) {
+  if (!currentJobId) return;
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  const retry = { label: 'Try again', primary: true, onClick: () => runExtraction(opts) };
+  const back  = { label: 'Back', onClick: () => setUploadStep(1) };
+
   // ── Start extraction (always hybrid; engine choice is not a client decision) ──
   setUploadStatus('loading', 'Starting extraction');
   const extractRes = await sendMsg({
@@ -1554,9 +1568,11 @@ async function runExtraction(opts = {}) {
     methods: ['hybrid'],
   }, 60000);
 
-  if (extractRes?.error) {
-    appendLog(`✗ Extraction start failed: ${extractRes.error}`, 'err');
-    setUploadStatus('error', 'Extraction did not start', extractRes.error, [retry, back]);
+  if (!extractRes || extractRes.error) {
+    const why = extractRes?.error || 'Kyriq did not confirm that extraction started.';
+    appendLog(`✗ Extraction start failed: ${why}`, 'err');
+    setUploadStatus('error', 'Extraction did not start', why,
+      [{ label: 'Start extraction', primary: true, onClick: () => startAndPoll(file, opts) }, retry, back]);
     return;
   }
 
@@ -1565,7 +1581,10 @@ async function runExtraction(opts = {}) {
 
   // ── Poll until complete ──
   let attempts = 0;
-  const MAX_POLLS = 120; // 4 minutes
+  let pollMisses = 0;
+  // Big statements (hundreds of cheques) take several minutes; keep
+  // following for 15 and say so after 4 rather than giving up.
+  const MAX_POLLS = 450;
 
   _pollTimer = setInterval(async () => {
     attempts++;
@@ -1585,7 +1604,18 @@ async function runExtraction(opts = {}) {
       return;
     }
     const job = pollRes?.job;
-    if (!job) return;
+    if (!job) {
+      pollMisses++;
+      if (pollRes?.notFound || pollMisses >= 5) {
+        clearInterval(_pollTimer); _pollTimer = null;
+        const why = pollRes?.error || 'Kyriq stopped answering about this document.';
+        appendLog(`✗ Status check failed: ${why}`, 'err');
+        setUploadStatus('error', 'Could not follow this extraction', `${why} Check Docs in a minute, or start it again.`,
+          [{ label: 'Start extraction', primary: true, onClick: () => startAndPoll(file, opts) }, back]);
+      }
+      return;
+    }
+    pollMisses = 0;
 
     const status = job.status || 'pending';
     if (status !== 'complete' && status !== 'error') {
@@ -1593,7 +1623,7 @@ async function runExtraction(opts = {}) {
       const raw = job.extraction_progress;
       const pct = typeof raw === 'number' ? Math.round(raw <= 1 ? raw * 100 : raw) : null;
       setUploadStatus('loading', 'Reading cheques',
-        pct != null ? `${pct}% done` : 'This usually takes under a minute.');
+        pct != null ? `${pct}% done` : (attempts > 120 ? 'Large documents take a few minutes. You can leave this open.' : 'This usually takes under a minute.'));
       return;
     }
 
