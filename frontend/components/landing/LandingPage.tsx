@@ -43,7 +43,6 @@ import { Reveal, useScrollReveals } from './Reveal';
 // numbers. They used to exist only here, which is why the admin console was
 // still quoting DepthMe's consumer prices.
 import { PLANS, INCLUDED_IN_EVERY_PLAN } from '@/lib/pricing';
-import { Marquee } from '@/components/ui/marquee';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { BorderBeam } from '@/components/ui/border-beam';
 import { ShimmerButton } from '@/components/ui/shimmer-button';
@@ -58,6 +57,8 @@ import { ShimmerButton } from '@/components/ui/shimmer-button';
 /** The single CTA label and destination. Both are asserted by the check. */
 const CTA_LABEL = 'Start Free Trial';
 const CTA_HREF = '/signup';
+/** Chrome Web Store listing. Unset until the extension is published, so the button stays hidden. */
+const EXTENSION_URL = process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL;
 const TRIAL_TERMS = '14-day trial or 250 processed checks, whichever comes first · No credit card required';
 const HERO_ASSURANCES = ['No credit card required', 'Setup in minutes', 'Human approval always required'];
 
@@ -191,7 +192,7 @@ function Hero() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accentEmerald opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-accentEmerald" />
               </span>
-              AI-assisted check reconciliation
+              Kyriq is the new standard for check reconciliation in QuickBooks Online
             </span>
           </Rise>
 
@@ -359,43 +360,6 @@ function FactsBar() {
   );
 }
 
-/**
- * Export formats. A marquee of things the product actually does — the old
- * strip was twelve invented firm names under "Trusted by 500+ accounting
- * firms", which is exactly what item 1 of the client's list removes.
- */
-// Brand marks are Simple Icons (CC0), tinted with each company's own colour.
-const EXPORT_TARGETS: { name: string; logo?: string }[] = [
-  { name: 'QuickBooks Online', logo: '/integrations/quickbooks.svg' },
-  { name: 'Xero', logo: '/integrations/xero.svg' },
-  { name: 'Sage', logo: '/integrations/sage.svg' },
-  { name: 'Zoho Books', logo: '/integrations/zoho.svg' },
-  { name: 'Chrome extension', logo: '/integrations/googlechrome.svg' },
-  // 'QBO' used to sit here as a fourth format. It is the same product as the
-  // 'QuickBooks Online' entry above, so the marquee named it twice.
-  { name: 'CSV', logo: '/integrations/csv.svg' },
-  { name: 'IIF', logo: '/integrations/iif.svg' },
-];
-
-function ExportMarquee() {
-  return (
-    <section className="py-10 sm:py-16 border-y hairline bg-surface/40">
-      <p className="text-center text-eyebrow text-ink-faint mb-6 sm:mb-8 px-4">Reconcile in QuickBooks, export anywhere</p>
-      {/* Magic-UI: marquee keyframe + --duration / --gap. */}
-      <Marquee pauseOnHover className="[--duration:35s]" gap="1rem">
-        {EXPORT_TARGETS.map(({ name, logo }) => (
-          <div key={name} className="flex items-center gap-2 px-4 sm:px-5 py-2 glass-card rounded-pill whitespace-nowrap">
-            {logo
-              ? <img src={logo} alt="" width={18} height={18} className="h-[18px] w-[18px]" aria-hidden />
-              : <FileText size={14} className="text-brand" aria-hidden />}
-            <span className="text-xs sm:text-sm font-semibold text-ink-body">{name}</span>
-          </div>
-        ))}
-      </Marquee>
-    </section>
-  );
-}
-
 function SectionHead({ eyebrow, title, blurb, dark }: { eyebrow: string; title: string; blurb?: string; dark?: boolean }) {
   return (
     <Reveal className="text-center mb-10 sm:mb-14 lg:mb-16 max-w-4xl mx-auto">
@@ -528,7 +492,6 @@ function BuiltForFirms() {
 function ExtensionSection() {
   return (
     <section id="extension" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-shell-solid via-shell-solid to-brand-dark/40" />
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-10 lg:gap-16 items-center">
         <div>
           <span className="text-eyebrow text-accentEmerald mb-4 block">Chrome extension</span>
@@ -539,16 +502,21 @@ function ExtensionSection() {
             Approve and clear matched checks without leaving QuickBooks Online. The Kyriq Chrome extension is included with every plan and during the trial.
           </p>
           <ul className="space-y-4 text-sm text-shell-text">
-            {['Reconcile without leaving QuickBooks', 'View AI match suggestions in context', 'Approve or flag each result yourself', 'Keep every approval in the audit trail'].map((item) => (
+            {['Reconcile without leaving QuickBooks', 'View match suggestions in context', 'Approve or flag each result yourself', 'Keep every approval in the audit trail'].map((item) => (
               <li key={item} className="flex items-center gap-3">
                 <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"><Check size={13} className="text-accentEmerald" aria-hidden /></span>
                 {item}
               </li>
             ))}
           </ul>
+          {EXTENSION_URL && (
+            <a href={EXTENSION_URL} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'mt-9')}>
+              Add to Chrome <ArrowRight size={16} aria-hidden />
+            </a>
+          )}
         </div>
-        <div data-reveal className="relative aspect-[4/3] sm:aspect-video overflow-hidden rounded-modal border border-glass-hairline-dark shadow-glass-modal">
-          <Image src="/landing/quickbooks-extension-4k-v1.webp" alt="Kyriq Chrome extension reviewing suggested matches inside QuickBooks Online" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover object-center" />
+        <div data-reveal className="relative aspect-[4/3] sm:aspect-video overflow-hidden rounded-modal border border-glass-hairline-dark bg-surface shadow-glass-modal">
+          <Image src="/landing/quickbooks-extension-4k-v1.webp" alt="Kyriq Chrome extension reviewing suggested matches inside QuickBooks Online" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-contain object-center contrast-[1.05] saturate-[0.9]" />
         </div>
       </div>
     </section>
@@ -567,12 +535,9 @@ const VOICE_PROMPTS = [
  *  still called Voice there — Michael renamed the public-facing section only. */
 function VoiceSection() {
   return (
-    <section id="voice" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 bg-shell-solid overflow-hidden">
-      <Image src="/landing/kyriq-iq-characters-user-v1.webp" alt="" fill sizes="100vw" className="object-cover object-[70%_center] sm:object-center opacity-60 sm:opacity-75" aria-hidden />
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-shell-solid via-shell-solid/90 to-shell-solid/35 lg:bg-gradient-to-r lg:from-shell-solid lg:via-shell-solid/90 lg:to-shell-solid/15" />
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-shell-solid via-transparent to-shell-solid/25" />
+    <section id="voice" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 bg-surface overflow-hidden">
       <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-10 lg:gap-12 items-center">
-        <div className="rounded-modal border border-glass-hairline-dark bg-shell-solid/85 backdrop-blur-xl p-6 sm:p-10 shadow-glass-modal">
+        <div className="rounded-modal bg-shell-solid p-6 sm:p-10 shadow-glass-modal">
           <span className="inline-flex items-center gap-2 rounded-full border border-glass-hairline-dark bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald mb-6">
             <KyriqIconWhite size={15} /> <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
           </span>
@@ -587,7 +552,7 @@ function VoiceSection() {
           <WaitlistForm />
         </div>
 
-        <div className="rounded-card border border-glass-hairline-dark bg-shell-solid/80 backdrop-blur-xl p-4 sm:p-6 shadow-glass-modal">
+        <div className="rounded-card bg-shell-solid p-4 sm:p-6 shadow-glass-modal">
           <div className="flex items-end justify-center gap-1 h-14 mb-5" aria-hidden>
             {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
               <span key={i} className="w-1.5 rounded-full bg-gradient-to-t from-brand to-accentEmerald animate-pulse" style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
@@ -694,7 +659,7 @@ function Pricing() {
                 ))}
               </ul>
 
-              <Link href={CTA_HREF} className={cn(buttonVariants({ variant: p.popular ? 'primary' : 'secondary', size: 'md', block: true }))}>
+              <Link href={CTA_HREF} className={cn(buttonVariants({ variant: 'primary', size: 'md', block: true }))}>
                 {CTA_LABEL}
               </Link>
             </div>
@@ -841,9 +806,7 @@ function CTASection() {
   const router = useRouter();
   return (
     <section className="py-20 sm:py-28 px-4 sm:px-6 bg-surface">
-      <div className="max-w-6xl mx-auto relative rounded-modal overflow-hidden animate-glass-rise min-h-[380px] sm:min-h-[500px] flex items-center">
-        <Image src="/landing/closing-cta-ribbons-4k-v1.webp" alt="" fill sizes="100vw" className="object-cover" aria-hidden />
-        <div aria-hidden className="absolute inset-0 bg-shell-solid/35" />
+      <div className="max-w-6xl mx-auto relative rounded-modal overflow-hidden animate-glass-rise bg-shell-solid flex items-center">
         <div className="relative w-full p-7 sm:p-16 md:p-24 text-center">
           <h2 className="relative text-[clamp(1.75rem,3.5vw,2.5rem)] font-extrabold text-shell-text tracking-[-0.025em] mb-4">
             Ready to reconcile checks in a fraction of the time?
@@ -948,7 +911,6 @@ export default function LandingPage() {
       <Nav />
       <Hero />
       <FactsBar />
-      <ExportMarquee />
       <HowItWorks />
       <BuiltForFirms />
       <ExtensionSection />

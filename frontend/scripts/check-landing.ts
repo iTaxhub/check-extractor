@@ -287,7 +287,8 @@ console.log('  ok  FAQ holds the approved 15 questions');
   // All four must actually be rendered somewhere, or the animation that the
   // keyframes exist for is dead code nobody notices.
   const src = read(LANDING);
-  for (const comp of ['Marquee', 'NumberTicker', 'BorderBeam', 'ShimmerButton']) {
+  // Marquee left the page at the client's request (Oct 2026); its keyframe checks above still guard the component.
+  for (const comp of ['NumberTicker', 'BorderBeam', 'ShimmerButton']) {
     assert.match(
       src,
       new RegExp(`<${comp}[\\s/>]`),
@@ -295,7 +296,7 @@ console.log('  ok  FAQ holds the approved 15 questions');
     );
   }
 }
-console.log('  ok  five keyframes, three variables, and all four components still rendered');
+console.log('  ok  five keyframes, three variables, and the landing components still rendered');
 
 /* --- 7. framer-motion honours prefers-reduced-motion ------------------- */
 // globals.css stops every CSS animation under the media query, but it cannot
