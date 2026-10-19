@@ -234,7 +234,16 @@ function MfaFlow() {
         throw new Error('Verification did not raise this session to aal2. Try again.');
       }
 
-      // First-time enrolment: issue recovery codes and show them once.
+      // Recovery codes are issued at first-time enrolment ONLY. verify() also
+      // runs for every sign-in challenge, and the endpoint replaces all unused
+      // codes, so calling it here on each login showed a fresh set every time
+      // and silently invalidated the ones the person had saved. Regenerating
+      // is an explicit action in Settings.
+      if (phase !== 'enrol') {
+        setPhase('done');
+        router.replace(next);
+        return;
+      }
       const res = await fetch('/api/auth/mfa/recovery-codes', {
         method: 'POST',
         headers: await authHeaders(),

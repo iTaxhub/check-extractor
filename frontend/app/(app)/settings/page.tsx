@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2, ShieldCheck, RefreshCw, MoreHorizontal, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { QBCompanySwitcher } from '@/components/QBCompanySwitcher'
+import RecoveryCodesCard from '@/components/RecoveryCodesCard'
 import QuickBooksFilters, { FilterParams } from '@/components/QuickBooksFilters'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
@@ -1194,6 +1195,7 @@ function SettingsPageContent() {
                         Lost your authenticator? Use a recovery code on that page. Each code
                         works once and removes the old authenticator so you can set up a new one.
                     </p>
+                    <RecoveryCodesCard />
                 </GlassCard>
             </TabPanel>
                 </div>

@@ -41,8 +41,8 @@ export const NAV_GROUPS: { label: string | null; items: ShellNavItem[] }[] = [
   {
     label: null,
     items: [
-      { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
       { href: '/reconcile', icon: Scale, label: 'Reconcile' },
+      { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
       { href: '/upload', icon: Upload, label: 'Upload' },
       { href: '/history', icon: List, label: 'History' },
       { href: '/reports', icon: LayoutDashboard, label: 'Reports' },
