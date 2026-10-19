@@ -1654,3 +1654,4 @@ header {
 .company-bar-status .btn-open-qb { margin-left: auto; }
 .company-bar-status .usage-meter { order: 3; flex: 1 0 100%; }
 .btn-qb-reconnect { align-self: start; }
+.approve-confirm-detail-val { word-break: normal; overflow-wrap: break-word; text-align: right; }
