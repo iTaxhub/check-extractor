@@ -11,7 +11,9 @@ import { useRealtimeMatches } from '@/hooks/useRealtimeMatches';
 import { useQBConnections } from '@/hooks/useQBConnections';
 import MatchRow from '@/components/MatchRow';
 import SearchQBModal from '@/components/SearchQBModal';
-import SideBySideModal from '@/components/review/SideBySideModal';
+import SideBySideModal, {
+  SideBySideEvidence, issueLabel, formatMoney, formatDate,
+} from '@/components/review/SideBySideModal';
 import { QBCompanySwitcher } from '@/components/QBCompanySwitcher';
 import { Button, GlassCard, GlassPanel, Select, Skeleton, Tabs } from '@/components/ui';
 import { Pagination } from '@/app/(app)/qb-comparisons/components/Pagination';
@@ -187,6 +189,9 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [searchModal, setSearchModal] = useState<{ check: any; matchId: string } | null>(null);
   const [sideBySide, setSideBySide] = useState<any | null>(null);
+  /** The row whose evidence shows beside the queue at xl. Falls back to the
+   *  first row so the panel is never empty while the queue has rows. */
+  const [focusId, setFocusId] = useState<string | null>(null);
   /** Starts at the default on BOTH server and first client render — the stored
    *  value is adopted in an effect, so a persisted 90 can never cause a
    *  hydration mismatch against a server-rendered 95. */
@@ -288,6 +293,8 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
     await remapMatch(searchModal.matchId, qbTxn.id);
     setSearchModal(null);
   };
+
+  const focused = matches.find((m: any) => m.id === focusId) || matches[0] || null;
 
   const totalPages = Math.max(1, Math.ceil((total || 0) / perPage));
 
@@ -491,7 +498,8 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
         </GlassCard>
       ) : (
         <>
-          <div>
+          {/* Below 1280px: the row list, with evidence in the modal. */}
+          <div className="xl:hidden">
             {matches.map((match: any) => (
               <MatchRow
                 key={match.id}
@@ -511,6 +519,97 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
                 onOpenSideBySide={() => setSideBySide(match)}
               />
             ))}
+          </div>
+
+          {/* At 1280px and up: the exception queue, with the selected row's
+              evidence and its own decision actions beside it. */}
+          <div className="hidden gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_440px]">
+            <GlassPanel padding="none" radius="card" className="min-w-0 overflow-x-auto">
+              <table className="w-full text-sm">
+                <caption className="sr-only">Exception queue. Choose a row to see its evidence.</caption>
+                <thead>
+                  <tr className="border-b border-glass-hairline text-left text-eyebrow text-ink-faint">
+                    <th scope="col" className="px-3 py-2 font-semibold">Cheque no.</th>
+                    <th scope="col" className="px-3 py-2 font-semibold">Date</th>
+                    <th scope="col" className="px-3 py-2 font-semibold">Payee</th>
+                    <th scope="col" className="px-3 py-2 font-semibold">QuickBooks match</th>
+                    <th scope="col" className="px-3 py-2 font-semibold">Issue</th>
+                    <th scope="col" className="px-3 py-2 text-right font-semibold">Cheque amount</th>
+                    <th scope="col" className="px-3 py-2 text-right font-semibold">QB amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-glass-hairline">
+                  {matches.map((m: any) => {
+                    const on = focused?.id === m.id;
+                    return (
+                      <tr
+                        key={m.id}
+                        onClick={() => setFocusId(m.id)}
+                        className={cn(
+                          'cursor-pointer text-ink-body hover:bg-brand/[0.04]',
+                          on && 'bg-brand/[0.08] shadow-[inset_3px_0_0_0_hsl(var(--primary))]'
+                        )}
+                      >
+                        <td className="px-3 py-2 font-medium text-ink-strong">
+                          <button
+                            type="button"
+                            onClick={() => setFocusId(m.id)}
+                            aria-pressed={on}
+                            className="nums rounded focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          >
+                            {m.check?.check_number ? `#${m.check.check_number}` : '—'}
+                          </button>
+                        </td>
+                        <td className="nums whitespace-nowrap px-3 py-2">{formatDate(m.check?.check_date)}</td>
+                        <td className="max-w-[160px] truncate px-3 py-2">{m.check?.payee || '—'}</td>
+                        <td className="max-w-[160px] truncate px-3 py-2">
+                          {m.qb_txn
+                            ? `${m.qb_txn.txn_type || 'Transaction'}${m.qb_txn.doc_number ? ` #${m.qb_txn.doc_number}` : ''}`
+                            : 'None'}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 font-medium text-ink-strong">{issueLabel(m)}</td>
+                        <td className="nums-money whitespace-nowrap px-3 py-2 text-right">{formatMoney(m.check?.amount)}</td>
+                        <td className="nums-money whitespace-nowrap px-3 py-2 text-right">{formatMoney(m.qb_txn?.amount)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </GlassPanel>
+
+            {focused && (
+              <section
+                aria-label={`Evidence for cheque ${focused.check?.check_number || ''}`.trim()}
+                className="sticky top-4 min-w-0 space-y-3 self-start"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="font-heading text-base font-semibold text-ink-strong">
+                    {`Cheque #${focused.check?.check_number || '—'}`}
+                  </h3>
+                  <span className="text-xs font-medium text-ink-faint">{issueLabel(focused)}</span>
+                </div>
+                <SideBySideEvidence match={focused} stacked />
+                {/* The decision actions for this one row: the same MatchRow,
+                    with the same handlers and confirmations, scoped to its id. */}
+                <MatchRow
+                  key={focused.id}
+                  match={focused}
+                  isSelected={selected.has(focused.id)}
+                  onSelect={() => toggleSelect(focused.id)}
+                  onApprove={() => approveSingle(focused.id)}
+                  onFlag={(reason) => flagMatch(focused.id, reason)}
+                  onAddNote={(note) => addNote(focused.id, note)}
+                  onResolveDiscrepancy={(resolution, amount, notes) =>
+                    resolveDiscrepancy(focused.id, resolution, amount, notes)
+                  }
+                  onSearchQB={() => setSearchModal({ check: focused.check, matchId: focused.id })}
+                  onUndoApproval={() => undoApproval(focused.id)}
+                  onCreateInQB={() => createInQB(focused.check?.id)}
+                  onUpdateQBTransaction={(qbTxnId, fields) => updateQBTransaction(qbTxnId, fields)}
+                  onOpenSideBySide={() => setSideBySide(focused)}
+                />
+              </section>
+            )}
           </div>
 
           {/* The up-to-200-record view. The grid's own Pagination component,

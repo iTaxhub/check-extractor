@@ -58,6 +58,19 @@ function extConf(ext: any, field: string): number {
   return 0;
 }
 
+const PREVIEW_FIELDS = ['payee', 'amount', 'checkDate', 'checkNumber', 'memo', 'bankName'];
+const PREVIEW_LABELS: Record<string, string> = {
+  payee: 'Payee', amount: 'Amount', checkDate: 'Date', checkNumber: 'Cheque number', memo: 'Memo', bankName: 'Bank',
+};
+
+/** Hybrid extraction, else the first engine (gemini, numarkdown, tesseract) with any value. */
+function previewExtraction(check: any): any {
+  const has = (e: any) => PREVIEW_FIELDS.some((f) => extVal(e, f));
+  if (has(check?.extraction)) return check.extraction;
+  const engines = check?.engine_extractions || {};
+  return ['gemini', 'numarkdown', 'tesseract'].map((k) => engines[k]).find(has) ?? null;
+}
+
 /** Confidence -> state tone. One threshold table, used by both views. */
 function confTone(conf: number): 'success' | 'warning' | 'error' {
   if (conf >= 0.9) return 'success';
@@ -93,6 +106,7 @@ export default function ProcessingPage() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [imageZoom, setImageZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
@@ -155,6 +169,10 @@ export default function ProcessingPage() {
   };
 
   const selected = selectedIdx !== null ? checks[selectedIdx] : null;
+  const firstDoneIdx = checks.findIndex((c: any) => previewExtraction(c));
+  const shownIdx = previewIdx ?? (firstDoneIdx >= 0 ? firstDoneIdx : 0);
+  const shown = checks[shownIdx] ?? null;
+  const shownExt = shown ? previewExtraction(shown) : null;
   const missingCount = checks.filter((c: any) => !c.extraction).length;
 
   const resetView = () => {
@@ -311,14 +329,20 @@ export default function ProcessingPage() {
           <GlassCardTitle className="mb-4">Detected cheques ({checks.length})</GlassCardTitle>
           {/* One blurred container; the tiles inside are GlassPanels with no
               blur of their own, so the cost does not scale with cheque count. */}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+          <div className="grid grid-cols-2 content-start gap-4 md:grid-cols-3">
             {checks.map((check: any, idx: number) => (
               <GlassPanel
                 key={check.check_id}
                 radius="tile"
                 padding="none"
-                onClick={() => setSelectedIdx(idx)}
-                className="press group cursor-pointer overflow-hidden hover:border-brand/40"
+                onClick={() => setPreviewIdx(idx)}
+                onDoubleClick={() => setSelectedIdx(idx)}
+                aria-pressed={shownIdx === idx}
+                className={cn(
+                  'press group cursor-pointer overflow-hidden',
+                  shownIdx === idx ? 'border-brand/70 shadow-glass-selected' : 'hover:border-brand/40'
+                )}
               >
                 <div className="relative aspect-[16/9] overflow-hidden bg-surface-sunken">
                   <img
@@ -339,6 +363,35 @@ export default function ProcessingPage() {
                 </div>
               </GlassPanel>
             ))}
+          </div>
+          {shown && (
+            <GlassPanel radius="tile" padding="none" className="self-start overflow-hidden" aria-label="Cheque preview">
+              <div className="aspect-[16/9] overflow-hidden bg-surface-sunken">
+                <img
+                  key={shown.check_id}
+                  src={`/api/check-image/${jobId}/${shown.check_id}`}
+                  alt={`Cheque ${shownIdx + 1}`}
+                  className="h-full w-full object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+              <div className="p-4">
+                <p className="mb-3 text-sm font-medium text-ink-strong">Cheque {shownIdx + 1}</p>
+                {shownExt ? (
+                  <dl className="space-y-2 text-sm">
+                    {PREVIEW_FIELDS.map((f) => (
+                      <div key={f} className="flex justify-between gap-3">
+                        <dt className="text-ink-faint">{PREVIEW_LABELS[f]}</dt>
+                        <dd className="nums truncate text-right text-ink-body">{extVal(shownExt, f) || '—'}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <p className="text-sm text-ink-faint">Fields appear once extraction finishes for this cheque.</p>
+                )}
+              </div>
+            </GlassPanel>
+          )}
           </div>
         </GlassCard>
       )}

@@ -91,41 +91,58 @@ function Row({
   );
 }
 
-export interface SideBySideModalProps {
-  match: any;
-  onClose: () => void;
+/** Which compared fields disagree. One definition, shared by the field tints,
+ *  the plain-language mismatch list and the queue's Issue column. */
+function diffs(match: any) {
+  const { check, qb_txn } = match || {};
+  const both = Boolean(check && qb_txn);
+  return {
+    amount: both && Number(check.amount) !== Number(qb_txn.amount),
+    number: both && String(check.check_number ?? '') !== String(qb_txn.doc_number ?? ''),
+    date:
+      both &&
+      String(check.check_date ?? '').slice(0, 10) !== String(qb_txn.txn_date ?? '').slice(0, 10),
+  };
 }
 
-export default function SideBySideModal({ match, onClose }: SideBySideModalProps) {
-  const { check, qb_txn, status, confidence_score, discrepancy_amount, notes, flagged_reason } =
-    match || {};
+/** Short label for the queue's Issue column. */
+export function issueLabel(match: any): string {
+  const d = diffs(match);
+  if (!match?.qb_txn) return 'No QuickBooks match';
+  if (d.amount) return 'Amount differs';
+  if (d.number) return 'Number differs';
+  if (d.date) return 'Date differs';
+  if (match.flagged_reason || match.status === 'flagged') return 'Flagged';
+  if (match.status === 'pending') return 'Awaiting review';
+  return match.status ? match.status.charAt(0).toUpperCase() + match.status.slice(1) : 'Review';
+}
 
-  const amountDiffers = Boolean(check && qb_txn && Number(check.amount) !== Number(qb_txn.amount));
-  const numberDiffers = Boolean(
-    check && qb_txn && String(check.check_number ?? '') !== String(qb_txn.doc_number ?? '')
-  );
-  const dateDiffers = Boolean(
-    check &&
-      qb_txn &&
-      String(check.check_date ?? '').slice(0, 10) !== String(qb_txn.txn_date ?? '').slice(0, 10)
-  );
+/** The specific mismatch, in words. */
+export function mismatchSentences(match: any): string[] {
+  const { check, qb_txn, flagged_reason } = match || {};
+  const d = diffs(match);
+  const out: string[] = [];
+  if (d.amount) out.push(`Amount differs: cheque ${fmt(check?.amount)}, QuickBooks ${fmt(qb_txn?.amount)}.`);
+  if (d.number) out.push(`Cheque number differs: #${check?.check_number || '—'} against #${qb_txn?.doc_number || '—'}.`);
+  if (d.date) out.push(`Date differs: ${fmtDate(check?.check_date)} against ${fmtDate(qb_txn?.txn_date)}.`);
+  if (flagged_reason) out.push(`Flagged: ${flagged_reason}.`);
+  return out;
+}
+
+export { fmt as formatMoney, fmtDate as formatDate };
+
+/**
+ * The evidence itself: scan plus paired values. Rendered inside the modal
+ * below 1280px, and inline beside the exception queue at xl. `stacked` puts
+ * the scan above the comparison for the narrow side panel.
+ */
+export function SideBySideEvidence({ match, stacked }: { match: any; stacked?: boolean }) {
+  const { check, qb_txn, status, confidence_score, discrepancy_amount, notes } = match || {};
+  const { amount: amountDiffers, number: numberDiffers, date: dateDiffers } = diffs(match);
+  const sentences = mismatchSentences(match);
 
   return (
-    <Dialog
-      open
-      onClose={onClose}
-      size="full"
-      title={`Cheque #${check?.check_number || '—'}`}
-      description="The scanned cheque beside the QuickBooks record it was matched to."
-    >
-      {/* Single column below lg. The modal is `max-w-5xl`, so at 400px the two
-          panels MUST stack or the QuickBooks side would be pushed outside the
-          panel with no scrollbar to recover it. */}
-      {/* The Dialog primitive gives its body no scroll region (Sheet does), so a
-          tall cheque scan at 400px would push the comparison panel off the
-          bottom of the viewport with no way to reach it. Declared here rather
-          than in the primitive — reported as a gap instead. */}
-      <div className="scroll-region grid max-h-[72vh] gap-4 lg:grid-cols-2">
+      <div className={cn('grid gap-4', !stacked && 'scroll-region max-h-[72vh] lg:grid-cols-2')}>
         <div className="min-w-0">
           {check?.file_url ? (
             <CheckImageViewer imageUrl={check.file_url} inset />
@@ -193,10 +210,12 @@ export default function SideBySideModal({ match, onClose }: SideBySideModalProps
             </div>
           )}
 
-          {flagged_reason && (
-            <div className="border-t border-glass-hairline px-4 py-2.5 text-xs text-warning-text">
-              Flagged: {flagged_reason}
-            </div>
+          {sentences.length > 0 && (
+            <ul className="space-y-1 border-t border-glass-hairline px-4 py-2.5 text-xs font-medium text-ink-strong">
+              {sentences.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
           )}
 
           {notes && (
@@ -213,6 +232,24 @@ export default function SideBySideModal({ match, onClose }: SideBySideModalProps
           )}
         </GlassPanel>
       </div>
+  );
+}
+
+export interface SideBySideModalProps {
+  match: any;
+  onClose: () => void;
+}
+
+export default function SideBySideModal({ match, onClose }: SideBySideModalProps) {
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      size="full"
+      title={`Cheque #${match?.check?.check_number || '—'}`}
+      description="The scanned cheque beside the QuickBooks record it was matched to."
+    >
+      <SideBySideEvidence match={match} />
     </Dialog>
   );
 }

@@ -553,6 +553,55 @@ function UploadPageInner() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  /** Analyze one queued entry and record its outcome on that row. */
+  const runEntry = async (entry: JobEntry) => {
+    try {
+      const result = await analyzeOneFile(entry.file, entry.id);
+      setJobEntries((prev) =>
+        prev.map((j) =>
+          j.id === entry.id
+            ? { ...j, id: result.job_id, status: 'analyzed', result }
+            : j
+        )
+      );
+      return result;
+    } catch (err: any) {
+      setJobEntries((prev) =>
+        prev.map((j) =>
+          j.id === entry.id
+            ? { ...j, status: 'error', error: err.message || 'Upload failed' }
+            : j
+        )
+      );
+      throw err;
+    }
+  };
+
+  /** Re-run the same per-file analyze for one failed row only. */
+  const handleRetryFile = async (file: File) => {
+    const entry = jobEntries.find((e) => e.file === file && e.status === 'error');
+    if (!entry) return;
+    setError(null);
+    setBlocked(null);
+    setUploading(true);
+    setJobEntries((prev) =>
+      prev.map((j) => (j.id === entry.id ? { ...j, status: 'uploading' as JobStatus, error: undefined } : j))
+    );
+    try {
+      const result = await runEntry(entry);
+      if (!activeJobId) {
+        setActiveJobId(result.job_id);
+        setSelectedPages(defaultPageSelection(result.pages || []));
+        setChequeTo(result.total_checks || 1);
+        setStep('preview');
+      }
+    } catch (err) {
+      if (err instanceof ProcessingBlocked) setBlocked(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleUploadAndAnalyze = async () => {
     if (files.length === 0) return;
 
@@ -567,30 +616,7 @@ function UploadPageInner() {
     }));
     setJobEntries(entries);
 
-    const settled = await Promise.allSettled(
-      entries.map(async (entry) => {
-        try {
-          const result = await analyzeOneFile(entry.file, entry.id);
-          setJobEntries((prev) =>
-            prev.map((j) =>
-              j.id === entry.id
-                ? { ...j, id: result.job_id, status: 'analyzed', result }
-                : j
-            )
-          );
-          return result;
-        } catch (err: any) {
-          setJobEntries((prev) =>
-            prev.map((j) =>
-              j.id === entry.id
-                ? { ...j, status: 'error', error: err.message || 'Upload failed' }
-                : j
-            )
-          );
-          throw err;
-        }
-      })
-    );
+    const settled = await Promise.allSettled(entries.map(runEntry));
 
     const firstSuccess = settled.find((s) => s.status === 'fulfilled') as
       | PromiseFulfilledResult<AnalyzeResult>
@@ -855,6 +881,7 @@ function UploadPageInner() {
               <MultiFileQueue
                 files={files}
                 onRemove={handleRemoveFile}
+                onRetry={handleRetryFile}
                 locked={uploading}
                 rows={files.map((file): QueueRow | undefined => {
                   const entry = jobEntries.find((e) => e.file === file);

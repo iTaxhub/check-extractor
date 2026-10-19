@@ -131,10 +131,13 @@ export async function loadHistory(params: {
   realmId?: string | null;
   limit?: number;
   offset?: number;
-}): Promise<HistoryPage | DataFailure> {
+}, filters: { accountId?: string | null; from?: string | null; to?: string | null } = {}): Promise<HistoryPage | DataFailure> {
   const q = new URLSearchParams();
   q.set('status', params.status || 'all');
   if (params.realmId) q.set('realm_id', params.realmId);
+  if (filters.accountId) q.set('account_id', filters.accountId);
+  if (filters.from) q.set('from', filters.from);
+  if (filters.to) q.set('to', filters.to);
   q.set('limit', String(params.limit ?? 25));
   q.set('offset', String(params.offset ?? 0));
 

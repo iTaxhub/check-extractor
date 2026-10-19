@@ -91,6 +91,7 @@ function SettingsPageContent() {
     const [qbConfigured, setQbConfigured] = useState(false)
     const [companyId, setCompanyId] = useState<string | null>(null)
     const [companyName, setCompanyName] = useState<string | null>(null)
+    const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
     const [showQBCredentialsDialog, setShowQBCredentialsDialog] = useState(false)
     const [qbClientId, setQbClientId] = useState('')
@@ -244,6 +245,7 @@ function SettingsPageContent() {
                 setCredentialsExist(data.credentialsExist || false)
                 setCompanyId(data.companyId || data.realmId || null)
                 setCompanyName(data.companyName || null)
+                setLastSyncedAt(data.lastSyncedAt || null)
                 setQbClientId(data.qbClientId || '')
                 setQbClientSecret(data.qbClientSecret || '')
                 // qbRedirectUri is always fixed — no need to load from DB
@@ -738,6 +740,12 @@ function SettingsPageContent() {
                                                 <XCircle size={14} aria-hidden /> Not set up
                                             </span>
                                         )}
+                                    </dd>
+                                    <dt className="text-ink-soft">Last synced</dt>
+                                    <dd className="text-ink-body">
+                                        {lastSyncedAt && !Number.isNaN(new Date(lastSyncedAt).getTime())
+                                            ? new Date(lastSyncedAt).toLocaleString()
+                                            : 'Not synced yet'}
                                     </dd>
                                 </dl>
                             </div>

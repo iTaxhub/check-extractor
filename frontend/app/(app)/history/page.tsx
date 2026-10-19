@@ -34,7 +34,7 @@ import type { StatusKey } from '@/components/ui';
 import {
   downloadReportCsv,
   loadApprovers,
-  loadHistory,
+  loadHistory as loadHistoryPage,
   loadMyRole,
   type ApproverMap,
   type DataFailure,
@@ -121,6 +121,10 @@ export default function HistoryPage() {
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [accounts, setAccounts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     // Only to avoid rendering a control that would 403. The endpoint is the gate.
@@ -129,6 +133,9 @@ export default function HistoryPage() {
 
   const fetchPage = useCallback(async () => {
     setLoading(true);
+    // Account and period ride along with every page request, server-side.
+    const loadHistory = (p: Parameters<typeof loadHistoryPage>[0]) =>
+      loadHistoryPage(p, { accountId, from, to });
     const result = await loadHistory({ status, limit: PAGE_SIZE, offset });
     if (result.kind !== 'page') {
       setFailure(result);
@@ -140,11 +147,18 @@ export default function HistoryPage() {
     setFailure(null);
     setBatches(result.batches);
     setTotal(result.total);
+    // ponytail: account options are the accounts seen on pages loaded so far,
+    // not a full list; swap for /api/qbo/accounts if firms need every account.
+    setAccounts((prev) => {
+      const next = { ...prev };
+      for (const b of result.batches) if (b.account_id) next[b.account_id] = b.account_name || b.account_id;
+      return next;
+    });
     setLoading(false);
 
     const ids = result.batches.map((b) => b.approved_by).filter((v): v is string => !!v);
     if (ids.length > 0) setApprovers(await loadApprovers(ids));
-  }, [status, offset]);
+  }, [status, offset, accountId, from, to]);
 
   useEffect(() => {
     fetchPage();
@@ -238,6 +252,66 @@ export default function HistoryPage() {
             className="pl-8"
           />
         </div>
+      </div>
+
+      {/* Account and period narrow the server query, so pagination stays honest. */}
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
+          Account
+          <select
+            value={accountId}
+            onChange={(e) => {
+              setAccountId(e.target.value);
+              setOffset(0);
+            }}
+            className="h-9 rounded-md border border-glass-hairline bg-surface px-2 text-sm text-ink-strong"
+          >
+            <option value="">All accounts</option>
+            {Object.entries(accounts).map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
+          Period from
+          <Input
+            type="date"
+            value={from}
+            max={to || undefined}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              setOffset(0);
+            }}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
+          Period to
+          <Input
+            type="date"
+            value={to}
+            min={from || undefined}
+            onChange={(e) => {
+              setTo(e.target.value);
+              setOffset(0);
+            }}
+          />
+        </label>
+        {accountId || from || to ? (
+          <button
+            type="button"
+            className={ROW_ACTION}
+            onClick={() => {
+              setAccountId('');
+              setFrom('');
+              setTo('');
+              setOffset(0);
+            }}
+          >
+            Clear filters
+          </button>
+        ) : null}
       </div>
 
       {/* A 503 is the honest "not deployed" answer, NOT an empty table. */}

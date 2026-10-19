@@ -48,6 +48,16 @@ async function listBatches(req: NextApiRequest, res: NextApiResponse, ctx: any) 
 
   if (status !== 'all') query = query.eq('status', status);
   if (realmId) query = query.eq('realm_id', realmId);
+  // Account and period filters (History). Period is an overlap test: a batch
+  // shows when any part of its range falls inside [from, to].
+  const accountId = cleanText(req.query.account_id, 64);
+  if (accountId) query = query.eq('account_id', accountId);
+  const isDate = (v: unknown): string | null =>
+    typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+  const from = isDate(req.query.from);
+  const to = isDate(req.query.to);
+  if (from) query = query.gte('period_end', from);
+  if (to) query = query.lte('period_start', to);
 
   const { data, error, count } = await query;
 

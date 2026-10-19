@@ -1,7 +1,7 @@
 'use client';
 
 import { X, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { GlassCard, IconButton } from '@/components/ui';
+import { Button, GlassCard, IconButton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 export type QueueState = 'ready' | 'working' | 'done' | 'error';
@@ -15,6 +15,8 @@ export interface QueueRow {
 interface Props {
   files: File[];
   onRemove: (index: number) => void;
+  /** Re-runs analysis for one failed file. Offered on error rows only. */
+  onRetry?: (file: File) => void;
   /** Per-file state, same order as `files`. Missing means ready. */
   rows?: (QueueRow | undefined)[];
   /** Remove is disabled while files are being sent. */
@@ -29,7 +31,7 @@ const STATE_LABEL: Record<QueueState, string> = {
 };
 
 /** The one list of selected files: name, size, state, remove. */
-export default function MultiFileQueue({ files, onRemove, rows, locked = false }: Props) {
+export default function MultiFileQueue({ files, onRemove, onRetry, rows, locked = false }: Props) {
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -77,6 +79,11 @@ export default function MultiFileQueue({ files, onRemove, rows, locked = false }
                 ) : null}
                 {STATE_LABEL[row.state]}
               </span>
+              {row.state === 'error' && onRetry && (
+                <Button size="sm" variant="ghost" onClick={() => onRetry(file)} disabled={locked}>
+                  Retry
+                </Button>
+              )}
               <IconButton
                 aria-label={`Remove ${file.name}`}
                 size="icon-sm"
