@@ -92,7 +92,7 @@ export default async function handler(
   res.status(200).json({
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    qbClientId: process.env.QB_CLIENT_ID,
+    qbClientId: process.env.QUICKBOOKS_CLIENT_ID,
     geminiApiKey: process.env.GEMINI_API_KEY,
   });
 }
@@ -151,7 +151,7 @@ export default async function handler(
           'Accept': 'application/json',
           'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': `Basic ${Buffer.from(
-            `${process.env.QB_CLIENT_ID}:${process.env.QB_CLIENT_SECRET}`
+            `${process.env.QUICKBOOKS_CLIENT_ID}:${process.env.QUICKBOOKS_CLIENT_SECRET}`
           ).toString('base64')}`,
         },
         body: new URLSearchParams({
@@ -290,8 +290,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
 
 # QuickBooks
-QB_CLIENT_ID=ABc...
-QB_CLIENT_SECRET=xxxxxxxx  # NEVER expose to frontend
+QUICKBOOKS_CLIENT_ID=ABc...
+QUICKBOOKS_CLIENT_SECRET=xxxxxxxx  # NEVER expose to frontend
 
 # Gemini AI
 GEMINI_API_KEY=AIzaSy...
@@ -307,8 +307,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://dev-xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
 
 # QuickBooks (sandbox)
-QB_CLIENT_ID=ABc...sandbox...
-QB_CLIENT_SECRET=xxxxxxxx
+QUICKBOOKS_CLIENT_ID=ABc...sandbox...
+QUICKBOOKS_CLIENT_SECRET=xxxxxxxx
 
 # Gemini AI (dev key)
 GEMINI_API_KEY=AIzaSy...dev...

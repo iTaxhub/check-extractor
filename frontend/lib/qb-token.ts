@@ -136,10 +136,11 @@ async function readCredentials(
 
   const { data } = await q.maybeSingle();
   return {
-    // Per-tenant credentials win over the env var, which is what the OAuth
-    // start and callback already do.
-    clientId: cred(data?.qb_client_id) ?? cred(process.env.QUICKBOOKS_CLIENT_ID),
-    clientSecret: cred(data?.qb_client_secret) ?? cred(process.env.QUICKBOOKS_CLIENT_SECRET),
+    // Env vars OVERRIDE database values — identical to auth.ts and callback.ts.
+    // The token was minted with the env credentials, so a leftover sandbox
+    // qb_client_id row must not win here or the first refresh fails.
+    clientId: cred(process.env.QUICKBOOKS_CLIENT_ID) ?? cred(data?.qb_client_id),
+    clientSecret: cred(process.env.QUICKBOOKS_CLIENT_SECRET) ?? cred(data?.qb_client_secret),
   };
 }
 
@@ -200,8 +201,8 @@ export async function resolveQbConnection(
     expiresAt: data.expires_at ?? null,
     tenantId: opts.tenantId ?? null,
     source: 'integrations',
-    clientId: cred(data.qb_client_id) ?? cred(process.env.QUICKBOOKS_CLIENT_ID),
-    clientSecret: cred(data.qb_client_secret) ?? cred(process.env.QUICKBOOKS_CLIENT_SECRET),
+    clientId: cred(process.env.QUICKBOOKS_CLIENT_ID) ?? cred(data.qb_client_id),
+    clientSecret: cred(process.env.QUICKBOOKS_CLIENT_SECRET) ?? cred(data.qb_client_secret),
   };
 }
 

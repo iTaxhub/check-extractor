@@ -2,18 +2,16 @@
 
 ## 🚀 Complete Checklist for Intuit Production Approval
 
-**App Name:** Cheque Extractor OCR
+**App Name:** Kyriq
 **App Type:** Accounting Automation Tool
-**Target Timeline:** 2-3 days after submission
+**Target Timeline:** days to weeks (third-party estimates vary; not an Intuit SLA)
 
 ---
 
-> ⚠️ **The URLs and app name in this file are out of date.** Everything here still says
-> `check-extractor-frontend.vercel.app` and "Cheque Extractor OCR". The app is at `kyriq.com` and is
-> called Kyriq. Submitting these values would be rejected.
->
-> **Use `INTUIT-FORM-ANSWERS.md` in this folder for every value you type into the Intuit form.**
-> It was read out of the code on 14 October 2026. This file is still useful as a process checklist.
+> **Values in this file were corrected to `kyriq.com` / Kyriq on 19 October 2026.** For anything
+> you type into the Intuit form, `INTUIT-FORM-ANSWERS.md` remains the authoritative, code-verified
+> list. For the actual switch from development to production keys, follow `CUTOVER.md`.
+> This file is a process checklist.
 
 ---
 
@@ -42,18 +40,20 @@
 - [ ] **Development Credentials Configured**
   - Client ID: (in the Intuit dashboard and the `QUICKBOOKS_CLIENT_ID` env var — not recorded here)
   - Client Secret: (stored securely)
-  - Sandbox company created and accessible
+  - Sandbox company created and accessible (note: only four write routes honour `QB_SANDBOX`;
+    see `CUTOVER.md` § Sandbox)
 
 - [ ] **Production URLs Configured**
-  - [ ] Host Domain: `check-extractor-frontend.vercel.app`
-  - [ ] Launch URL: `https://check-extractor-frontend.vercel.app/settings?tab=integrations`
-  - [ ] Connect URL: `https://check-extractor-frontend.vercel.app/api/qbo/auth`
-  - [ ] Reconnect URL: `https://check-extractor-frontend.vercel.app/api/qbo/auth`
-  - [ ] Disconnect URL: `https://check-extractor-frontend.vercel.app/api/qbo/disconnect`
+  - [ ] Host Domain: `kyriq.com`
+  - [ ] Launch URL: `https://kyriq.com/settings?tab=integrations`
+  - [ ] Connect URL: `https://kyriq.com/api/qbo/auth`
+  - [ ] Reconnect URL: `https://kyriq.com/api/qbo/auth`
+  - [ ] Disconnect URL: `https://kyriq.com/api/qbo/disconnect`
 
-- [ ] **Redirect URIs Added (Both Environments)**
+- [ ] **Redirect URIs Added (Both Environments)** — the Chrome extension needs no entry of its own;
+  it calls `/api/qbo/auth?source=extension` and uses the same callback
   - [ ] Development: `http://localhost:3080/api/qbo/callback`
-  - [ ] Production: `https://check-extractor-frontend.vercel.app/api/qbo/callback`
+  - [ ] Production: `https://kyriq.com/api/qbo/callback`
 
 #### B. App Categorization
 - [ ] **Primary Category Selected**
@@ -70,17 +70,17 @@
 All pages must be accessible without login and hosted on your domain.
 
 - [ ] **Privacy Policy**
-  - URL: `https://check-extractor-frontend.vercel.app/legal/privacy`
-  - File: `frontend/app/(public)/legal/privacy/page.tsx`
+  - URL: `https://kyriq.com/privacy`
+  - File: `frontend/app/(public)/privacy/page.tsx`
   - Status: ✅ Created (see file in this folder)
   
 - [ ] **Terms of Service**
-  - URL: `https://check-extractor-frontend.vercel.app/legal/terms`
-  - File: `frontend/app/(public)/legal/terms/page.tsx`
+  - URL: `https://kyriq.com/terms`
+  - File: `frontend/app/(public)/terms/page.tsx`
   - Status: ✅ Created (see file in this folder)
   
 - [ ] **End User License Agreement (EULA)**
-  - URL: `https://check-extractor-frontend.vercel.app/legal/eula`
+  - URL: `https://kyriq.com/legal/eula`
   - File: `frontend/app/(public)/legal/eula/page.tsx`
   - Status: ✅ Created (see file in this folder)
 
@@ -176,7 +176,7 @@ All pages must be accessible without login and hosted on your domain.
 
 - [ ] **Full Description**
   ```
-  Cheque Extractor automates accounting workflows by extracting structured 
+  Kyriq automates accounting workflows by extracting structured 
   financial data from cheque images using advanced OCR and AI technology. 
   
   Key Features:
@@ -298,7 +298,7 @@ Your app MUST demonstrate this complete flow for Intuit reviewers:
 ### 11. PRODUCTION DEPLOYMENT CHECKLIST
 
 - [ ] **Frontend Deployed to Vercel**
-  - URL: `https://check-extractor-frontend.vercel.app`
+  - URL: `https://kyriq.com`
   - HTTPS enabled (automatic with Vercel)
   - Environment variables configured
   - Build successful
@@ -375,7 +375,7 @@ Your app MUST demonstrate this complete flow for Intuit reviewers:
 - Demo account credentials
 
 ### Step 3: Wait for Review
-- **Timeline:** 2-3 business days
+- **Timeline:** days to weeks (third-party estimates vary; not an Intuit SLA)
 - **Status:** Check developer portal for updates
 - **Communication:** Intuit may email with questions
 
@@ -442,8 +442,8 @@ Before clicking "Submit for Production":
 - [ ] Team notified of submission
 
 **Estimated Time to Complete:** 4-6 hours
-**Approval Timeline:** 2-3 business days
-**Total Time to Production:** 3-4 business days
+**Approval Timeline:** days to weeks (third-party estimates vary; not an Intuit SLA)
+**Total Time to Production:** days to weeks
 
 ---
 

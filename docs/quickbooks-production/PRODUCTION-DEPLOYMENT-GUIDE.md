@@ -49,7 +49,7 @@ vercel login
 # Deploy to production
 vercel --prod
 
-# Note the deployment URL (e.g., check-extractor-frontend.vercel.app)
+# Note the deployment URL (e.g., kyriq.com)
 ```
 
 **Option B: Vercel Dashboard**
@@ -76,10 +76,10 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 # QuickBooks (Production Credentials)
 QUICKBOOKS_CLIENT_ID=your-production-client-id
 QUICKBOOKS_CLIENT_SECRET=your-production-client-secret
-QUICKBOOKS_REDIRECT_URI=https://check-extractor-frontend.vercel.app/api/qbo/callback
+QUICKBOOKS_REDIRECT_URI=https://kyriq.com/api/qbo/callback
 
 # App URL
-NEXT_PUBLIC_APP_URL=https://check-extractor-frontend.vercel.app
+NEXT_PUBLIC_APP_URL=https://kyriq.com
 
 # Google Gemini AI
 GEMINI_API_KEY=your-gemini-api-key
@@ -89,15 +89,15 @@ GEMINI_API_KEY=your-gemini-api-key
 
 ```bash
 # Test homepage
-curl -I https://check-extractor-frontend.vercel.app
+curl -I https://kyriq.com
 
 # Test legal pages
-curl -I https://check-extractor-frontend.vercel.app/legal/privacy
-curl -I https://check-extractor-frontend.vercel.app/legal/terms
-curl -I https://check-extractor-frontend.vercel.app/legal/eula
+curl -I https://kyriq.com/privacy
+curl -I https://kyriq.com/terms
+curl -I https://kyriq.com/legal/eula
 
 # Test API endpoints
-curl https://check-extractor-frontend.vercel.app/api/qbo/auth
+curl https://kyriq.com/api/qbo/auth
 ```
 
 ---
@@ -158,10 +158,11 @@ In Railway Dashboard → Your Service → Variables:
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your-service-role-key
 
-# QuickBooks
+# QuickBooks — the backend reads INTUIT_* and also accepts the QUICKBOOKS_* names
+# (backend/api_server.py). Use the same values as Vercel.
 INTUIT_CLIENT_ID=your-production-client-id
 INTUIT_CLIENT_SECRET=your-production-client-secret
-INTUIT_REDIRECT_URI=https://check-extractor-frontend.vercel.app/api/qbo/callback
+INTUIT_REDIRECT_URI=https://kyriq.com/api/qbo/callback
 
 # Google Gemini
 GEMINI_API_KEY=your-gemini-api-key
@@ -283,7 +284,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
 1. **In Keys & OAuth Tab**
    - Scroll to "Redirect URIs" section
    - Click "Add URI"
-   - Enter: `https://check-extractor-frontend.vercel.app/api/qbo/callback`
+   - Enter: `https://kyriq.com/api/qbo/callback`
    - Click "Save"
 
 2. **Configure App URLs**
@@ -297,7 +298,7 @@ Update Vercel and Railway with production QuickBooks credentials:
 ```env
 QUICKBOOKS_CLIENT_ID=your-production-client-id
 QUICKBOOKS_CLIENT_SECRET=your-production-client-secret
-QUICKBOOKS_REDIRECT_URI=https://check-extractor-frontend.vercel.app/api/qbo/callback
+QUICKBOOKS_REDIRECT_URI=https://kyriq.com/api/qbo/callback
 ```
 
 ---
@@ -308,9 +309,9 @@ QUICKBOOKS_REDIRECT_URI=https://check-extractor-frontend.vercel.app/api/qbo/call
 
 Visit each page and verify they load without errors:
 
-- https://check-extractor-frontend.vercel.app/legal/privacy
-- https://check-extractor-frontend.vercel.app/legal/terms
-- https://check-extractor-frontend.vercel.app/legal/eula
+- https://kyriq.com/privacy
+- https://kyriq.com/terms
+- https://kyriq.com/legal/eula
 
 **Checklist:**
 - [ ] Pages load without authentication
@@ -322,7 +323,7 @@ Visit each page and verify they load without errors:
 ### 5.2 Test OAuth Flow (Development Mode)
 
 1. **Initiate Connection**
-   - Go to: https://check-extractor-frontend.vercel.app/settings?tab=integrations
+   - Go to: https://kyriq.com/settings?tab=integrations
    - Click "Connect to QuickBooks"
 
 2. **Authorize**
@@ -357,10 +358,10 @@ Visit each page and verify they load without errors:
 
 ```bash
 # Test page load times
-curl -w "@curl-format.txt" -o /dev/null -s https://check-extractor-frontend.vercel.app
+curl -w "@curl-format.txt" -o /dev/null -s https://kyriq.com
 
 # Test API response times
-time curl https://check-extractor-frontend.vercel.app/api/qbo/auth
+time curl https://kyriq.com/api/qbo/auth
 ```
 
 ### 5.5 Security Verification
@@ -453,15 +454,15 @@ Use the MASTER-CHECKLIST.md to verify everything is ready:
 2. **Fill Out Production Review Form**
 
 **App Information:**
-- App Name: Cheque Extractor
+- App Name: Kyriq
 - Short Description: (see APP-DESCRIPTIONS.md)
 - Full Description: (see APP-DESCRIPTIONS.md)
 - Category: Accounting Automation
 
 **Legal Pages:**
-- Privacy Policy URL: `https://check-extractor-frontend.vercel.app/legal/privacy`
-- Terms of Service URL: `https://check-extractor-frontend.vercel.app/legal/terms`
-- EULA URL: `https://check-extractor-frontend.vercel.app/legal/eula`
+- Privacy Policy URL: `https://kyriq.com/privacy`
+- Terms of Service URL: `https://kyriq.com/terms`
+- EULA URL: `https://kyriq.com/legal/eula`
 
 **OAuth URLs:**
 - (Copy from OAUTH-URLS-CONFIGURATION.md)
@@ -510,7 +511,7 @@ Use the MASTER-CHECKLIST.md to verify everything is ready:
 
 ### 8.4 Expected Timeline
 
-- **Initial Review:** 2-3 business days
+- **Initial Review:** days to weeks (third-party estimates vary; not an Intuit SLA)
 - **Follow-up Questions:** 1-2 days (if any)
 - **Final Approval:** 1 day after all requirements met
 - **Total:** 3-7 business days typically

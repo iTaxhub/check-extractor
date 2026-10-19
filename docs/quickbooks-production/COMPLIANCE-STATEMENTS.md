@@ -12,7 +12,7 @@ This document contains all compliance statements required for QuickBooks product
 
 **Answer:**
 ```
-The Cheque Extractor application accesses QuickBooks Online accounting data solely to:
+The Kyriq application accesses QuickBooks Online accounting data solely to:
 
 1. Compare uploaded cheque images with existing QuickBooks transactions for reconciliation purposes
 2. Create new cheque entries (Expenses or Check transactions) in QuickBooks based on OCR-extracted data from uploaded cheque images

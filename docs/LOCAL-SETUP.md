@@ -59,10 +59,10 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 # Google Gemini API (optional - can set via UI later)
 GEMINI_API_KEY=your_gemini_api_key
 
-# QuickBooks OAuth (optional - for later)
-INTUIT_CLIENT_ID=
-INTUIT_CLIENT_SECRET=
-INTUIT_REDIRECT_URI=http://localhost:3080/api/qbo/callback
+# QuickBooks OAuth (optional) — frontend vars; the backend also accepts them (or INTUIT_* names)
+QUICKBOOKS_CLIENT_ID=
+QUICKBOOKS_CLIENT_SECRET=
+QUICKBOOKS_REDIRECT_URI=http://localhost:3080/api/qbo/callback
 FRONTEND_URL=http://localhost:3080
 
 # Server
@@ -348,9 +348,9 @@ cheque-extractor/
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ Yes | Your Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ Yes | Supabase service role key (secret) |
 | `GEMINI_API_KEY` | ⚠️ Optional | Google Gemini API key (can set via UI) |
-| `INTUIT_CLIENT_ID` | ⚠️ Optional | QuickBooks OAuth client ID |
-| `INTUIT_CLIENT_SECRET` | ⚠️ Optional | QuickBooks OAuth client secret |
-| `INTUIT_REDIRECT_URI` | ⚠️ Optional | OAuth callback URL |
+| `QUICKBOOKS_CLIENT_ID` | ⚠️ Optional | QuickBooks OAuth client ID |
+| `QUICKBOOKS_CLIENT_SECRET` | ⚠️ Optional | QuickBooks OAuth client secret |
+| `QUICKBOOKS_REDIRECT_URI` | ⚠️ Optional | OAuth callback URL |
 | `FRONTEND_URL` | ⚠️ Optional | Frontend URL for redirects |
 | `PORT` | ⚠️ Optional | Backend port (default: 3090) |
 

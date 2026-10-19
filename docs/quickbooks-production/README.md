@@ -2,13 +2,16 @@
 
 ## Complete Documentation for Intuit Production Approval
 
-This folder contains **ALL** documents required to successfully submit your Cheque Extractor application for QuickBooks Online production approval.
+This folder contains **ALL** documents required to successfully submit your Kyriq application for QuickBooks Online production approval.
 
 ---
 
 ## 📁 FOLDER CONTENTS
 
-### 1. **MASTER-CHECKLIST.md** ⭐ START HERE
+### 0. **CUTOVER.md** ⭐ START HERE for the dev → production key switch
+**Purpose:** One-page runbook: env names, where they live, Intuit-side steps, who must reconnect
+
+### 1. **MASTER-CHECKLIST.md**
 **Purpose:** Complete step-by-step checklist for production submission  
 **Use:** Track your progress through all 12 required sections  
 **Status:** Print this out and check off items as you complete them
@@ -73,9 +76,9 @@ open MASTER-CHECKLIST.md
 ### Step 2: Deploy Legal Pages
 ```bash
 # Ensure these pages are accessible:
-https://check-extractor-frontend.vercel.app/legal/privacy
-https://check-extractor-frontend.vercel.app/legal/terms
-https://check-extractor-frontend.vercel.app/legal/eula
+https://kyriq.com/privacy
+https://kyriq.com/terms
+https://kyriq.com/legal/eula
 ```
 
 ### Step 3: Configure OAuth URLs
@@ -115,8 +118,8 @@ https://check-extractor-frontend.vercel.app/legal/eula
 Before submitting, verify:
 
 ### Legal Pages (REQUIRED)
-- [ ] Privacy Policy accessible at `/legal/privacy`
-- [ ] Terms of Service accessible at `/legal/terms`
+- [ ] Privacy Policy accessible at `/privacy`
+- [ ] Terms of Service accessible at `/terms`
 - [ ] EULA accessible at `/legal/eula`
 - [ ] All pages load without authentication
 - [ ] All pages are mobile-responsive
@@ -171,8 +174,8 @@ Before submitting, verify:
 | **Configuration** | 1-2 hours | OAuth URLs, environment variables |
 | **Testing** | 2-3 hours | Test all features, create demo |
 | **Submission** | 1-2 hours | Fill forms, upload screenshots |
-| **Review Period** | 2-3 days | Wait for Intuit approval |
-| **Total** | 3-4 business days | From start to approval |
+| **Review Period** | days to weeks (third-party estimates vary; not an Intuit SLA) | Wait for Intuit approval |
+| **Total** | days to weeks | From start to approval |
 
 ---
 
@@ -268,7 +271,8 @@ Once approved, you'll need to:
 
 ### 1. Switch to Production Keys
 ```env
-# Update environment variables with production keys
+# Update environment variables with production keys — in Vercel (frontend) and
+# Railway (backend), never in git. See CUTOVER.md.
 QUICKBOOKS_CLIENT_ID=production-client-id
 QUICKBOOKS_CLIENT_SECRET=production-client-secret
 ```
@@ -327,7 +331,7 @@ Before clicking "Submit for Production":
 
 If you've completed all items in the MASTER-CHECKLIST.md, you're ready to submit for production approval.
 
-**Estimated approval time:** 2-3 business days
+**Estimated approval time:** days to weeks (third-party estimates vary; not an Intuit SLA)
 
 **Next steps:**
 1. Go to Intuit Developer Portal
