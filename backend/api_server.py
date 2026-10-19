@@ -354,6 +354,52 @@ def _supabase_rpc(fn_name: str, params: dict = None):
         return None
 
 
+def _job_from_row(row: dict) -> dict:
+    """The one way a check_jobs row becomes an in-memory job. Used at startup
+    and whenever a request names a job this process has never seen (restart,
+    or another instance created it). Local-only state (pdf_path, _app_ext,
+    _manifest) is not restored; start-extraction rebuilds it from Storage."""
+    checks_data = row.get("checks_data", [])
+    if isinstance(checks_data, str):
+        try:
+            checks_data = json.loads(checks_data)
+        except Exception:
+            checks_data = []
+    checks = []
+    for cd in (checks_data or []):
+        checks.append({
+            "check_id": cd.get("check_id", ""),
+            "page": cd.get("page", 0),
+            "width": cd.get("width", 0),
+            "height": cd.get("height", 0),
+            "extraction": cd.get("extraction"),  # Hybrid merged result
+            "methods_used": cd.get("methods_used", []),
+            "storage_url": cd.get("image_url", ""),
+            "engine_results": cd.get("engine_results", {}),  # Raw fields per engine
+            "engine_extractions": cd.get("engine_extractions", {}),  # Full extraction per engine
+            "engine_times_ms": cd.get("engine_times_ms", {}),
+        })
+    return {
+        "job_id": row.get("job_id"),
+        "status": row.get("status", "unknown"),
+        "pdf_name": row.get("pdf_name", ""),
+        "pdf_url": row.get("pdf_url"),
+        "file_size": row.get("file_size"),
+        "doc_format": row.get("doc_format"),
+        "total_pages": row.get("total_pages", 0),
+        "total_checks": row.get("total_checks", 0),
+        "checks": checks,
+        "error": row.get("error_message"),
+        "created_at": row.get("created_at", ""),
+        "completed_at": row.get("completed_at"),
+        # Carried through the restart so a job resumed after a crash still
+        # writes its usage_ledger rows against the right firm.
+        "tenant_id": row.get("tenant_id"),
+        "user_id": row.get("user_id"),
+        "batch_id": row.get("batch_id"),
+    }
+
+
 def _load_jobs_from_supabase():
     """Load existing jobs from Supabase into in-memory store on startup."""
     if not _supabase_ok:
@@ -370,45 +416,7 @@ def _load_jobs_from_supabase():
         jid = row.get("job_id")
         if not jid or jid in jobs:
             continue
-        checks_data = row.get("checks_data", [])
-        if isinstance(checks_data, str):
-            try:
-                checks_data = json.loads(checks_data)
-            except Exception:
-                checks_data = []
-        # Rebuild in-memory check list from DB
-        checks = []
-        for cd in (checks_data or []):
-            checks.append({
-                "check_id": cd.get("check_id", ""),
-                "page": cd.get("page", 0),
-                "width": cd.get("width", 0),
-                "height": cd.get("height", 0),
-                "extraction": cd.get("extraction"),  # Hybrid merged result
-                "methods_used": cd.get("methods_used", []),
-                "storage_url": cd.get("image_url", ""),
-                "engine_results": cd.get("engine_results", {}),  # Raw fields per engine
-                "engine_extractions": cd.get("engine_extractions", {}),  # Full extraction per engine
-                "engine_times_ms": cd.get("engine_times_ms", {}),
-            })
-        jobs[jid] = {
-            "job_id": jid,
-            "status": row.get("status", "unknown"),
-            "pdf_name": row.get("pdf_name", ""),
-                "pdf_url": row.get("pdf_url"),
-            "file_size": row.get("file_size"),
-            "doc_format": row.get("doc_format"),
-            "total_pages": row.get("total_pages", 0),
-            "total_checks": row.get("total_checks", 0),
-            "checks": checks,
-            "error": row.get("error_message"),
-            "created_at": row.get("created_at", ""),
-            "completed_at": row.get("completed_at"),
-            # Carried through the restart so a job resumed after a crash still
-            # writes its usage_ledger rows against the right firm.
-            "tenant_id": row.get("tenant_id"),
-            "user_id": row.get("user_id"),
-        }
+        jobs[jid] = _job_from_row(row)
         loaded += 1
     if loaded:
         print(f"✓ Loaded {loaded} jobs from Supabase")
@@ -952,6 +960,24 @@ if _require_auth:
 
 # In-memory job store
 jobs: dict = {}
+
+
+def _job(job_id: str):
+    """jobs[job_id], or the job hydrated from check_jobs if this process has
+    never seen it (restart, or another instance created it). Every endpoint
+    that looks a job up goes through here, so a job is never 'not found' just
+    because memory is cold. Returns None only when the row doesn't exist."""
+    j = jobs.get(job_id)
+    if j is not None:
+        return j
+    rows = _supabase_select("check_jobs", filters={"job_id": job_id}, limit=1)
+    if not rows:
+        return None
+    j = _job_from_row(rows[0])
+    jobs[job_id] = j
+    return j
+
+
 _SCRIPT_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = _SCRIPT_DIR / "uploads"
 OUTPUT_DIR = _SCRIPT_DIR / "output"
@@ -1576,15 +1602,18 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
     force=True will re-extract all checks in range regardless of existing results.
     If methods differ from previous extraction, affected checks are re-extracted.
     """
-    if req.job_id not in jobs:
+    job = _job(req.job_id)
+    if job is None:
         raise HTTPException(404, "Job not found")
-
-    job = jobs[req.job_id]
 
     # Server-side trial gate. Extraction is the billable act, so this is the
     # gate that matters: an expired trial gets 402 here even if the UI button
     # is still visible. Nothing about reading /api/jobs/* changes.
     ctx = _auth_context(request)
+    # This route is not job-scoped by path, so _api_gate cannot check ownership;
+    # a hydrated job carries its tenant, so refuse another firm's job id here.
+    if job.get("tenant_id") and ctx["tenant_id"] and job["tenant_id"] != ctx["tenant_id"]:
+        raise HTTPException(404, "Job not found")
     if not job.get("tenant_id") and ctx["tenant_id"]:
         job["tenant_id"] = ctx["tenant_id"]
         job["user_id"] = ctx["user_id"]
@@ -1638,6 +1667,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
 
     job["selected_methods"] = req.methods
     job["status"] = "extracting"
+    job["error"] = None  # a previous failed run's message must not outlive this one
 
     def _run_extraction():
         try:
@@ -1681,23 +1711,29 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                                     continue
                                 
                                 # Try to get image from storage
-                                storage_img_url = f"{_sb_url}/storage/v1/object/public/checks/jobs/{req.job_id}/checks/{cid}.png"
+                                # Uploads write jobs/{id}/images/{cid}.png (see the
+                                # _supabase_upload_file calls); this used to read
+                                # /checks/ and so never hit.
+                                storage_img_url = f"{_sb_url}/storage/v1/object/public/checks/jobs/{req.job_id}/images/{cid}.png"
                                 resp = _requests.get(storage_img_url, timeout=10)
                                 if resp.status_code == 200:
-                                    img_path = Path(out_dir) / "checks" / f"{cid}.png"
+                                    img_path = Path(out_dir) / "images" / f"{cid}.png"
                                     img_path.parent.mkdir(parents=True, exist_ok=True)
                                     with open(img_path, "wb") as f:
                                         f.write(resp.content)
                                     manifest.append((cid, str(img_path), check["page"]))
                                     print(f"  ✓ Downloaded check image {cid} from Storage")
                             
-                            if manifest:
-                                print(f"  ✓ Downloaded {len(manifest)} check images from Storage")
-                                # Create a minimal CheckExtractorApp instance for OCR operations
-                                app_ext = CheckExtractorApp(None, output_dir=out_dir)
-                                app_ext.pages = []
                         except Exception as e:
-                            print(f"  ✗ Failed to download check images from Storage: {e}")
+                            # One bad download must not discard the ones that
+                            # succeeded; whatever is in the manifest is usable.
+                            print(f"  ✗ Storage download stopped early: {e}")
+                        if manifest:
+                            print(f"  ✓ Downloaded {len(manifest)} check images from Storage")
+                            # Minimal CheckExtractorApp for OCR only. Created after
+                            # the try so a mid-loop error can't leave it None.
+                            app_ext = CheckExtractorApp(None, output_dir=out_dir)
+                            app_ext.pages = []
                 
                 # If still no images, try to get/download PDF and extract
                 if not manifest:
@@ -1726,6 +1762,23 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                     app_ext = CheckExtractorApp(pdf_path, output_dir=out_dir)
                     manifest = app_ext.extract_all_images()
                     print(f"  ✓ Extracted {len(manifest)} check images from PDF")
+                    if not checks:
+                        # Hydrated from a row written before extraction ran
+                        # (checks_data was []): rebuild the list from the
+                        # manifest, as upload-analyze does, or the results
+                        # have nothing to attach to.
+                        for cid, img_path, page_num in manifest:
+                            im = PILImage.open(img_path)
+                            checks.append({
+                                "check_id": cid,
+                                "page": page_num,
+                                "image_file": os.path.basename(img_path),
+                                "image_path": img_path,
+                                "width": im.size[0],
+                                "height": im.size[1],
+                                "extraction": None,
+                            })
+                        job["checks"] = checks
 
             # ── Filter manifest by range ──────────────────────────
             filtered_manifest = list(manifest)
@@ -2047,56 +2100,24 @@ def get_job(job_id: str, source: str = "auto"):
     if not job_id or not job_id.strip():
         raise HTTPException(400, "Invalid job_id")
     
-    # Check if we should fetch from Supabase
-    use_db = False
-    if source == "db":
-        use_db = True
-    elif source == "auto" and job_id in jobs:
-        # If job is complete, fetch from DB for fresh data
-        if jobs[job_id].get("status") == "complete":
-            use_db = True
-    
-    # Fetch from Supabase if requested or job is complete
-    if use_db and _supabase_ok:
+    job = _job(job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found")
+
+    # A complete job's record is the DB row (another instance may have finished
+    # it), so re-read it unless the caller asked for memory. Same shape as the
+    # hydrated job, so the response never depends on which path produced it.
+    if _supabase_ok and (source == "db" or (source == "auto" and job.get("status") == "complete")):
         try:
-            db_jobs = _supabase_select("check_jobs", filters={"job_id": job_id})
-            if db_jobs and len(db_jobs) > 0:
-                db_job = db_jobs[0]  # _supabase_select returns a list, get first item
-                # Parse checks_data JSON
-                checks_data = []
-                if db_job.get("checks_data"):
-                    try:
-                        checks_data = json.loads(db_job["checks_data"])
-                    except:
-                        pass
-                
-                return {
-                    "job_id": db_job["job_id"],
-                    "status": db_job["status"],
-                    "pdf_name": db_job.get("pdf_name", ""),
-                    "doc_format": db_job.get("doc_format"),
-                    "total_pages": db_job.get("total_pages", 0),
-                    "total_checks": db_job.get("total_checks", 0),
-                    "checks": checks_data,
-                    "error": db_job.get("error_message"),
-                    "created_at": db_job.get("created_at", ""),
-                    "completed_at": db_job.get("completed_at"),
-                    "pdf_url": db_job.get("pdf_url"),
-                }
+            rows = _supabase_select("check_jobs", filters={"job_id": job_id}, limit=1)
+            if rows:
+                job = _job_from_row(rows[0])
         except Exception as e:
             print(f"Failed to fetch job from DB: {e}")
-            # Fall through to in-memory
-    
-    # Fall back to in-memory data
-    if job_id not in jobs:
-        raise HTTPException(404, "Job not found")
-    
+            # Fall through to the in-memory copy
+
     # Return a clean copy without internal fields
-    try:
-        job = {k: v for k, v in jobs[job_id].items() if not k.startswith("_")}
-        return job
-    except Exception as e:
-        raise HTTPException(500, f"Error retrieving job: {str(e)}")
+    return {k: v for k, v in job.items() if not k.startswith("_")}
 
 
 @app.get("/api/billing/usage")
@@ -2279,7 +2300,7 @@ def get_job_pdf(job_id: str):
     pdf_path = UPLOAD_DIR / f"{job_id}.pdf"
     if not pdf_path.exists():
         # Try Supabase Storage fallback
-        job = jobs.get(job_id)
+        job = _job(job_id)
         if job:
             pdf_name = job.get("pdf_name", "")
             if _supabase_ok and pdf_name:
@@ -2297,9 +2318,14 @@ def get_job_pdf(job_id: str):
 def get_page_image(job_id: str, page_num: int):
     """Serve a rendered page image."""
     img_path = OUTPUT_DIR / job_id / "pages" / f"page_{page_num}.png"
-    if not img_path.exists():
-        raise HTTPException(404, "Page image not found")
-    return FileResponse(str(img_path), media_type="image/png")
+    if img_path.exists():
+        return FileResponse(str(img_path), media_type="image/png")
+    # Pages are uploaded to Storage when extraction completes; after a restart
+    # or on another instance the local file is gone but the object is there
+    # for any job that finished. Jobs that never finished get Storage's 400.
+    if _supabase_ok:
+        return RedirectResponse(f"{_sb_url}/storage/v1/object/public/checks/jobs/{job_id}/pages/page_{page_num}.png")
+    raise HTTPException(404, "Page image not found")
 
 
 @app.get("/api/checks/{job_id}/{check_id}/image")
@@ -2308,8 +2334,8 @@ def get_check_image(job_id: str, check_id: str):
     img_path = OUTPUT_DIR / job_id / "images" / f"{check_id}.png"
     if img_path.exists():
         return FileResponse(str(img_path), media_type="image/png")
-    # Fallback: check in-memory job for storage_url
-    job = jobs.get(job_id)
+    # Fallback: the job's recorded storage_url (hydrated from the DB if needed)
+    job = _job(job_id)
     if job:
         for c in job.get("checks", []):
             if c.get("check_id") == check_id:
@@ -2392,9 +2418,9 @@ def _parse_amount(raw: str) -> str:
 
 def _get_job_checks(job_id: str):
     """Get job and checks, raise HTTPException if not found/ready."""
-    if job_id not in jobs:
+    job = _job(job_id)
+    if job is None:
         raise HTTPException(404, "Job not found")
-    job = jobs[job_id]
     if job["status"] != "complete":
         raise HTTPException(400, "Job not complete yet")
     return job, job.get("checks", [])
@@ -2644,9 +2670,9 @@ def list_export_formats():
 @app.post("/api/jobs/{job_id}/retry-failed")
 def retry_failed(job_id: str, _auth=Depends(_verify_token)):
     """Re-extract only checks that have null extraction (failed/incomplete)."""
-    if job_id not in jobs:
+    job = _job(job_id)
+    if job is None:
         raise HTTPException(404, "Job not found")
-    job = jobs[job_id]
     if job["status"] in ("extracting", "ocr_running"):
         return {"job_id": job_id, "status": job["status"], "message": "Already processing"}
 
