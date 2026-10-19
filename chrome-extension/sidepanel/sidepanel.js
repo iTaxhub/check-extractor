@@ -1486,10 +1486,12 @@ async function runExtraction() {
     fileBase64: base64,
     fileName: file.name,
     fileSize: file.size,
-  });
+  }, 180000); // the server finds every cheque before it answers; 10s was cutting it off
 
   if (uploadRes?.error || !uploadRes?.job_id) {
-    appendLog(`✗ Upload failed: ${uploadRes?.error || 'no job_id returned'}`, 'err');
+    const why = uploadRes?.error
+      || (uploadRes === null ? 'Kyriq did not answer in time. Check Docs before retrying, the file may already be there.' : 'the server did not return a job');
+    appendLog(`✗ Upload failed: ${why}`, 'err');
     spinner?.classList.add('done');
     $('#progress-summary').textContent = 'Upload failed';
     return;
@@ -1507,7 +1509,7 @@ async function runExtraction() {
     type: 'START_EXTRACTION',
     jobId: currentJobId,
     methods,
-  });
+  }, 60000);
 
   if (extractRes?.error) {
     appendLog(`✗ Extraction start failed: ${extractRes.error}`, 'err');

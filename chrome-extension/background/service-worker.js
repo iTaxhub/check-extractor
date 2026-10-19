@@ -1713,7 +1713,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               body: form,
             });
             const data = await res.json();
-            if (!res.ok) return { error: data.detail || data.error || `Upload failed (${res.status})` };
+            // 409 = same file uploaded before; the backend explains it in `message`.
+            if (!res.ok) return { error: data.detail || data.error || data.message || `Upload failed (${res.status})`, duplicate: !!data.duplicate };
             log('UPLOAD_DOCUMENT success', { job_id: data.job_id });
             return { success: true, job_id: data.job_id, job: data };
           } catch (e) {
