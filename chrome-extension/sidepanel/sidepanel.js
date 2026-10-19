@@ -928,7 +928,7 @@ function renderMatches() {
   const bulkBtn = $('#btn-bulk-approve');
   if (bulkBtn) {
     const eligible = matches.filter(m => ['matched', 'pending'].includes(m.status) && m.score >= 95).length;
-    bulkBtn.textContent = `Bulk Approve ≥95% (${eligible})`;
+    bulkBtn.textContent = `Approve all 95%+ (${eligible})`;
     bulkBtn.disabled = eligible === 0;
   }
 
@@ -976,15 +976,15 @@ function renderMatchRow(m, index) {
             const numPart = txn.doc_number ? '#' + txn.doc_number : srcLabel;
             return `
             <div class="num">${numPart} · ${fmt(txn.amount)}</div>
-            <div class="detail">${fmtDate(txn.txn_date)} · ${escHtml(txn.payee || '—')} <span class="qb-type-badge" style="font-size:8px;opacity:0.8;">${srcLabel}</span></div>`;
-          })() : `<div class="no-match">No QB match</div>`}
+            <div class="detail">${fmtDate(txn.txn_date)} · ${escHtml(txn.payee || '—')} <span class="qb-type-badge">${srcLabel}</span></div>`;
+          })() : `<div class="no-match">No QuickBooks match</div>`}
         </div>
       </div>
       <div class="match-actions">
         <button class="btn-sm btn-ghost" data-action="review" data-idx="${index}">Review</button>
         ${m.status === 'unmatched' ? `<button class="btn-sm btn-ghost" data-action="search" data-idx="${index}">Find</button>` : ''}
-        ${['matched', 'pending', 'discrepancy'].includes(m.status) ? `<button class="btn-sm btn-green" data-action="approve" data-idx="${index}">Approve &amp; Clear</button>` : ''}
-        ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-amber" data-action="fix" data-idx="${index}" title="Push the cheque amount to QB to resolve the discrepancy">Fix in QB</button>` : ''}
+        ${['matched', 'pending', 'discrepancy'].includes(m.status) ? `<button class="btn-sm btn-primary row-primary" data-action="approve" data-idx="${index}">Approve</button>` : ''}
+        ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-ghost row-warn" data-action="fix" data-idx="${index}" title="Push the cheque amount to QuickBooks to resolve the difference">Fix in QuickBooks</button>` : ''}
         ${m.status === 'approved' ? `<button class="btn-sm btn-ghost" data-action="undo" data-idx="${index}">Undo</button>` : ''}
         ${m.status !== 'approved' ? `<button class="btn-sm btn-ghost" data-action="flag" data-idx="${index}">Flag</button>` : ''}
       </div>
@@ -995,7 +995,7 @@ function renderMatchRow(m, index) {
           ${scoreItem('Date', m.reasons.date || 0, 15)}
           ${scoreItem('Payee', m.reasons.payee || 0, 15)}
         </div>` : ''}
-        ${m.amtDiff > 0.01 ? `<p style="font-size:10px;color:#dc2626;margin-top:6px;">⚠ Amount diff: ${fmt(m.amtDiff)}</p>` : ''}
+        ${m.amtDiff > 0.01 ? `<p class="amount-diff">Amount differs by ${fmt(m.amtDiff)}</p>` : ''}
       </div>
     </div>`;
 }
@@ -1056,7 +1056,7 @@ function showBulkApproveConfirm(count, cb) {
   const descEl  = document.querySelector('#approve-confirm-overlay .approve-confirm-desc');
   const detEl   = $('#approve-confirm-details');
   const okBtn   = $('#approve-confirm-ok');
-  if (titleEl) titleEl.textContent = `Bulk Approve ${count} Matches?`;
+  if (titleEl) titleEl.textContent = `Approve ${count} matches?`;
   if (descEl)  descEl.innerHTML = `This will mark <strong>${count} QuickBooks transactions</strong> as Cleared and stamp a verification note. Only matches with score ≥95% and status matched/pending are included.`;
   if (detEl)   detEl.innerHTML = `<div style="font-size:11px;color:#6b7280;padding:4px 0;">This action cannot be undone. Per-row Approve buttons process one check at a time.</div>`;
   if (okBtn)   okBtn.textContent = `Approve ${count} Matches`;
@@ -1814,7 +1814,7 @@ async function loadDocuments(force = false) {
 function renderDocumentsList(docs) {
   const list = $('#documents-list');
   if (!docs.length) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>No documents yet</p><p class="sub">Upload check PDFs in the Upload tab or in the web app</p></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>No documents yet</p><p class="sub">Upload cheque PDFs in the Upload tab or in the web app</p></div>`;
     return;
   }
   const statusLabel = { complete: 'Complete', analyzed: 'Ready', extracting: 'Processing', ocr: 'OCR', ocr_running: 'OCR...', pending: 'Pending', error: 'Error' };

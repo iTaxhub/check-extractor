@@ -191,19 +191,19 @@
     <button id="btn-sync" class="btn-sync" title="Sync QB transactions">
       <span id="sync-icon"></span> Sync
     </button>
-    <button id="btn-qb-reconnect" class="btn-qb-reconnect" title="Re-authenticate with QuickBooks Online">QB</button>
+    <button id="btn-qb-reconnect" class="btn-qb-reconnect" title="Re-authenticate with QuickBooks Online">Reconnect</button>
 
     <!-- Connection status + usage meter + open-QB (client list item 7) -->
     <div class="company-bar-status">
       <span id="qb-status" class="qb-status" title="QuickBooks connection">Connected</span>
       <div id="usage-meter" class="usage-meter" style="display:none;">
         <div class="usage-meter-top">
-          <span>Checks this period</span>
+          <span>Cheques this period</span>
           <span id="usage-meter-val" class="usage-meter-val">—</span>
         </div>
         <div class="usage-meter-track"><div id="usage-meter-fill" class="usage-meter-fill"></div></div>
       </div>
-      <button id="btn-open-qb" class="btn-open-qb" title="Open QuickBooks on the active company">QuickBooks</button>
+      <button id="btn-open-qb" class="btn-open-qb" title="Open QuickBooks on the active company">Open QuickBooks</button>
     </div>
   </div>
 
@@ -244,14 +244,21 @@
       <button class="pill active" data-status="all">All <span class="cnt" id="cnt-all">0</span></button>
       <button class="pill" data-status="pending">Pending <span class="cnt" id="cnt-pending">0</span></button>
       <button class="pill" data-status="matched">Matched <span class="cnt" id="cnt-matched">0</span></button>
-      <button class="pill" data-status="discrepancy">Disc. <span class="cnt" id="cnt-discrepancy">0</span></button>
-      <button class="pill" data-status="unmatched">No Match <span class="cnt" id="cnt-unmatched">0</span></button>
+      <button class="pill" data-status="discrepancy">Differences <span class="cnt" id="cnt-discrepancy">0</span></button>
+      <button class="pill" data-status="unmatched">No match <span class="cnt" id="cnt-unmatched">0</span></button>
       <button class="pill" data-status="approved">Done <span class="cnt" id="cnt-approved">0</span></button>
     </div>
     <div class="bulk-bar">
-      <button id="btn-bulk-approve" class="btn-sm btn-amber" disabled>Bulk Approve ≥95% (0)</button>
-      <button id="btn-match-filter-toggle" class="btn-sm btn-ghost" title="Search &amp; filter">Filter</button>
+      <button id="btn-bulk-approve" class="btn-sm btn-outline" disabled>Approve all 95%+ (0)</button>
+      <button id="btn-match-filter-toggle" class="btn-sm btn-ghost" title="Search, filter and sort">Search &amp; filter</button>
     </div>
+    <!-- Matches search filter (hidden by default, toggled by Filter btn) -->
+    <div id="matches-filter-bar" class="checks-filter-bar" style="display:none;">
+      <div class="checks-search-wrap">
+        <span class="checks-search-icon"></span>
+        <input id="match-search" type="text" class="checks-search" placeholder="Search payee, check #, bank…" autocomplete="off">
+        <button id="match-search-clear" class="checks-search-clear" style="display:none;">&#x2715;</button>
+      </div>
     <!-- Document + source filter row -->
     <div class="doc-filter-bar">
       <label class="doc-filter-label" for="doc-filter">Doc:</label>
@@ -264,7 +271,7 @@
         <option value="payroll_check">Payroll</option>
       </select>
     </div>
-    <!-- Date filter row (always visible) -->
+    <!-- Date filter row -->
     <div class="checks-date-row" style="padding:4px 0 6px;">
       <label class="checks-date-label">From</label>
       <input id="match-date-from" type="date" class="checks-date-input">
@@ -281,20 +288,13 @@
       <button class="sort-btn" data-sort="score">Score</button>
       <button id="btn-sort-dir" class="sort-dir-btn" title="Toggle sort direction">↓</button>
     </div>
-    <!-- Matches search filter (hidden by default, toggled by Filter btn) -->
-    <div id="matches-filter-bar" class="checks-filter-bar" style="display:none;">
-      <div class="checks-search-wrap">
-        <span class="checks-search-icon"></span>
-        <input id="match-search" type="text" class="checks-search" placeholder="Search payee, check #, bank…" autocomplete="off">
-        <button id="match-search-clear" class="checks-search-clear" style="display:none;">&#x2715;</button>
-      </div>
     </div>
     <div id="match-list" class="match-list">
       <div class="empty-state">
         <div class="empty-icon"></div>
         <p>No matches yet</p>
         <p class="sub">Checks are loaded automatically on login.<br>Use Sync to match against QuickBooks.</p>
-        <button id="btn-load-match" class="btn-primary" style="margin-top:14px;padding:8px 20px;font-size:12px;">Load &amp; Match Cheques</button>
+        <button id="btn-load-match" class="btn-primary" style="margin-top:14px;padding:8px 20px;font-size:12px;">Load and match cheques</button>
       </div>
     </div>
   </div>
@@ -376,14 +376,14 @@
   <!-- ── TAB: Docs (uploaded PDF jobs only) ── -->
   <div id="view-documents" class="view tab-view" style="display:none;">
     <div class="tab-toolbar">
-      <span class="tab-toolbar-title">Uploaded Documents</span>
+      <span class="tab-toolbar-title">Uploaded documents</span>
       <button id="btn-refresh-docs" class="btn-xs btn-ghost">Refresh</button>
     </div>
     <div id="documents-list" class="documents-list">
       <div class="empty-state">
         <div class="empty-icon"></div>
         <p>No documents yet</p>
-        <p class="sub">Upload check PDFs in the Upload tab or in the web app</p>
+        <p class="sub">Upload cheque PDFs in the Upload tab or in the web app</p>
       </div>
     </div>
   </div>
