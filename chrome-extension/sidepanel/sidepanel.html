@@ -347,11 +347,18 @@
 
     <!-- Step 3: Extract progress -->
     <div id="upload-step-3" style="display:none;">
-      <div class="progress-header">
-        <div class="progress-spinner" id="progress-spinner"></div>
-        <span id="progress-summary">Extracting cheques…</span>
+      <div class="upload-status" id="upload-status" data-state="loading" role="status" aria-live="polite">
+        <div class="progress-spinner" id="progress-spinner" aria-hidden="true"></div>
+        <div class="upload-status-body">
+          <p class="upload-status-title" id="progress-summary">Preparing</p>
+          <p class="upload-status-msg" id="upload-status-msg"></p>
+          <div class="upload-status-actions" id="upload-status-actions"></div>
+        </div>
       </div>
-      <div id="progress-log" class="progress-log"></div>
+      <details class="log-details">
+        <summary>Details</summary>
+        <div id="progress-log" class="progress-log"></div>
+      </details>
       <div id="extraction-results" style="display:none;">
         <div class="results-header">
           <span id="results-title">Extracted cheques</span>

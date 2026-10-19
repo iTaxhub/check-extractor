@@ -1445,3 +1445,29 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .icon-btn svg { display: block; }
 
 .config-note { font-size: 12px; color: var(--ink-body); line-height: 1.5; margin: 4px 0 14px; }
+
+/* Upload status card: the one place that says what is happening and what to
+   do next. The raw log sits under Details. */
+.upload-status {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px; margin-bottom: 10px;
+  background: var(--surface); border: 1px solid var(--ledger-border);
+  border-radius: var(--radius-card);
+}
+.upload-status[data-state="done"]  { border-color: var(--success-border); background: var(--success-bg); }
+.upload-status[data-state="warn"]  { border-color: var(--warning-border); background: var(--warning-bg); }
+.upload-status[data-state="error"] { border-color: var(--error-border);   background: var(--error-bg); }
+.upload-status .progress-spinner { flex-shrink: 0; margin-top: 1px; }
+.upload-status:not([data-state="loading"]) .progress-spinner { display: none; }
+.upload-status-body { min-width: 0; flex: 1; }
+.upload-status-title { font-size: 13px; font-weight: 600; color: var(--ink-strong); overflow-wrap: anywhere; }
+.upload-status[data-state="done"]  .upload-status-title { color: var(--success-text); }
+.upload-status[data-state="warn"]  .upload-status-title { color: var(--warning-text); }
+.upload-status[data-state="error"] .upload-status-title { color: var(--error-text); }
+.upload-status-msg { font-size: 12px; color: var(--ink-body); margin-top: 3px; line-height: 1.5; }
+.upload-status-msg:empty { display: none; }
+.upload-status-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.upload-status-actions:empty { display: none; }
+.log-details { margin-top: 4px; }
+.log-details summary { font-size: 11px; color: var(--ink-faint); cursor: pointer; padding: 4px 0; }
+.log-details summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }

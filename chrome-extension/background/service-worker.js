@@ -1707,14 +1707,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             const blob = new Blob([bytes], { type: 'application/pdf' });
             const form = new FormData();
             form.append('file', blob, msg.fileName || 'document.pdf');
-            const res = await fetch(`${backendUrl}/api/upload-analyze`, {
+            const qs = msg.confirmReupload ? '?confirm_reupload=true' : '';
+            const res = await fetch(`${backendUrl}/api/upload-analyze${qs}`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${s.access_token}` },
               body: form,
             });
             const data = await res.json();
             // 409 = same file uploaded before; the backend explains it in `message`.
-            if (!res.ok) return { error: data.detail || data.error || data.message || `Upload failed (${res.status})`, duplicate: !!data.duplicate };
+            if (!res.ok) return { error: data.detail || data.error || data.message || `Upload failed (${res.status})`, duplicate: !!data.duplicate, previousUploadedAt: data.previous_last_uploaded_at || data.previous_uploaded_at || null };
             log('UPLOAD_DOCUMENT success', { job_id: data.job_id });
             return { success: true, job_id: data.job_id, job: data };
           } catch (e) {
