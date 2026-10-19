@@ -411,8 +411,10 @@ async function getValidQBToken() {
   if (!res.ok) {
     let errDetail = '';
     try { const errBody = await res.json(); errDetail = errBody?.error || errBody?.detail || ''; } catch (_) {}
-    // 400/401 from Intuit = refresh token expired (invalid_grant) → must re-authorize
-    if (res.status === 400 || res.status === 401) throw new Error('QB_RECONNECT_NEEDED');
+    // 400/401 from Intuit = refresh token expired (invalid_grant) → must re-authorize.
+    // Older deployments of the route answered a dead token with 502 "…reconnect
+    // QuickBooks"; treat that the same so the panel shows its Reconnect prompt.
+    if (res.status === 400 || res.status === 401 || /reconnect/i.test(errDetail)) throw new Error('QB_RECONNECT_NEEDED');
     // 404 = the /api/extension/qb/refresh-token route is not deployed on the frontend yet.
     // Always fall back to existing token — let Intuit decide if it's still valid.
     // If Intuit rejects it (401), that error surfaces as QB_RECONNECT_NEEDED via qbApiRequest.
@@ -1707,13 +1709,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             const blob = new Blob([bytes], { type: 'application/pdf' });
             const form = new FormData();
             form.append('file', blob, msg.fileName || 'document.pdf');
-            const res = await fetch(`${backendUrl}/api/upload-analyze`, {
+            const qs = msg.confirmReupload ? '?confirm_reupload=true' : '';
+            const res = await fetch(`${backendUrl}/api/upload-analyze${qs}`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${s.access_token}` },
               body: form,
             });
             const data = await res.json();
-            if (!res.ok) return { error: data.detail || data.error || `Upload failed (${res.status})` };
+            // 409 = same file uploaded before; the backend explains it in `message`.
+            if (!res.ok) return { error: data.detail || data.error || data.message || `Upload failed (${res.status})`, duplicate: !!data.duplicate, previousUploadedAt: data.previous_last_uploaded_at || data.previous_uploaded_at || null };
             log('UPLOAD_DOCUMENT success', { job_id: data.job_id });
             return { success: true, job_id: data.job_id, job: data };
           } catch (e) {

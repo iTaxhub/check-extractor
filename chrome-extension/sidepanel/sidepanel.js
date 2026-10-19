@@ -248,7 +248,7 @@ let pendingFiles = [];
 let extractedChecks = [];
 let connections = [];
 let session = null;
-let selectedMethod = 'hybrid';
+let selectedMethod = 'hybrid'; // always hybrid: engine choice is not a client decision
 let currentJobId = null;
 let _pollTimer = null;
 // ── State cache (avoid redundant fetches on tab navigation) ──
@@ -928,7 +928,7 @@ function renderMatches() {
   const bulkBtn = $('#btn-bulk-approve');
   if (bulkBtn) {
     const eligible = matches.filter(m => ['matched', 'pending'].includes(m.status) && m.score >= 95).length;
-    bulkBtn.textContent = `Bulk Approve ≥95% (${eligible})`;
+    bulkBtn.textContent = `Approve all 95%+ (${eligible})`;
     bulkBtn.disabled = eligible === 0;
   }
 
@@ -976,15 +976,15 @@ function renderMatchRow(m, index) {
             const numPart = txn.doc_number ? '#' + txn.doc_number : srcLabel;
             return `
             <div class="num">${numPart} · ${fmt(txn.amount)}</div>
-            <div class="detail">${fmtDate(txn.txn_date)} · ${escHtml(txn.payee || '—')} <span class="qb-type-badge" style="font-size:8px;opacity:0.8;">${srcLabel}</span></div>`;
-          })() : `<div class="no-match">No QB match</div>`}
+            <div class="detail">${fmtDate(txn.txn_date)} · ${escHtml(txn.payee || '—')} <span class="qb-type-badge">${srcLabel}</span></div>`;
+          })() : `<div class="no-match">No QuickBooks match</div>`}
         </div>
       </div>
       <div class="match-actions">
         <button class="btn-sm btn-ghost" data-action="review" data-idx="${index}">Review</button>
         ${m.status === 'unmatched' ? `<button class="btn-sm btn-ghost" data-action="search" data-idx="${index}">Find</button>` : ''}
-        ${['matched', 'pending', 'discrepancy'].includes(m.status) ? `<button class="btn-sm btn-green" data-action="approve" data-idx="${index}">Approve &amp; Clear</button>` : ''}
-        ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-amber" data-action="fix" data-idx="${index}" title="Push the cheque amount to QB to resolve the discrepancy">Fix in QB</button>` : ''}
+        ${['matched', 'pending', 'discrepancy'].includes(m.status) ? `<button class="btn-sm btn-primary row-primary" data-action="approve" data-idx="${index}">Approve</button>` : ''}
+        ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-ghost row-warn" data-action="fix" data-idx="${index}" title="Push the cheque amount to QuickBooks to resolve the difference">Fix in QuickBooks</button>` : ''}
         ${m.status === 'approved' ? `<button class="btn-sm btn-ghost" data-action="undo" data-idx="${index}">Undo</button>` : ''}
         ${m.status !== 'approved' ? `<button class="btn-sm btn-ghost" data-action="flag" data-idx="${index}">Flag</button>` : ''}
       </div>
@@ -995,7 +995,7 @@ function renderMatchRow(m, index) {
           ${scoreItem('Date', m.reasons.date || 0, 15)}
           ${scoreItem('Payee', m.reasons.payee || 0, 15)}
         </div>` : ''}
-        ${m.amtDiff > 0.01 ? `<p style="font-size:10px;color:#dc2626;margin-top:6px;">⚠ Amount diff: ${fmt(m.amtDiff)}</p>` : ''}
+        ${m.amtDiff > 0.01 ? `<p class="amount-diff">Amount differs by ${fmt(m.amtDiff)}</p>` : ''}
       </div>
     </div>`;
 }
@@ -1056,7 +1056,7 @@ function showBulkApproveConfirm(count, cb) {
   const descEl  = document.querySelector('#approve-confirm-overlay .approve-confirm-desc');
   const detEl   = $('#approve-confirm-details');
   const okBtn   = $('#approve-confirm-ok');
-  if (titleEl) titleEl.textContent = `Bulk Approve ${count} Matches?`;
+  if (titleEl) titleEl.textContent = `Approve ${count} matches?`;
   if (descEl)  descEl.innerHTML = `This will mark <strong>${count} QuickBooks transactions</strong> as Cleared and stamp a verification note. Only matches with score ≥95% and status matched/pending are included.`;
   if (detEl)   detEl.innerHTML = `<div style="font-size:11px;color:#6b7280;padding:4px 0;">This action cannot be undone. Per-row Approve buttons process one check at a time.</div>`;
   if (okBtn)   okBtn.textContent = `Approve ${count} Matches`;
@@ -1429,55 +1429,94 @@ function renderFileQueue() {
   });
 }
 
+// ── Upload status card ─────────────────────────────────────────
+// One place that says what is happening, what went wrong and what to do
+// next. The raw log stays available under Details for support.
+function setUploadStatus(state, title, msg = '', actions = []) {
+  const box = $('#upload-status');
+  if (!box) return;
+  box.dataset.state = state; // loading | done | warn | error
+  const t = $('#progress-summary'); if (t) t.textContent = title;
+  const m = $('#upload-status-msg'); if (m) m.textContent = msg;
+  const a = $('#upload-status-actions');
+  if (a) {
+    a.innerHTML = '';
+    for (const { label, primary, onClick } of actions) {
+      const b = document.createElement('button');
+      b.className = primary ? 'btn-sm btn-primary' : 'btn-sm btn-outline';
+      b.textContent = label;
+      b.addEventListener('click', onClick);
+      a.appendChild(b);
+    }
+  }
+  $('#progress-spinner')?.classList.toggle('done', state !== 'loading');
+}
+
+function fmtUploadDate(iso) {
+  if (!iso) return 'previously';
+  const d = new Date(iso);
+  return isNaN(d) ? 'previously' : `on ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+}
+
+function showDuplicate(fileName, when) {
+  setUploadStatus('warn', 'Already uploaded',
+    `"${fileName}" was uploaded ${when}. Uploading it again counts toward this period's usage.`,
+    [
+      { label: 'Upload again', primary: true, onClick: () => runExtraction({ confirmReupload: true }) },
+      { label: 'Choose another file', onClick: () => setUploadStep(1) },
+    ]);
+}
+
+// The hybrid result can be empty while each engine's own result is stored.
+function bestExtraction(c) {
+  const shown = ['payee', 'amount', 'checkDate', 'checkNumber', 'bankName'];
+  const has = (e) => e && shown.some(k => e[k] != null && (typeof e[k] !== 'object' || e[k].value));
+  if (has(c.extraction)) return c.extraction;
+  const engines = c.engine_extractions || {};
+  for (const n of ['gemini', 'numarkdown', 'tesseract', ...Object.keys(engines)]) {
+    if (has(engines[n])) return engines[n];
+  }
+  return c.extraction || {};
+}
+
 // ── Step 2→3: Upload PDF to backend then start extraction ──
-async function runExtraction() {
+async function runExtraction(opts = {}) {
   if (!pendingFiles.length) return;
+  const confirmReupload = !!opts.confirmReupload;
   const file = pendingFiles[0]; // one PDF at a time
   setUploadStep(3);
   clearProgressLog();
   hide('#extraction-results');
-  const spinner = $('#progress-spinner');
-  spinner?.classList.remove('done');
   extractedChecks = [];
   currentJobId = null;
   if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  const retry = { label: 'Try again', primary: true, onClick: () => runExtraction(opts) };
+  const back  = { label: 'Back', onClick: () => setUploadStep(1) };
 
-  // ── Duplicate check ──
-  appendLog(`Checking for duplicates...`, 'info');
-  $('#progress-summary').textContent = 'Checking for duplicates...';
-  const existingRes = await sendMsg({ type: 'GET_DOCUMENTS' });
-  const existing = existingRes?.documents || [];
-  const duplicate = existing.find(d =>
-    d.pdf_name && file.name &&
-    d.pdf_name.toLowerCase() === file.name.toLowerCase()
-  );
-  if (duplicate) {
-    const dupDate = duplicate.created_at
-      ? new Date(duplicate.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      : 'previously';
-    const proceed = confirm(
-      `"${file.name}" was already uploaded ${dupDate}.\n\nDo you want to upload it again?`
-    );
-    if (!proceed) {
-      appendLog(`Cancelled — duplicate detected: "${file.name}"`, 'err');
-      spinner?.classList.add('done');
-      $('#progress-summary').textContent = 'Cancelled (duplicate)';
-      setUploadStep(1);
+  // ── Duplicate check (skipped once the user chose to upload again) ──
+  if (!confirmReupload) {
+    setUploadStatus('loading', 'Checking your documents');
+    appendLog('Checking for duplicates...', 'info');
+    const existingRes = await sendMsg({ type: 'GET_DOCUMENTS' });
+    const duplicate = (existingRes?.documents || []).find(d =>
+      d.pdf_name && file.name && d.pdf_name.toLowerCase() === file.name.toLowerCase());
+    if (duplicate) {
+      appendLog(`Duplicate: "${file.name}"`, 'err');
+      showDuplicate(file.name, fmtUploadDate(duplicate.created_at));
       return;
     }
-    appendLog(`Duplicate confirmed — re-uploading "${file.name}"`, 'info');
   }
 
-  appendLog(`Uploading: ${file.name} (${fmtSize(file.size)})`, 'info');
-  $('#progress-summary').textContent = 'Uploading PDF...';
-
   // ── Upload ──
+  setUploadStatus('loading', `Uploading ${file.name}`,
+    'Kyriq finds every cheque in the PDF before extraction starts. Large files can take a minute.');
+  appendLog(`Uploading: ${file.name} (${fmtSize(file.size)})${confirmReupload ? ', re-upload confirmed' : ''}`, 'info');
   let base64;
   try {
     base64 = await fileToBase64(file);
   } catch (e) {
     appendLog(`✗ Could not read file: ${e.message}`, 'err');
-    spinner?.classList.add('done');
+    setUploadStatus('error', 'Could not read this file', e.message || 'Choose the PDF again.', [back]);
     return;
   }
 
@@ -1486,51 +1525,56 @@ async function runExtraction() {
     fileBase64: base64,
     fileName: file.name,
     fileSize: file.size,
-  });
+    confirmReupload,
+  }, 180000); // the server finds every cheque before it answers; 10s was cutting it off
 
+  if (uploadRes?.duplicate) {
+    appendLog(`Server: ${uploadRes.error}`, 'err');
+    showDuplicate(file.name, fmtUploadDate(uploadRes.previousUploadedAt));
+    return;
+  }
   if (uploadRes?.error || !uploadRes?.job_id) {
-    appendLog(`✗ Upload failed: ${uploadRes?.error || 'no job_id returned'}`, 'err');
-    spinner?.classList.add('done');
-    $('#progress-summary').textContent = 'Upload failed';
+    const why = uploadRes?.error
+      || (uploadRes === null
+        ? 'Kyriq did not answer in time. The file may still have uploaded, so check Docs before trying again.'
+        : 'The server did not return a document.');
+    appendLog(`✗ Upload failed: ${why}`, 'err');
+    setUploadStatus('error', 'Upload failed', why, [retry, back]);
     return;
   }
 
   currentJobId = uploadRes.job_id;
-  appendLog(`✓ Uploaded — job ${currentJobId}`, 'ok');
-  appendLog(`Starting extraction (${selectedMethod})...`, 'info');
-  $('#progress-summary').textContent = 'Starting extraction...';
+  appendLog(`✓ Uploaded, job ${currentJobId}`, 'ok');
 
-  // ── Start extraction ──
-  const methodMap = { ai: ['gemini'], tesseract: ['tesseract'], hybrid: ['hybrid'] };
-  const methods = methodMap[selectedMethod] || ['hybrid'];
+  // ── Start extraction (always hybrid; engine choice is not a client decision) ──
+  setUploadStatus('loading', 'Starting extraction');
   const extractRes = await sendMsg({
     type: 'START_EXTRACTION',
     jobId: currentJobId,
-    methods,
-  });
+    methods: ['hybrid'],
+  }, 60000);
 
   if (extractRes?.error) {
     appendLog(`✗ Extraction start failed: ${extractRes.error}`, 'err');
-    spinner?.classList.add('done');
-    $('#progress-summary').textContent = 'Extraction failed to start';
+    setUploadStatus('error', 'Extraction did not start', extractRes.error, [retry, back]);
     return;
   }
 
-  appendLog(`Extraction running — polling for results...`, 'info');
-  $('#progress-summary').textContent = 'Processing...';
+  appendLog('Extraction running, polling for results...', 'info');
+  setUploadStatus('loading', 'Reading cheques', 'This usually takes under a minute.');
 
   // ── Poll until complete ──
-  const DONE_STATUSES = ['complete', 'error'];
   let attempts = 0;
-  const MAX_POLLS = 120; // 4 minutes max
+  const MAX_POLLS = 120; // 4 minutes
 
   _pollTimer = setInterval(async () => {
     attempts++;
     if (attempts > MAX_POLLS) {
       clearInterval(_pollTimer); _pollTimer = null;
       appendLog('⚠ Timed out waiting for extraction', 'err');
-      spinner?.classList.add('done');
-      $('#progress-summary').textContent = 'Timed out';
+      setUploadStatus('warn', 'Still processing',
+        'Extraction is taking longer than usual. It keeps running on the server, and the cheques appear in Docs when it finishes.',
+        [back]);
       return;
     }
     let pollRes;
@@ -1538,60 +1582,72 @@ async function runExtraction() {
       pollRes = await sendMsg({ type: 'POLL_JOB', jobId: currentJobId });
     } catch (pollErr) {
       dbg(`Poll error: ${pollErr?.message}`, 'error');
-      return; // skip this tick, retry next
+      return;
     }
     const job = pollRes?.job;
     if (!job) return;
 
     const status = job.status || 'pending';
-    const progress = job.extraction_progress != null ? ` (${Math.round(job.extraction_progress * 100)}%)` : '';
-    $('#progress-summary').textContent = `${status}${progress}`;
-
-    if (DONE_STATUSES.includes(status)) {
-      clearInterval(_pollTimer); _pollTimer = null;
-      spinner?.classList.add('done');
-
-      if (status === 'error') {
-        appendLog(`✗ Extraction error: ${job.error_message || job.error || 'unknown'}`, 'err');
-        $('#progress-summary').textContent = 'Extraction failed';
-        return;
-      }
-
-      // Parse checks — backend returns `checks` (array), legacy used `checks_data` (JSON string)
-      let checksData = job.checks || [];
-      if (!checksData.length && job.checks_data) {
-        try {
-          checksData = typeof job.checks_data === 'string'
-            ? JSON.parse(job.checks_data)
-            : job.checks_data;
-        } catch (parseErr) {
-          dbg(`checks_data JSON parse failed: ${parseErr?.message}`, 'error');
-          checksData = [];
-        }
-      }
-
-      extractedChecks = checksData.map(c => {
-        const ext = c.extraction || {};
-        return {
-          check_number: ext.checkNumber?.value || ext.checkNumber || null,
-          amount: parseFloat((ext.amount?.value || ext.amount || '0').toString().replace(/[^0-9.]/g, '')) || null,
-          payee: ext.payee?.value || ext.payee || null,
-          check_date: ext.checkDate?.value || ext.checkDate || null,
-          bank_name: ext.bankName?.value || ext.bankName || null,
-          memo: ext.memo?.value || ext.memo || null,
-          _fileName: job.pdf_name || file.name,
-          _checkId: c.check_id,
-        };
-      });
-
-      appendLog(`✓ Done — ${extractedChecks.length} cheques extracted from ${job.total_pages || '?'} pages`, 'ok');
-      $('#progress-summary').textContent = `Complete — ${extractedChecks.length} cheques`;
-      renderExtracted();
-
-      // Refresh docs cache so the new file appears in the Docs dropdown immediately
-      _cachedDocs = null;
-      loadDocuments(true).catch(() => {});
+    if (status !== 'complete' && status !== 'error') {
+      // A percentage only when the server measured one.
+      const raw = job.extraction_progress;
+      const pct = typeof raw === 'number' ? Math.round(raw <= 1 ? raw * 100 : raw) : null;
+      setUploadStatus('loading', 'Reading cheques',
+        pct != null ? `${pct}% done` : 'This usually takes under a minute.');
+      return;
     }
+
+    clearInterval(_pollTimer); _pollTimer = null;
+
+    if (status === 'error') {
+      const why = job.error_message || job.error || 'The server could not read this document.';
+      appendLog(`✗ Extraction error: ${why}`, 'err');
+      setUploadStatus('error', 'Extraction failed', why,
+        [{ label: 'Try again', primary: true, onClick: () => runExtraction({ confirmReupload: true }) }, back]);
+      return;
+    }
+
+    // Backend returns `checks` (array); legacy used `checks_data` (JSON string).
+    let checksData = job.checks || [];
+    if (!checksData.length && job.checks_data) {
+      try {
+        checksData = typeof job.checks_data === 'string' ? JSON.parse(job.checks_data) : job.checks_data;
+      } catch (parseErr) {
+        dbg(`checks_data JSON parse failed: ${parseErr?.message}`, 'error');
+        checksData = [];
+      }
+    }
+
+    extractedChecks = checksData.map(c => {
+      const ext = bestExtraction(c);
+      return {
+        check_number: ext.checkNumber?.value || ext.checkNumber || null,
+        amount: parseFloat((ext.amount?.value || ext.amount || '0').toString().replace(/[^0-9.]/g, '')) || null,
+        payee: ext.payee?.value || ext.payee || null,
+        check_date: ext.checkDate?.value || ext.checkDate || null,
+        bank_name: ext.bankName?.value || ext.bankName || null,
+        memo: ext.memo?.value || ext.memo || null,
+        _fileName: job.pdf_name || file.name,
+        _checkId: c.check_id,
+      };
+    });
+
+    const n = extractedChecks.length;
+    const pages = job.total_pages;
+    appendLog(`✓ Done, ${n} cheques from ${pages || '?'} pages`, 'ok');
+    if (n) {
+      setUploadStatus('done', `${n} cheque${n === 1 ? '' : 's'} extracted`,
+        pages ? `From ${pages} page${pages === 1 ? '' : 's'}.` : '');
+    } else {
+      setUploadStatus('warn', 'No cheques found',
+        'Kyriq could not find a cheque in this PDF. Check that the scan is upright and readable, then upload again.',
+        [{ label: 'Upload again', primary: true, onClick: () => runExtraction({ confirmReupload: true }) }, back]);
+    }
+    renderExtracted();
+
+    // Refresh docs cache so the new file appears in the Docs dropdown immediately
+    _cachedDocs = null;
+    loadDocuments(true).catch(() => {});
   }, 2000);
 }
 
@@ -1758,7 +1814,7 @@ async function loadDocuments(force = false) {
 function renderDocumentsList(docs) {
   const list = $('#documents-list');
   if (!docs.length) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>No documents yet</p><p class="sub">Upload check PDFs in the Upload tab or in the web app</p></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>No documents yet</p><p class="sub">Upload cheque PDFs in the Upload tab or in the web app</p></div>`;
     return;
   }
   const statusLabel = { complete: 'Complete', analyzed: 'Ready', extracting: 'Processing', ocr: 'OCR', ocr_running: 'OCR...', pending: 'Pending', error: 'Error' };

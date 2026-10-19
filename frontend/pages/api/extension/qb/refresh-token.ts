@@ -70,7 +70,14 @@ export default async function handler(
       if (token.reason === 'missing_credentials') {
         return res.status(500).json({ error: 'QuickBooks credentials not configured on server' });
       }
-      return res.status(502).json({ error: 'Token refresh failed — reconnect QuickBooks' });
+      // Intuit said the refresh token is dead (invalid_grant, revoked): that is
+      // a reconnect, not a server fault. 401 is what the extension maps to its
+      // Reconnect QuickBooks prompt; a 502 here left it showing a raw error.
+      if (token.reason === 'refresh_failed' && (token.health === 'needs_reconnect' || token.health === 'revoked')) {
+        return res.status(401).json({ error: 'QuickBooks needs to be reconnected', reconnect: true });
+      }
+      // Anything else (Intuit 5xx, rate limit, network) is transient.
+      return res.status(502).json({ error: 'QuickBooks did not respond. Try again in a minute.' });
     }
 
     return res.status(200).json({
