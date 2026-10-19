@@ -43,17 +43,18 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 # Google Gemini (optional - can be set via UI later)
 GEMINI_API_KEY=your_gemini_key
 
-# QuickBooks OAuth
-INTUIT_CLIENT_ID=your_client_id_from_intuit
-INTUIT_CLIENT_SECRET=your_client_secret_from_intuit
-INTUIT_REDIRECT_URI=https://your-railway-url.up.railway.app/api/qbo/callback
+# QuickBooks OAuth — the OAuth routes are Next.js API routes, so these are FRONTEND (Vercel) vars.
+# The Python backend reads INTUIT_CLIENT_ID/SECRET/REDIRECT_URI but also accepts these names.
+QUICKBOOKS_CLIENT_ID=your_client_id_from_intuit
+QUICKBOOKS_CLIENT_SECRET=your_client_secret_from_intuit
+QUICKBOOKS_REDIRECT_URI=https://kyriq.com/api/qbo/callback   # Next.js route on Vercel, not Railway
 FRONTEND_URL=https://your-railway-url.up.railway.app
 
 # Server
 PORT=3090
 ```
 
-**Note:** You'll get `INTUIT_CLIENT_ID` and `INTUIT_CLIENT_SECRET` after creating the Intuit app in Step 3.
+**Note:** You'll get `QUICKBOOKS_CLIENT_ID` and `QUICKBOOKS_CLIENT_SECRET` after creating the Intuit app in Step 3.
 
 ---
 
@@ -106,9 +107,9 @@ After creating the app, Intuit will provide:
 Go back to Railway and add the Intuit credentials:
 
 ```env
-INTUIT_CLIENT_ID=your_actual_client_id
-INTUIT_CLIENT_SECRET=your_actual_client_secret
-INTUIT_REDIRECT_URI=https://your-railway-url.up.railway.app/api/qbo/callback
+QUICKBOOKS_CLIENT_ID=your_actual_client_id
+QUICKBOOKS_CLIENT_SECRET=your_actual_client_secret
+QUICKBOOKS_REDIRECT_URI=https://kyriq.com/api/qbo/callback   # Next.js route on Vercel, not Railway
 ```
 
 **Important:** After adding these, Railway will automatically redeploy your app.
@@ -121,9 +122,9 @@ INTUIT_REDIRECT_URI=https://your-railway-url.up.railway.app/api/qbo/callback
 
 1. Update your local `.env` file:
 ```env
-INTUIT_CLIENT_ID=your_client_id
-INTUIT_CLIENT_SECRET=your_client_secret
-INTUIT_REDIRECT_URI=http://localhost:3080/api/qbo/callback
+QUICKBOOKS_CLIENT_ID=your_client_id
+QUICKBOOKS_CLIENT_SECRET=your_client_secret
+QUICKBOOKS_REDIRECT_URI=http://localhost:3080/api/qbo/callback
 FRONTEND_URL=http://localhost:3080
 ```
 

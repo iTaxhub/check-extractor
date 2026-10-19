@@ -49,12 +49,12 @@ Use these URLs for production deployment after Intuit approval.
 
 | Field | URL | Notes |
 |-------|-----|-------|
-| **Host Domain** | `check-extractor-frontend.vercel.app` | No protocol (https://) |
-| **Launch URL** | `https://check-extractor-frontend.vercel.app/settings?tab=integrations` | HTTPS required |
-| **Connect URL** | `https://check-extractor-frontend.vercel.app/api/qbo/auth` | HTTPS required |
-| **Reconnect URL** | `https://check-extractor-frontend.vercel.app/api/qbo/auth` | Same as Connect URL |
-| **Disconnect URL** | `https://check-extractor-frontend.vercel.app/api/qbo/disconnect` | HTTPS required |
-| **Redirect URI** | `https://check-extractor-frontend.vercel.app/api/qbo/callback` | HTTPS required |
+| **Host Domain** | `kyriq.com` | No protocol (https://) |
+| **Launch URL** | `https://kyriq.com/settings?tab=integrations` | HTTPS required |
+| **Connect URL** | `https://kyriq.com/api/qbo/auth` | HTTPS required |
+| **Reconnect URL** | `https://kyriq.com/api/qbo/auth` | Same as Connect URL |
+| **Disconnect URL** | `https://kyriq.com/api/qbo/disconnect` | HTTPS required |
+| **Redirect URI** | `https://kyriq.com/api/qbo/callback` | HTTPS required |
 
 ### Production Configuration Steps
 
@@ -66,7 +66,7 @@ Use these URLs for production deployment after Intuit approval.
 2. **Add Production Redirect URI**
    - In Intuit Developer Portal → Keys & OAuth
    - Click "Add URI" in Redirect URIs section
-   - Enter: `https://check-extractor-frontend.vercel.app/api/qbo/callback`
+   - Enter: `https://kyriq.com/api/qbo/callback`
    - Click "Save"
 
 3. **Update Production URLs**
@@ -127,7 +127,7 @@ You can configure BOTH development and production URLs simultaneously.
 ```
 Redirect URIs:
 1. http://localhost:3080/api/qbo/callback
-2. https://check-extractor-frontend.vercel.app/api/qbo/callback
+2. https://kyriq.com/api/qbo/callback
 
 Active URLs: localhost (for testing)
 ```
@@ -136,7 +136,7 @@ Active URLs: localhost (for testing)
 ```
 Redirect URIs:
 1. http://localhost:3080/api/qbo/callback (keep for future dev)
-2. https://check-extractor-frontend.vercel.app/api/qbo/callback (active)
+2. https://kyriq.com/api/qbo/callback (active)
 
 Active URLs: Production Vercel URLs
 ```
@@ -152,35 +152,35 @@ Before submitting for production, test each URL:
 **1. Launch URL Test**
 ```bash
 # Should load your settings/integrations page
-curl -I https://check-extractor-frontend.vercel.app/settings?tab=integrations
+curl -I https://kyriq.com/settings?tab=integrations
 # Expected: 200 OK
 ```
 
 **2. Connect URL Test**
 ```bash
 # Should return JSON with authUrl
-curl https://check-extractor-frontend.vercel.app/api/qbo/auth
+curl https://kyriq.com/api/qbo/auth
 # Expected: {"authUrl": "https://appcenter.intuit.com/connect/oauth2?..."}
 ```
 
 **3. Disconnect URL Test**
 ```bash
 # Should accept POST request
-curl -X POST https://check-extractor-frontend.vercel.app/api/qbo/disconnect
+curl -X POST https://kyriq.com/api/qbo/disconnect
 # Expected: Success response or 401 if not authenticated
 ```
 
 **4. Callback URL Test**
 ```bash
 # Should accept GET with query parameters
-curl "https://check-extractor-frontend.vercel.app/api/qbo/callback?code=test&state=test&realmId=123"
+curl "https://kyriq.com/api/qbo/callback?code=test&state=test&realmId=123"
 # Expected: Redirect to settings page
 ```
 
 ### Manual OAuth Flow Test
 
 1. **Initiate Connection**
-   - Go to: `https://check-extractor-frontend.vercel.app/settings?tab=integrations`
+   - Go to: `https://kyriq.com/settings?tab=integrations`
    - Click "Connect to QuickBooks"
    - Should redirect to Intuit OAuth page
 
@@ -190,7 +190,7 @@ curl "https://check-extractor-frontend.vercel.app/api/qbo/callback?code=test&sta
    - Click "Authorize"
 
 3. **Verify Callback**
-   - Should redirect back to: `https://check-extractor-frontend.vercel.app/settings?tab=integrations&success=quickbooks_connected`
+   - Should redirect back to: `https://kyriq.com/settings?tab=integrations&success=quickbooks_connected`
    - Connection status should show "Connected"
    - Tokens should be stored in database
 
@@ -313,8 +313,8 @@ Section: App URLs
 **Cause:** Host domain includes protocol or path
 
 **Solution:**
-- ❌ Wrong: `https://check-extractor-frontend.vercel.app`
-- ✅ Correct: `check-extractor-frontend.vercel.app`
+- ❌ Wrong: `https://kyriq.com`
+- ✅ Correct: `kyriq.com`
 
 ### Error: "Connection Failed"
 

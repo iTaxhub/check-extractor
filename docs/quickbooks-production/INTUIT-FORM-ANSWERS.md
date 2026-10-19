@@ -1,8 +1,8 @@
 # Intuit production form: the answers
 
-Every value below was read out of the code on 14 October 2026, not from the older files in this
-folder. **Use this file, not `MASTER-CHECKLIST.md` or `OAUTH-URLS-CONFIGURATION.md`** — those still
-say `check-extractor-frontend.vercel.app` and "Cheque Extractor OCR", and would be rejected.
+Every value below was read out of the code on 14 October 2026. The older files in this folder were
+corrected to the same host and name on 19 October 2026, but **this file stays the authoritative
+list for the Intuit form**, and `CUTOVER.md` is the runbook for the key switch itself.
 
 Also ignore `docs/INTUIT-URLS-REFERENCE.md`, `docs/DEPLOYMENT-GUIDE.md` and
 `docs/RAILWAY-DEPLOYMENT-FIX.md`. They put the OAuth callback on a Railway URL. It is a Next.js API
@@ -24,7 +24,7 @@ route on Vercel.
 | Privacy policy | `https://kyriq.com/privacy` |
 | Terms of service | `https://kyriq.com/terms` |
 
-Give Intuit `/privacy` and `/terms`, **not** `/legal/privacy` and `/legal/terms`. Those two are now
+Give Intuit `/privacy` and `/terms`, **not** `/privacy` and `/terms`. Those two are now
 307 redirect stubs, and some reviewers reject a redirect. The EULA is the exception: it exists only
 under `/legal`.
 

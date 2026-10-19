@@ -31,13 +31,13 @@ Transform cheque images into QuickBooks entries automatically using advanced OCR
 ## 📄 FULL DESCRIPTION (500-1000 words)
 
 ```
-Cheque Extractor: Automate Your Cheque Processing Workflow
+Kyriq: Automate Your Cheque Processing Workflow
 
-Transform the way you handle cheques with Cheque Extractor, the intelligent OCR solution designed specifically for accounting professionals and businesses using QuickBooks Online.
+Transform the way you handle cheques with Kyriq, the intelligent OCR solution designed specifically for accounting professionals and businesses using QuickBooks Online.
 
 WHAT IS CHEQUE EXTRACTOR?
 
-Cheque Extractor is an advanced accounting automation tool that uses Optical Character Recognition (OCR) and Artificial Intelligence to extract structured data from cheque images and seamlessly integrate it with your QuickBooks Online account. Say goodbye to manual data entry and hello to accuracy and efficiency.
+Kyriq is an advanced accounting automation tool that uses Optical Character Recognition (OCR) and Artificial Intelligence to extract structured data from cheque images and seamlessly integrate it with your QuickBooks Online account. Say goodbye to manual data entry and hello to accuracy and efficiency.
 
 KEY FEATURES:
 
@@ -192,9 +192,9 @@ No long-term contracts. Cancel anytime. 14-day money-back guarantee.
 
 ABOUT US:
 
-Cheque Extractor is built by accounting professionals for accounting professionals. We understand the challenges of manual data entry and the importance of accuracy in financial records. Our mission is to help businesses and accounting firms work smarter, not harder.
+Kyriq is built by accounting professionals for accounting professionals. We understand the challenges of manual data entry and the importance of accuracy in financial records. Our mission is to help businesses and accounting firms work smarter, not harder.
 
-Join thousands of businesses already automating their cheque processing with Cheque Extractor.
+Join thousands of businesses already automating their cheque processing with Kyriq.
 
 ---
 
@@ -339,13 +339,13 @@ Description: Upload and process multiple cheques simultaneously. Track progress 
 
 **Accounting Firm:**
 ```
-"Cheque Extractor has transformed our workflow. We're processing client cheques 10x faster and our accuracy has improved dramatically. Highly recommended for any accounting firm."
+"Kyriq has transformed our workflow. We're processing client cheques 10x faster and our accuracy has improved dramatically. Highly recommended for any accounting firm."
 - Sarah M., CPA, Accounting Firm Owner
 ```
 
 **Small Business:**
 ```
-"As a small business owner, I don't have time for manual data entry. Cheque Extractor saves me hours every week and integrates perfectly with QuickBooks."
+"As a small business owner, I don't have time for manual data entry. Kyriq saves me hours every week and integrates perfectly with QuickBooks."
 - John D., Small Business Owner
 ```
 
@@ -408,11 +408,11 @@ Not happy? Get a full refund within 14 days. No questions asked.
 
 **Welcome Email:**
 ```
-Subject: Welcome to Cheque Extractor! 🎉
+Subject: Welcome to Kyriq! 🎉
 
 Hi [Name],
 
-Welcome to Cheque Extractor! You're about to transform the way you process cheques.
+Welcome to Kyriq! You're about to transform the way you process cheques.
 
 Here's how to get started:
 1. Connect your QuickBooks Online account
@@ -423,7 +423,7 @@ Here's how to get started:
 Need help? Our support team is here for you.
 
 Happy processing!
-The Cheque Extractor Team
+The Kyriq Team
 ```
 
 **Onboarding Email Series:**
@@ -442,7 +442,7 @@ Day 14: Reconciliation Best Practices
 ```
 Tired of manual cheque data entry? 🤔
 
-Cheque Extractor uses AI to extract data from cheque images and sync directly to QuickBooks.
+Kyriq uses AI to extract data from cheque images and sync directly to QuickBooks.
 
 ✅ 90% faster processing
 ✅ Improved accuracy
@@ -457,7 +457,7 @@ Try free: [link]
 ```
 Accounting professionals: Stop wasting time on manual data entry.
 
-Cheque Extractor automates cheque processing with advanced OCR and AI:
+Kyriq automates cheque processing with advanced OCR and AI:
 • Extract data from cheque images automatically
 • Sync directly to QuickBooks Online
 • Reduce processing time by 90%
@@ -472,7 +472,7 @@ Start your free trial: [link]
 ```
 Small business owners: Spend less time on paperwork, more time growing your business! 🚀
 
-Cheque Extractor automatically processes cheques and syncs to QuickBooks.
+Kyriq automatically processes cheques and syncs to QuickBooks.
 
 No more manual data entry. No more errors. Just fast, accurate accounting.
 

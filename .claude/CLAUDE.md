@@ -113,7 +113,7 @@ QBO queries use `minorversion=73` and paginate at 1000 records per page via `qbo
 - Content script (`content/qbo-overlay.js`) injects into `*.intuit.com` pages
 - Side panel UI at `sidepanel/sidepanel.html`
 - Communicates with the Kyriq backend (Railway) and Supabase directly
-- Auth via `chrome.identity` API storing tokens in `chrome.storage`
+- QuickBooks OAuth goes through the backend (`/api/qbo/auth?source=extension`, same `https://kyriq.com/api/qbo/callback` redirect); no `chrome.identity` and no `chrome-extension://` redirect URI. Kyriq session tokens live in `chrome.storage`
 
 ### Database (Supabase PostgreSQL)
 

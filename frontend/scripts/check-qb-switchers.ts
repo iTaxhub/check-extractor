@@ -141,7 +141,16 @@ const CALL_SITES = [
     /Basic \$\{Buffer\.from\(`\$\{(?!conn\.clientId)/,
     `${RESOLVER} must build Basic auth from the trimmed credentials`
   );
-  ok('every client id and secret, from the database or the environment, is trimmed');
+  // Same order as auth.ts/callback.ts: env first, then the tenant's row. A
+  // token minted with the env credentials must be refreshed with them too.
+  for (const row of ['data?.qb_client_id', 'data.qb_client_id', 'data?.qb_client_secret', 'data.qb_client_secret']) {
+    const env = row.includes('secret') ? 'QUICKBOOKS_CLIENT_SECRET' : 'QUICKBOOKS_CLIENT_ID';
+    assert.ok(
+      resolver.includes(`cred(process.env.${env}) ?? cred(${row})`),
+      `${RESOLVER} must read process.env.${env} before ${row}, like auth.ts and callback.ts`
+    );
+  }
+  ok('every client id and secret, from the database or the environment, is trimmed, env first');
 }
 
 /* ══ 4. Credit cards are in the accounts query ════════════════════════════ */

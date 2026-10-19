@@ -33,8 +33,8 @@ These are configured once in your backend environment variables and shared acros
 If you need to update backend configuration, set these environment variables:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `QB_CLIENT_ID`
-- `QB_CLIENT_SECRET`
+- `QUICKBOOKS_CLIENT_ID`
+- `QUICKBOOKS_CLIENT_SECRET`
 - `GEMINI_API_KEY`
 
 **Expected Result:** ✅ Extension auto-configures on first launch
