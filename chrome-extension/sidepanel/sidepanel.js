@@ -414,7 +414,7 @@ async function handleQBOAuthComplete(msg) {
   dbg(`QB OAuth completed${msg.company ? ' for ' + msg.company : ''} — auto-refreshing connections`, 'success');
   const infoEl = $('#qb-connect-info');
   if (infoEl) {
-    infoEl.textContent = `✅ Connected${msg.company ? ' to ' + msg.company : ''}! Loading your workspace…`;
+    infoEl.textContent = `Connected${msg.company ? ' to ' + msg.company : ''}! Loading your workspace…`;
     infoEl.style.display = '';
   }
   try {
@@ -510,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const parts = [`[Kyriq Error] ${title}`, msg, raw ? `--- Raw QB Response ---\n${raw}` : ''].filter(Boolean);
     navigator.clipboard.writeText(parts.join('\n\n')).then(() => {
       const btn = $('#error-dialog-copy');
-      if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000); }
+      if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
     }).catch(() => {});
   });
   $('#approve-confirm-ok')?.addEventListener('click', async () => {
@@ -928,7 +928,7 @@ function renderMatches() {
   const bulkBtn = $('#btn-bulk-approve');
   if (bulkBtn) {
     const eligible = matches.filter(m => ['matched', 'pending'].includes(m.status) && m.score >= 95).length;
-    bulkBtn.textContent = `⚡ Bulk Approve ≥95% (${eligible})`;
+    bulkBtn.textContent = `Bulk Approve ≥95% (${eligible})`;
     bulkBtn.disabled = eligible === 0;
   }
 
@@ -936,10 +936,10 @@ function renderMatches() {
     const hasData = matches.length > 0;
     list.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">📋</div>
+        <div class="empty-icon"></div>
         <p>${hasData ? 'No matches for this filter' : 'No matches yet'}</p>
         <p class="sub">${hasData ? 'Try clearing the search or date range' : 'Checks are loaded automatically on login.<br>Use Sync to match against QuickBooks.'}</p>
-        ${!hasData ? `<button id="btn-load-match" class="btn-primary" style="margin-top:14px;padding:8px 20px;font-size:12px;">↻ Load &amp; Match Cheques</button>` : ''}
+        ${!hasData ? `<button id="btn-load-match" class="btn-primary" style="margin-top:14px;padding:8px 20px;font-size:12px;">Load &amp; Match Cheques</button>` : ''}
       </div>`;
     if (!hasData) $('#btn-load-match')?.addEventListener('click', () => loadChecksIntoMatches());
     return;
@@ -981,12 +981,12 @@ function renderMatchRow(m, index) {
         </div>
       </div>
       <div class="match-actions">
-        <button class="btn-sm btn-ghost" data-action="review" data-idx="${index}">👁 Review</button>
-        ${m.status === 'unmatched' ? `<button class="btn-sm btn-ghost" data-action="search" data-idx="${index}">🔍 Find</button>` : ''}
-        ${['matched', 'pending', 'discrepancy'].includes(m.status) ? `<button class="btn-sm btn-green" data-action="approve" data-idx="${index}">✅ Approve &amp; Clear</button>` : ''}
-        ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-amber" data-action="fix" data-idx="${index}" title="Push the cheque amount to QB to resolve the discrepancy">🔧 Fix in QB</button>` : ''}
-        ${m.status === 'approved' ? `<button class="btn-sm btn-ghost" data-action="undo" data-idx="${index}">↩ Undo</button>` : ''}
-        ${m.status !== 'approved' ? `<button class="btn-sm btn-ghost" data-action="flag" data-idx="${index}">🚩</button>` : ''}
+        <button class="btn-sm btn-ghost" data-action="review" data-idx="${index}">Review</button>
+        ${m.status === 'unmatched' ? `<button class="btn-sm btn-ghost" data-action="search" data-idx="${index}">Find</button>` : ''}
+        ${['matched', 'pending', 'discrepancy'].includes(m.status) ? `<button class="btn-sm btn-green" data-action="approve" data-idx="${index}">Approve &amp; Clear</button>` : ''}
+        ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-amber" data-action="fix" data-idx="${index}" title="Push the cheque amount to QB to resolve the discrepancy">Fix in QB</button>` : ''}
+        ${m.status === 'approved' ? `<button class="btn-sm btn-ghost" data-action="undo" data-idx="${index}">Undo</button>` : ''}
+        ${m.status !== 'approved' ? `<button class="btn-sm btn-ghost" data-action="flag" data-idx="${index}">Flag</button>` : ''}
       </div>
       <div class="match-detail" id="detail-${index}">
         ${m.reasons ? `<div class="score-breakdown">
@@ -1056,10 +1056,10 @@ function showBulkApproveConfirm(count, cb) {
   const descEl  = document.querySelector('#approve-confirm-overlay .approve-confirm-desc');
   const detEl   = $('#approve-confirm-details');
   const okBtn   = $('#approve-confirm-ok');
-  if (titleEl) titleEl.textContent = `⚡ Bulk Approve ${count} Matches?`;
+  if (titleEl) titleEl.textContent = `Bulk Approve ${count} Matches?`;
   if (descEl)  descEl.innerHTML = `This will mark <strong>${count} QuickBooks transactions</strong> as Cleared and stamp a verification note. Only matches with score ≥95% and status matched/pending are included.`;
   if (detEl)   detEl.innerHTML = `<div style="font-size:11px;color:#6b7280;padding:4px 0;">This action cannot be undone. Per-row Approve buttons process one check at a time.</div>`;
-  if (okBtn)   okBtn.textContent = `⚡ Approve ${count} Matches`;
+  if (okBtn)   okBtn.textContent = `Approve ${count} Matches`;
   const overlay = $('#approve-confirm-overlay');
   if (overlay) overlay.style.display = 'flex';
 }
@@ -1100,9 +1100,9 @@ function hideApproveConfirm() {
   const titleEl = document.querySelector('#approve-confirm-overlay .approve-confirm-title');
   const descEl  = document.querySelector('#approve-confirm-overlay .approve-confirm-desc');
   const okBtn   = $('#approve-confirm-ok');
-  if (titleEl) titleEl.textContent = '✅ Approve & Clear in QuickBooks?';
+  if (titleEl) titleEl.textContent = 'Approve & Clear in QuickBooks?';
   if (descEl)  descEl.innerHTML = `This will mark the QuickBooks transaction as <strong>Cleared</strong> (reconciliation status) and stamp a verification note. This does <strong>not</strong> delete anything.`;
-  if (okBtn)   okBtn.textContent = '✅Approve';
+  if (okBtn)   okBtn.textContent = 'Approve';
 }
 
 function approveAndClear(idx) {
@@ -1122,7 +1122,7 @@ function approveAndClear(idx) {
     if (checkId && jobId) {
       sendMsg({ type: 'UPDATE_CHECK_STATUS', checkId, jobId, status: 'approved' }).catch(() => {});
     }
-    showWarningBanner('⚠️ Approved — no QB transaction linked to this check');
+    showWarningBanner('Approved — no QB transaction linked to this check');
     dbg('Approved locally only (no QB txn linked)', 'warn');
     return;
   }
@@ -1417,7 +1417,7 @@ function renderFileQueue() {
   show('#btn-next-configure');
   queue.innerHTML = pendingFiles.map((f, i) => `
     <div class="file-item">
-      <span class="file-item-name">📄 ${escHtml(f.name)}</span>
+      <span class="file-item-name">${escHtml(f.name)}</span>
       <span class="file-item-meta">${fmtSize(f.size)}</span>
       <button class="file-item-remove" data-fi="${i}" title="Remove">✕</button>
     </div>`).join('');
@@ -1652,11 +1652,11 @@ function renderQBList(txns, status = 'ok') {
   // when the real reason is "not signed in" or "no tenant".
   if (!txns.length && status !== 'ok' && status !== 'empty') {
     const MAP = {
-      not_authed:   { icon: '🔒', msg: 'Sign in to Kyriq to load QB data',      sub: 'Open the Kyriq web app and sign in, then reopen this panel.' },
-      no_tenant:    { icon: '👤', msg: 'Your profile has no tenant_id',          sub: 'Contact your Kyriq admin to link you to a workspace.' },
-      fetch_failed: { icon: '⚠️', msg: 'Could not reach Kyriq database',         sub: 'Check your connection and click Refresh.' },
+      not_authed:   { icon: '', msg: 'Sign in to Kyriq to load QB data',      sub: 'Open the Kyriq web app and sign in, then reopen this panel.' },
+      no_tenant:    { icon: '', msg: 'Your profile has no tenant_id',          sub: 'Contact your Kyriq admin to link you to a workspace.' },
+      fetch_failed: { icon: '', msg: 'Could not reach Kyriq database',         sub: 'Check your connection and click Refresh.' },
     };
-    const m = MAP[status] || { icon: '🏦', msg: 'No QB transactions yet', sub: 'Click Sync to pull transactions from QuickBooks' };
+    const m = MAP[status] || { icon: '', msg: 'No QB transactions yet', sub: 'Click Sync to pull transactions from QuickBooks' };
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">${m.icon}</div><p>${m.msg}</p><p class="sub">${m.sub}</p></div>`;
     const badge = $('#qb-count-badge');
     if (badge) { badge.textContent = '0'; badge.style.background = 'var(--amber)'; }
@@ -1704,19 +1704,19 @@ function renderQBList(txns, status = 'ok') {
   if (!filtered.length) {
     const msg = txns.length ? 'No transactions match the current filter' : 'No QB transactions yet';
     const sub = txns.length ? 'Try clearing the search or date range' : 'Click Sync to pull transactions from QuickBooks';
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🏦</div><p>${msg}</p><p class="sub">${sub}</p></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>${msg}</p><p class="sub">${sub}</p></div>`;
     return;
   }
 
   const SRC_LABEL = {
-    cheque_written:      { icon: '✏️', label: 'Written' },
+    cheque_written:      { icon: '', label: 'Written' },
     bill_paid_by_cheque: { icon: '�', label: 'Bill Pmt' },
-    cheque_received:     { icon: '✉️', label: 'Received' },
+    cheque_received:     { icon: '', label: 'Received' },
     payroll_check:       { icon: '�', label: 'Payroll' },
   };
   list.innerHTML = filtered.map(t => {
     const src    = getQBSource(t);
-    const srcMeta = SRC_LABEL[src] || { icon: '💳', label: t.txn_type || 'Txn' };
+    const srcMeta = SRC_LABEL[src] || { icon: '', label: t.txn_type || 'Txn' };
     const date   = t.txn_date ? fmtDate(t.txn_date) : '—';
     const payee  = t.payee ? escHtml(t.payee) : 'No payee';
     const amount = fmt(t.amount);
@@ -1758,7 +1758,7 @@ async function loadDocuments(force = false) {
 function renderDocumentsList(docs) {
   const list = $('#documents-list');
   if (!docs.length) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📁</div><p>No documents yet</p><p class="sub">Upload check PDFs in the Upload tab or in the web app</p></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>No documents yet</p><p class="sub">Upload check PDFs in the Upload tab or in the web app</p></div>`;
     return;
   }
   const statusLabel = { complete: 'Complete', analyzed: 'Ready', extracting: 'Processing', ocr: 'OCR', ocr_running: 'OCR...', pending: 'Pending', error: 'Error' };
@@ -1777,7 +1777,7 @@ function renderDocumentsList(docs) {
           <div class="doc-meta">${date}${pages} · ${d.total_checks || 0} cheques</div>
         </div>
         <div class="doc-status ${cls}">${label}</div>
-        <button class="btn-xs btn-doc-delete" data-job="${escHtml(d.job_id)}" title="Delete upload">🗑</button>
+        <button class="btn-xs btn-doc-delete" data-job="${escHtml(d.job_id)}" title="Delete upload"></button>
       </div>`;
   }).join('');
   list.querySelectorAll('.btn-doc-delete').forEach(btn => {
@@ -1793,7 +1793,7 @@ function renderDocumentsList(docs) {
         dbg(`Delete failed: ${res.error}`, 'error');
         showErrorDialog('Delete Failed', res.error);
         btn.disabled = false;
-        btn.textContent = '🗑';
+        btn.textContent = '';
         return;
       }
       _cachedDocs = (_cachedDocs || []).filter(d => d.job_id !== jobId);
@@ -1857,7 +1857,7 @@ function renderChecksList(checks) {
   if (!filtered.length) {
     const msg = checks.length ? 'No cheques match the current filter' : 'No extracted cheques yet';
     const sub = checks.length ? 'Try clearing the search or date range' : 'Cheques extracted in the web app will appear here';
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><p>${msg}</p><p class="sub">${sub}</p></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>${msg}</p><p class="sub">${sub}</p></div>`;
     return;
   }
   list.innerHTML = filtered.map((c, i) => {
@@ -2085,7 +2085,7 @@ async function loadHistory(force = false) {
 function renderHistoryList(hist) {
   const list = $('#history-list');
   if (!hist.length) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>No approved cheques yet</p><p class="sub">Cheques marked as approved will appear here</p></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>No approved cheques yet</p><p class="sub">Cheques marked as approved will appear here</p></div>`;
     return;
   }
   list.innerHTML = hist.map(h => {
@@ -2656,7 +2656,7 @@ function bindEvents() {
       hide('#review-modal');
       const matchIdx = matches.findIndex(m => m === _reviewMatch);
       if (matchIdx !== -1) {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ Approve'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Approve'; }
         await approveAndClear(matchIdx);
         // Sync checks list cache so the check shows as approved.
         if (_cachedChecks) {
@@ -2686,7 +2686,7 @@ function bindEvents() {
       const origLabel = status === 'approved' ? '✅ Approve' : status === 'rejected' ? '❌ Reject' : '↩ Undo';
       if (btn) {
         btn.disabled = false;
-        btn.textContent = '⚠ ' + (res?.error || 'Failed');
+        btn.textContent = '' + (res?.error || 'Failed');
         setTimeout(() => { btn.textContent = origLabel; }, 3000);
       }
       dbg(`reviewAction ${status} failed: ${res?.error}`, 'error');
@@ -2783,7 +2783,7 @@ function bindEvents() {
       qbSavePromise,
     ]);
 
-    btn.disabled = false; btn.textContent = '💾 Save Changes';
+    btn.disabled = false; btn.textContent = 'Save Changes';
     const checkOk = !!checkRes?.success;
     const qbOk   = !!qbRes?.success;
     const qbWarn = qbRes?.qbWarning || null;

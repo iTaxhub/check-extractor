@@ -30,30 +30,14 @@ export default async function handler(
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Per-tenant overrides (e.g. a firm's own Gemini key). RLS scopes this to
-    // the caller's tenant, so no explicit tenant filter is needed here.
-    const { data: integration } = await supabase
-      .from('integrations')
-      .select('gemini_api_key')
-      .eq('provider', 'quickbooks')
-      .maybeSingle();
-
-    // `qbClientId` is deliberately NOT returned. It was served here and is read
-    // by nothing in the extension — the service worker only ever logged it. The
-    // OAuth flow goes through /api/qbo/auth, which keeps the client id and
-    // secret server-side where they belong.
-    //
-    // `geminiApiKey` IS still returned, because it is genuinely consumed:
-    // extractCheckData() in the service worker calls Gemini directly with it.
-    // That path is only reachable from popup/popup.js, which the manifest never
-    // mounts (there is no default_popup) — so it is dead today, but removing the
-    // key would break it the moment anyone wires the popup up. Worth replacing
-    // with a backend proxy so a tenant's provider key never reaches a client at
-    // all; until then, this route requires a session and extension-only CORS.
+    // No provider keys and no `qbClientId` here. A Gemini key used to be served
+    // for a direct-to-Google OCR call from the unused popup; a tenant's
+    // provider key must never reach a browser extension, so that path was
+    // removed. OCR runs server-side through the backend. QB OAuth goes through
+    // /api/qbo/auth, which keeps the client id and secret on the server.
     return res.status(200).json({
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-      geminiApiKey: integration?.gemini_api_key || process.env.GEMINI_API_KEY || '',
     });
   } catch (error: any) {
     console.error('Extension config error:', error);

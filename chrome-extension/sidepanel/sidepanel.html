@@ -23,7 +23,7 @@
         <span id="user-chip-text"></span>
         <svg width="10" height="10" viewBox="0 0 10 6" fill="none" style="flex-shrink:0;opacity:0.6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
-      <button id="btn-debug" class="icon-btn" title="Debug console">🪲</button>
+      <button id="btn-debug" class="icon-btn" title="Debug console" aria-label="Debug console"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></button>
     </div>
   </header>
 
@@ -38,12 +38,12 @@
     </div>
     <div class="profile-divider"></div>
     <div class="profile-meta">
-      <a href="https://kyriq.com/settings" target="_blank" class="profile-link">↗ Web Settings</a>
-      <button id="btn-ext-options" class="profile-link profile-link-btn" title="Supabase and backend connection for this extension">⚙ Extension Settings</button>
+      <a href="https://kyriq.com/settings" target="_blank" class="profile-link">Web Settings</a>
+      <button id="btn-ext-options" class="profile-link profile-link-btn" title="Supabase and backend connection for this extension">Extension Settings</button>
     </div>
     <div class="profile-divider"></div>
     <div class="profile-date-fmt">
-      <label class="profile-label" for="date-format-select">📅 Date Format</label>
+      <label class="profile-label" for="date-format-select">Date Format</label>
       <select id="date-format-select" class="profile-select">
         <option value="dd/mm/yyyy">DD/MM/YYYY</option>
         <option value="mm/dd/yyyy">MM/DD/YYYY</option>
@@ -54,7 +54,7 @@
     </div>
     <div class="profile-divider"></div>
     <div class="profile-overlay-mode">
-      <label class="profile-label">👁️ QB Overlay Visibility</label>
+      <label class="profile-label">QB Overlay Visibility</label>
       <div class="overlay-mode-options">
         <label class="overlay-mode-option">
           <input type="radio" name="overlay-mode" value="whenOpen">
@@ -71,9 +71,9 @@
       </div>
     </div>
     <div class="profile-divider"></div>
-    <button id="btn-qb-disconnect" class="btn-profile-disconnect">🔌 Disconnect QB</button>
+    <button id="btn-qb-disconnect" class="btn-profile-disconnect">Disconnect QB</button>
     <div class="profile-divider"></div>
-    <button id="btn-profile-logout" class="btn-profile-logout">↩ Sign out</button>
+    <button id="btn-profile-logout" class="btn-profile-logout">Sign out</button>
   </div>
 
   <!-- ═══════════════════════════════════════════
@@ -140,7 +140,7 @@
         <button id="btn-signup" class="btn-primary full">Create Account &amp; Sign In</button>
       </div>
 
-      <p class="auth-footer">$300/year · <a href="https://kyriq.com" target="_blank">Learn more</a></p>
+      <p class="auth-footer">Plans and pricing at <a href="https://kyriq.com" target="_blank">kyriq.com</a></p>
     </div>
   </div>
 
@@ -149,7 +149,7 @@
   ═══════════════════════════════════════════ -->
   <div id="view-qb-connect" class="view" style="display:none;">
     <div class="connect-card">
-      <div class="connect-icon">🔗</div>
+      <div class="connect-icon"></div>
       <h2>Connect QuickBooks</h2>
       <p class="connect-desc">Link your QuickBooks Online account to start matching checks against your transactions.</p>
       <div class="connect-steps">
@@ -171,7 +171,7 @@
         Connect QuickBooks Online
       </button>
       <div id="qb-connect-info" class="alert alert-success" style="display:none;margin-top:10px;"></div>
-      <button id="btn-qb-connected" class="btn-outline full" style="margin-top:8px;">✅ I've Connected — Refresh</button>
+      <button id="btn-qb-connected" class="btn-outline full" style="margin-top:8px;">I've Connected — Refresh</button>
       <button id="btn-qb-skip" class="btn-ghost-link">Skip for now (matches only)</button>
     </div>
   </div>
@@ -189,9 +189,9 @@
       <select id="account-select" title="Filter by bank account"><option value="">All Accounts</option></select>
     </div>
     <button id="btn-sync" class="btn-sync" title="Sync QB transactions">
-      <span id="sync-icon">↻</span> Sync
+      <span id="sync-icon"></span> Sync
     </button>
-    <button id="btn-qb-reconnect" class="btn-qb-reconnect" title="Re-authenticate with QuickBooks Online">↻ QB</button>
+    <button id="btn-qb-reconnect" class="btn-qb-reconnect" title="Re-authenticate with QuickBooks Online">QB</button>
 
     <!-- Connection status + usage meter + open-QB (client list item 7) -->
     <div class="company-bar-status">
@@ -203,7 +203,7 @@
         </div>
         <div class="usage-meter-track"><div id="usage-meter-fill" class="usage-meter-fill"></div></div>
       </div>
-      <button id="btn-open-qb" class="btn-open-qb" title="Open QuickBooks on the active company">↗ QuickBooks</button>
+      <button id="btn-open-qb" class="btn-open-qb" title="Open QuickBooks on the active company">QuickBooks</button>
     </div>
   </div>
 
@@ -249,19 +249,19 @@
       <button class="pill" data-status="approved">Done <span class="cnt" id="cnt-approved">0</span></button>
     </div>
     <div class="bulk-bar">
-      <button id="btn-bulk-approve" class="btn-sm btn-amber" disabled>⚡ Bulk Approve ≥95% (0)</button>
-      <button id="btn-match-filter-toggle" class="btn-sm btn-ghost" title="Search &amp; filter">🔍 Filter</button>
+      <button id="btn-bulk-approve" class="btn-sm btn-amber" disabled>Bulk Approve ≥95% (0)</button>
+      <button id="btn-match-filter-toggle" class="btn-sm btn-ghost" title="Search &amp; filter">Filter</button>
     </div>
     <!-- Document + source filter row -->
     <div class="doc-filter-bar">
-      <label class="doc-filter-label" for="doc-filter">📄 Doc:</label>
+      <label class="doc-filter-label" for="doc-filter">Doc:</label>
       <select id="doc-filter" class="doc-filter-select" style="flex:1;"><option value="">All Uploads</option></select>
       <select id="match-source-filter" class="doc-filter-select" style="flex:1;margin-left:4px;" title="Filter by QB transaction type">
         <option value="">All Types</option>
-        <option value="cheque_written">📝 Written</option>
-        <option value="bill_paid_by_cheque">💸 Bill Pmt</option>
-        <option value="cheque_received">✉️ Received</option>
-        <option value="payroll_check">💰 Payroll</option>
+        <option value="cheque_written">Written</option>
+        <option value="bill_paid_by_cheque">Bill Pmt</option>
+        <option value="cheque_received">Received</option>
+        <option value="payroll_check">Payroll</option>
       </select>
     </div>
     <!-- Date filter row (always visible) -->
@@ -284,17 +284,17 @@
     <!-- Matches search filter (hidden by default, toggled by Filter btn) -->
     <div id="matches-filter-bar" class="checks-filter-bar" style="display:none;">
       <div class="checks-search-wrap">
-        <span class="checks-search-icon">🔍</span>
+        <span class="checks-search-icon"></span>
         <input id="match-search" type="text" class="checks-search" placeholder="Search payee, check #, bank…" autocomplete="off">
         <button id="match-search-clear" class="checks-search-clear" style="display:none;">&#x2715;</button>
       </div>
     </div>
     <div id="match-list" class="match-list">
       <div class="empty-state">
-        <div class="empty-icon">📋</div>
+        <div class="empty-icon"></div>
         <p>No matches yet</p>
         <p class="sub">Checks are loaded automatically on login.<br>Use Sync to match against QuickBooks.</p>
-        <button id="btn-load-match" class="btn-primary" style="margin-top:14px;padding:8px 20px;font-size:12px;">↻ Load &amp; Match Cheques</button>
+        <button id="btn-load-match" class="btn-primary" style="margin-top:14px;padding:8px 20px;font-size:12px;">Load &amp; Match Cheques</button>
       </div>
     </div>
   </div>
@@ -323,7 +323,7 @@
     <!-- Step 1: Drop -->
     <div id="upload-step-1">
       <div class="upload-zone" id="upload-zone">
-        <div class="upload-zone-icon">📎</div>
+        <div class="upload-zone-icon"></div>
         <p class="upload-zone-title">Drop check PDF here</p>
         <p class="upload-zone-sub">PDF files supported · Multi-page PDFs OK</p>
         <button class="btn-outline btn-browse" id="btn-browse">Browse files</button>
@@ -340,17 +340,17 @@
       <p class="step-label">Choose extraction method</p>
       <div class="method-grid" id="method-grid">
         <button class="method-card active" data-method="ai">
-          <div class="method-icon">🤖</div>
+          <div class="method-icon"></div>
           <div class="method-name">Gemini AI</div>
           <div class="method-desc">Best for handwritten checks</div>
         </button>
         <button class="method-card" data-method="tesseract">
-          <div class="method-icon">🔍</div>
+          <div class="method-icon"></div>
           <div class="method-name">Tesseract</div>
           <div class="method-desc">Fast offline OCR</div>
         </button>
         <button class="method-card" data-method="hybrid">
-          <div class="method-icon">⚡</div>
+          <div class="method-icon"></div>
           <div class="method-name">Hybrid</div>
           <div class="method-desc">All engines, best accuracy</div>
         </button>
@@ -375,7 +375,7 @@
         </div>
         <div id="extracted-list" class="extracted-list"></div>
         <div class="results-actions">
-          <button id="btn-match-extracted" class="btn-primary full">🔍 Match Against QB Transactions</button>
+          <button id="btn-match-extracted" class="btn-primary full">Match Against QB Transactions</button>
           <button id="btn-upload-more" class="btn-outline full" style="margin-top:6px;">Upload More Checks</button>
         </div>
       </div>
@@ -386,11 +386,11 @@
   <div id="view-documents" class="view tab-view" style="display:none;">
     <div class="tab-toolbar">
       <span class="tab-toolbar-title">Uploaded Documents</span>
-      <button id="btn-refresh-docs" class="btn-xs btn-ghost">↻ Refresh</button>
+      <button id="btn-refresh-docs" class="btn-xs btn-ghost">Refresh</button>
     </div>
     <div id="documents-list" class="documents-list">
       <div class="empty-state">
-        <div class="empty-icon">📁</div>
+        <div class="empty-icon"></div>
         <p>No documents yet</p>
         <p class="sub">Upload check PDFs in the Upload tab or in the web app</p>
       </div>
@@ -403,11 +403,11 @@
       <span class="tab-toolbar-title">Extracted Cheques</span>
       <span id="checks-count-badge" class="checks-count-badge" style="margin-left:6px;"></span>
       <select id="cheques-doc-filter" class="doc-filter-select" style="margin-left:6px;max-width:120px;"><option value="">All Docs</option></select>
-      <button id="btn-refresh-checks" class="btn-xs btn-ghost" style="margin-left:auto;">↻ Refresh</button>
+      <button id="btn-refresh-checks" class="btn-xs btn-ghost" style="margin-left:auto;">Refresh</button>
     </div>
     <div class="checks-filter-bar">
       <div class="checks-search-wrap">
-        <span class="checks-search-icon">🔍</span>
+        <span class="checks-search-icon"></span>
         <input id="checks-search" type="text" class="checks-search" placeholder="Search payee, check #, bank…" autocomplete="off">
         <button id="checks-search-clear" class="checks-search-clear" style="display:none;">&#x2715;</button>
       </div>
@@ -421,7 +421,7 @@
     </div>
     <div id="checks-list" class="checks-list">
       <div class="empty-state">
-        <div class="empty-icon">💸</div>
+        <div class="empty-icon"></div>
         <p>No extracted cheques yet</p>
         <p class="sub">Cheques extracted in the web app will appear here</p>
       </div>
@@ -433,19 +433,19 @@
     <div class="tab-toolbar">
       <span class="tab-toolbar-title">QuickBooks Transactions</span>
       <span id="qb-count-badge" class="checks-count-badge qb-count-badge" style="margin-left:6px;"></span>
-      <button id="btn-refresh-qb" class="btn-xs btn-ghost" style="margin-left:auto;">↻ Refresh</button>
+      <button id="btn-refresh-qb" class="btn-xs btn-ghost" style="margin-left:auto;">Refresh</button>
     </div>
     <!-- QB source type filter pills -->
     <div class="qb-source-pills">
       <button class="src-pill active" data-src="">All</button>
-      <button class="src-pill" data-src="cheque_written">✏️ Written</button>
-      <button class="src-pill" data-src="bill_paid_by_cheque">💸 Bill</button>
-      <button class="src-pill" data-src="cheque_received">✉ Recv</button>
-      <button class="src-pill" data-src="payroll_check">💰 Payroll</button>
+      <button class="src-pill" data-src="cheque_written">Written</button>
+      <button class="src-pill" data-src="bill_paid_by_cheque">Bill</button>
+      <button class="src-pill" data-src="cheque_received">Recv</button>
+      <button class="src-pill" data-src="payroll_check">Payroll</button>
     </div>
     <div class="checks-filter-bar">
       <div class="checks-search-wrap">
-        <span class="checks-search-icon">🔍</span>
+        <span class="checks-search-icon"></span>
         <input id="qb-search" type="text" class="checks-search" placeholder="Search payee, amount, doc #…" autocomplete="off">
         <button id="qb-search-clear" class="checks-search-clear" style="display:none;">&#x2715;</button>
       </div>
@@ -459,7 +459,7 @@
     </div>
     <div id="qb-list" class="qb-list">
       <div class="empty-state">
-        <div class="empty-icon">🏦</div>
+        <div class="empty-icon"></div>
         <p>No QB transactions yet</p>
         <p class="sub">Click Sync in the company bar to pull transactions from QuickBooks</p>
       </div>
@@ -470,11 +470,11 @@
   <div id="view-history" class="view tab-view" style="display:none;">
     <div class="tab-toolbar">
       <span class="tab-toolbar-title">Approval History</span>
-      <button id="btn-refresh-history" class="btn-xs btn-ghost">↻ Refresh</button>
+      <button id="btn-refresh-history" class="btn-xs btn-ghost">Refresh</button>
     </div>
     <div id="history-list" class="history-list">
       <div class="empty-state">
-        <div class="empty-icon">✅</div>
+        <div class="empty-icon"></div>
         <p>No approvals yet</p>
         <p class="sub">Approved matches will appear here</p>
       </div>
@@ -514,8 +514,8 @@
           <thead>
             <tr>
               <th class="rm-th-field">Field</th>
-              <th class="rm-th-extracted">📄 Extracted <span class="rm-edit-hint">(editable)</span></th>
-              <th class="rm-th-qb" id="rm-qb-head">🏦 QuickBooks <span class="rm-edit-hint">(editable)</span></th>
+              <th class="rm-th-extracted">Extracted <span class="rm-edit-hint">(editable)</span></th>
+              <th class="rm-th-qb" id="rm-qb-head">QuickBooks <span class="rm-edit-hint">(editable)</span></th>
               <th class="rm-th-diff" id="rm-diff-head">Δ Diff</th>
             </tr>
           </thead>
@@ -560,11 +560,11 @@
 
       <!-- Actions -->
       <div class="rm-actions">
-        <button id="rm-fix-all" class="btn-sm btn-amber full" style="display:none;">🔧 Fix All Discrepancies</button>
-        <button id="rm-save"    class="btn-sm btn-primary full">💾 Save Changes</button>
-        <button id="rm-reject"  class="btn-sm btn-red  full">❌ Reject</button>
-        <button id="rm-approve" class="btn-sm btn-green full">✅ Approve</button>
-        <button id="rm-undo"    class="btn-xs btn-ghost full" style="display:none;">↩ Undo decision</button>
+        <button id="rm-fix-all" class="btn-sm btn-amber full" style="display:none;">Fix All Discrepancies</button>
+        <button id="rm-save"    class="btn-sm btn-primary full">Save Changes</button>
+        <button id="rm-reject"  class="btn-sm btn-red  full">Reject</button>
+        <button id="rm-approve" class="btn-sm btn-green full">Approve</button>
+        <button id="rm-undo"    class="btn-xs btn-ghost full" style="display:none;">Undo decision</button>
       </div>
     </div>
   </div>
@@ -574,12 +574,12 @@
   ═══════════════════════════════════════════ -->
   <div id="approve-confirm-overlay" class="approve-confirm-overlay" style="display:none;">
     <div class="approve-confirm-card">
-      <div class="approve-confirm-title">✅ Approve &amp; Clear in QuickBooks?</div>
+      <div class="approve-confirm-title">Approve &amp; Clear in QuickBooks?</div>
       <p class="approve-confirm-desc">This will mark the QuickBooks transaction as <strong>Cleared</strong> (reconciliation status) and stamp a verification note. This does <strong>not</strong> delete anything.</p>
       <div class="approve-confirm-details" id="approve-confirm-details"></div>
       <div class="approve-confirm-actions">
         <button id="approve-confirm-cancel" class="btn-outline">✕ Cancel</button>
-        <button id="approve-confirm-ok" class="btn-primary">✅ Confirm &amp; Approve</button>
+        <button id="approve-confirm-ok" class="btn-primary">Confirm &amp; Approve</button>
       </div>
     </div>
   </div>
@@ -599,7 +599,7 @@
         <pre id="error-dialog-raw" class="error-dialog-raw"></pre>
       </details>
       <div class="error-dialog-actions">
-        <button id="error-dialog-copy" class="btn-sm btn-outline error-dialog-copy-btn">📋 Copy</button>
+        <button id="error-dialog-copy" class="btn-sm btn-outline error-dialog-copy-btn">Copy</button>
         <button id="error-dialog-close2" class="btn-sm btn-primary">✕ Close</button>
       </div>
     </div>

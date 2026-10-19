@@ -96,7 +96,7 @@ function getBootstrapConfig() {
 }
 
 // ── App config (fetched from backend post-login, cached 1 hr) ─
-// Contains: geminiApiKey, qbClientId (and mirrors supabase creds)
+// Contains: qbClientId (and mirrors supabase creds)
 // NOTE: /api/extension/* routes live in Next.js (frontendUrl), NOT in the Python backend.
 async function getConfig() {
   await applyDevConfigOverride();
@@ -110,7 +110,7 @@ async function getConfig() {
   // Use frontendUrl (kyriq.com) — that's where Next.js API routes live
   const apiHost = (bootstrap.frontendUrl || bootstrap.backendUrl || '').replace(/\/$/, '');
   if (!apiHost) {
-    return { ...bootstrap, geminiApiKey: '', qbClientId: '' };
+    return { ...bootstrap, qbClientId: '' };
   }
 
   const session = await getSession();
@@ -128,12 +128,12 @@ async function getConfig() {
     await chrome.storage.local.set({
       configCache: { data: remote, expiresAt: Date.now() + CONFIG_CACHE_TTL },
     });
-    log('App config fetched and cached', { hasGemini: !!remote.geminiApiKey, hasQbClientId: !!remote.qbClientId });
+    log('App config fetched and cached', { hasQbClientId: !!remote.qbClientId });
     return merged;
   } catch (e) {
     logErr('Config fetch failed, using fallback', e);
     if (configCache?.data) return { ...configCache.data, ...bootstrap };
-    return { ...bootstrap, geminiApiKey: '', qbClientId: '' };
+    return { ...bootstrap, qbClientId: '' };
   }
 }
 
@@ -695,51 +695,6 @@ async function clearQBTransaction(txnType, txnId, checkData = null, qbTxn = null
     }
     throw e;
   }
-}
-
-// ── OCR via Gemini API ───────────────────────────────────────
-async function extractCheckData(imageBase64, mimeType) {
-  const cfg = await getConfig();
-  if (!cfg.geminiApiKey) throw new Error('Gemini API key not configured');
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${cfg.geminiApiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              inline_data: { mime_type: mimeType, data: imageBase64 },
-            },
-            {
-              text: `Extract the following from this check image. Return ONLY a JSON object with these fields:
-{
-  "check_number": "string or null",
-  "check_date": "YYYY-MM-DD or null",
-  "amount": number or null,
-  "payee": "string or null",
-  "memo": "string or null",
-  "bank_name": "string or null",
-  "payer": "string or null"
-}
-If a field cannot be read, use null. For amount, return a number (e.g. 1234.56). Do NOT include any other text.`,
-            },
-          ],
-        }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 500 },
-      }),
-    }
-  );
-
-  if (!res.ok) throw new Error('Gemini API failed');
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  // Extract JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Could not parse OCR result');
-  return JSON.parse(jsonMatch[0]);
 }
 
 // ── Matching Algorithm ───────────────────────────────────────
@@ -1826,12 +1781,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             throw pullErr;
           }
         }
-        case 'EXTRACT_CHECK': {
-          log('EXTRACT_CHECK', { mimeType: msg.mimeType });
-          const result = await extractCheckData(msg.imageBase64, msg.mimeType);
-          log('EXTRACT_CHECK done', result);
-          return { success: true, data: result };
-        }
         case 'RUN_MATCHING': {
           const checksToMatch = (_swChecksCache?.length ? _swChecksCache : msg.checks) || [];
           log('RUN_MATCHING', { checksCount: checksToMatch.length, fromCache: !msg.checks });
@@ -2523,6 +2472,9 @@ chrome.alarms.onAlarm.addListener(alarm => {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Kyriq installed');
   updateBadge();
+  // Older versions cached a Gemini provider key in configCache; drop it so
+  // the key does not outlive the update in local storage.
+  chrome.storage.local.remove('configCache');
   
   // Enable side panel to open when clicking extension icon
   chrome.sidePanel
