@@ -130,9 +130,6 @@ export default function ExportPage() {
       {/* ── Header ──────────────────────────────────── */}
       <div>
         <h1 className="font-heading text-2xl font-semibold text-ink-strong">Export</h1>
-        <p className="mt-0.5 text-sm text-ink-faint">
-          Download extracted cheque data in accounting formats
-        </p>
       </div>
 
       {loadError && (

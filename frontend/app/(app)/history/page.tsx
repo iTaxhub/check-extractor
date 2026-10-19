@@ -179,9 +179,6 @@ export default function HistoryPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-semibold text-ink-strong">History</h1>
-          <p className="mt-0.5 text-sm text-ink-faint">
-            Every reconciliation this firm has run, with who approved it.
-          </p>
         </div>
         {!loading && !failure && total > 0 ? (
           <p className="nums text-xs text-ink-faint">

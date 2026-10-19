@@ -797,8 +797,8 @@ export default function QBComparisonsPage() {
       <GlassCard tier="chrome" padding="sm" className="mx-4 mt-3 rounded-card border">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="font-heading text-xl font-semibold text-ink-strong">
-              QuickBooks Comparisons
+            <h1 className="font-heading text-2xl font-semibold text-ink-strong">
+              QuickBooks comparisons
             </h1>
 
             {/* The counts, as filtering chips rather than five KPI tiles. */}

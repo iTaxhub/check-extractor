@@ -22,7 +22,7 @@ export const tableShellVariants = cva('overflow-hidden rounded-card', {
       /** Default: the table lives in its own glass card. */
       glass: 'glass-card p-0',
       /** The table is already inside a GlassCard — do not blur twice. */
-      inset: 'border border-glass-hairline bg-surface',
+      inset: 'border border-glass-hairline bg-white/55',
     },
   },
   defaultVariants: { tier: 'glass' },
@@ -117,13 +117,13 @@ Tr.displayName = 'Tr';
 /** The single <th> recipe. Uppercase, tracked, hairline underline. */
 export const thVariants = cva(
   [
-    'border-b border-glass-hairline px-3 py-2',
-    'text-eyebrow text-ink-soft',
+    'border-b border-glass-hairline px-4 py-2.5',
+    'text-eyebrow text-ink-faint',
     'bg-transparent',
   ].join(' '),
   {
     variants: {
-      numeric: { true: 'nums whitespace-nowrap text-right', false: 'text-left' },
+      numeric: { true: 'nums text-right', false: 'text-left' },
       sortable: {
         true: 'cursor-pointer select-none hover:text-ink-body',
         false: '',
@@ -149,11 +149,12 @@ export const Th = React.forwardRef<HTMLTableCellElement, ThProps>(
 );
 Th.displayName = 'Th';
 
-/* Compact default; high-volume grids retain their explicit denser metrics. */
-export const tdVariants = cva('border-b border-glass-hairline px-3 py-2 align-middle text-ink-strong', {
+/* Row height is set here and nowhere else: py-3 at text-sm, unchanged from
+   the pre-redesign tables. Do not raise it to make the glass "breathe". */
+export const tdVariants = cva('border-b border-glass-hairline px-4 py-3 text-ink-strong', {
   variants: {
-    numeric: { true: 'nums whitespace-nowrap text-right', false: 'text-left' },
-    muted: { true: 'text-ink-soft', false: '' },
+    numeric: { true: 'nums text-right', false: 'text-left' },
+    muted: { true: 'text-ink-faint', false: '' },
   },
   defaultVariants: { numeric: false, muted: false },
 });

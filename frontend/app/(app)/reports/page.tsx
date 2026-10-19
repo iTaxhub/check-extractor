@@ -151,9 +151,6 @@ export default function ReportsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-semibold text-ink-strong">Reports</h1>
-          <p className="mt-0.5 text-sm text-ink-faint">
-            Reconciliation and cheque volume for a date range, company and account.
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge tone="outline" size="sm">

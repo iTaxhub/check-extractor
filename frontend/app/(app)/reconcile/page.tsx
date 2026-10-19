@@ -257,10 +257,6 @@ function Header() {
   return (
     <div>
       <h1 className="font-heading text-2xl font-semibold text-ink-strong">Reconcile</h1>
-      <p className="mt-0.5 text-sm text-ink-body">
-        Four steps, every period: upload the cheques, let Kyriq match them, review what needs a
-        decision, then approve and clear.
-      </p>
     </div>
   );
 }
