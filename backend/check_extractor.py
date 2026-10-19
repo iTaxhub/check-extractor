@@ -950,9 +950,12 @@ def extract_with_gemini(img_path, key=None):
 
     last_err = None
     for attempt, key in enumerate(ordered_keys):
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+        # Key goes in a header, not the query string: requests puts the URL in
+        # every HTTPError message, which was printing live keys into the logs.
+        model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         try:
-            resp = requests.post(url, json=payload, timeout=30)
+            resp = requests.post(url, json=payload, timeout=30, headers={"x-goog-api-key": key})
             if resp.status_code in (403, 429):
                 last_err = f"{resp.status_code} for key ...{key[-6:]}"
                 print(f"    Gemini API {resp.status_code} Error for key ...{key[-6:]}:")
