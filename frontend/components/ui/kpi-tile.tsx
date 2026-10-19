@@ -1,4 +1,5 @@
 import * as React from 'react';
+import Link from 'next/link';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './skeleton';
@@ -47,14 +48,17 @@ export interface KpiTileProps
   /** Signed change. Direction drives the colour, not the tone prop. */
   delta?: { value: string; direction: 'up' | 'down' | 'flat' };
   loading?: boolean;
+  /** Every tile is a door: the filtered view behind the number. */
+  href?: string;
 }
 
 export const KpiTile = React.forwardRef<HTMLDivElement, KpiTileProps>(
   (
-    { className, tone, interactive, label, value, caption, icon, delta, loading, ...props },
+    { className, tone, interactive, label, value, caption, icon, delta, loading, href, ...props },
     ref
-  ) => (
-    <div ref={ref} className={cn(kpiTileVariants({ tone, interactive }), className)} {...props}>
+  ) => {
+    const body = (
+    <div ref={ref} className={cn(kpiTileVariants({ tone, interactive: interactive || !!href }), 'h-full', className)} {...props}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-eyebrow text-ink-faint">{label}</p>
         {icon ? (
@@ -86,6 +90,12 @@ export const KpiTile = React.forwardRef<HTMLDivElement, KpiTileProps>(
         ) : null}
       </div>
     </div>
-  )
+    );
+    return href ? (
+      <Link href={href} className="block rounded-tile focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+        {body}
+      </Link>
+    ) : body;
+  }
 );
 KpiTile.displayName = 'KpiTile';

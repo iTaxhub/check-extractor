@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kyriq",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Check reconciliation for QuickBooks Online: match your checks to transactions and clear approved ones without leaving QuickBooks.",
   "icons": {
     "16": "icons/icon16.png",
@@ -51,7 +51,6 @@
   "host_permissions": [
     "https://yqbmzerdagqevjdwhlwh.supabase.co/*",
     "https://quickbooks.api.intuit.com/*",
-    "https://generativelanguage.googleapis.com/*",
     "https://check-extractor-production-2026.up.railway.app/*",
     "https://kyriq.com/*"
   ],

@@ -1311,3 +1311,135 @@ header {
 
 /* Real logo lockup from the brand pack (2.43:1). */
 .logo-lockup { height: 26px; width: auto; flex-shrink: 0; display: block; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Ledger skin: the same visual language as the signed-in app.
+   Opaque paper, a solid navy header, 6-10px radii, flat buttons, sentence-case
+   labels. Glass rules above stay authored (check-parity guards their order);
+   the blur token is switched off here instead, so nothing is half-converted.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --glass-blur: none;
+  --glass-card-bg: var(--surface);
+  --glass-panel-bg: var(--paper);
+  --glass-chrome-bg: var(--paper);
+  --glass-toast-bg: var(--surface);
+  --glass-modal-bg: var(--surface);
+  --glass-border: var(--ledger-border);
+  --glass-hairline: var(--ledger-hair);
+  --shell-bg: var(--ledger-navy);
+  --shell-bg-fallback: var(--ledger-navy);
+  --shadow-glass: 0 1px 0 var(--ledger-hair);
+  --shadow-glass-panel: none;
+  --shadow-glass-hover: 0 1px 0 var(--ledger-hair);
+  --shadow-brand-glow: none;
+  --radius-input: 6px;
+  --radius-btn: 6px;
+  --radius-pill: 6px;
+  --radius-tile: 8px;
+  --radius-card: 10px;
+  --radius-modal: 12px;
+}
+body { background: var(--paper); font-variant-numeric: tabular-nums; }
+header { box-shadow: none; border-bottom: 0; }
+
+/* Buttons: solid fills, no gradient, no glow. */
+.btn-primary, .btn-sync, .btn-qb { background: var(--brand-dark); box-shadow: none; }
+.btn-primary:hover, .btn-sync:hover, .btn-qb:hover { background: var(--brand-deep); }
+.usage-meter-fill { background: var(--brand-dark); }
+.usage-meter.is-warn .usage-meter-fill { background: var(--warning); }
+.usage-meter.is-over .usage-meter-fill { background: var(--error); }
+
+/* Labels read as labels, not shouting. */
+.section-label, .tab-toolbar-title, .step-label, .attention-label,
+.match-score .status-lbl, .score-item .lbl, .form-group label,
+.check-card-status, .qb-type-badge, .debug-header {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.section-label, .tab-toolbar-title, .step-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+
+/* Rows: one hairline register. The status lives in a full-height rule on
+   the left, and approved / flagged rows also carry a tinted ground so the
+   decision is visible at a glance without reading the pill. */
+.match-list, .checks-list { gap: 0; border: 1px solid var(--ledger-border); border-radius: var(--radius-card); overflow: hidden; background: var(--surface); }
+.match-row, .check-card { border: 0; border-radius: 0; border-bottom: 1px solid var(--ledger-hair); box-shadow: none; }
+.match-row:last-child, .check-card:last-child { border-bottom: 0; }
+.match-row:hover, .check-card:hover { box-shadow: none; background: var(--surface-tint); }
+.match-row.status-matched { box-shadow: inset 3px 0 0 var(--success); }
+.match-row.status-approved { box-shadow: inset 3px 0 0 var(--success-text); background: var(--success-bg); }
+.match-row.status-pending { box-shadow: inset 3px 0 0 var(--warning); }
+.match-row.status-discrepancy { box-shadow: inset 3px 0 0 var(--error); }
+.match-row.status-flagged { box-shadow: inset 3px 0 0 var(--error-text); background: var(--error-bg); }
+.match-row.status-unmatched { box-shadow: inset 3px 0 0 var(--neutral-border); }
+.match-row[class*='status-'] { border-left: 0; }
+.match-score .score { border-radius: var(--radius-pill); font-weight: 700; }
+
+/* Empty and loading: a quiet box with a direction, not a giant emoji. */
+.empty-state { padding: 28px 16px; border: 1px dashed var(--ledger-border); border-radius: var(--radius-card); background: var(--surface); }
+.empty-icon { font-size: 22px; opacity: 0.55; margin-bottom: 6px; }
+.empty-state p { font-size: 13px; color: var(--ink-strong); }
+.loading-overlay { background: var(--paper); }
+.loading-spinner { width: 22px; height: 22px; border-width: 2px; border-color: var(--ledger-border); border-top-color: var(--brand-dark); }
+/* Ledger presentation: compact records and opaque, token-based surfaces. */
+:root {
+  --radius-input: 6px;
+  --radius-btn: 6px;
+  --radius-tile: 8px;
+  --radius-card: 10px;
+  --gray-300: var(--neutral-border);
+  --gray-400: var(--ink-soft);
+  --gray-500: var(--ink-soft);
+}
+body { background: var(--app-bg); font-variant-numeric: tabular-nums; }
+header { background: var(--shell-solid); box-shadow: none; }
+#company-bar, #tabs, .attention-bar {
+  background: var(--surface);
+  border-color: var(--neutral-border);
+  box-shadow: none;
+}
+#company-select, #account-select { border-color: var(--neutral-border); }
+.tab { font-size: 11px; min-height: 36px; color: var(--ink-soft); }
+.tab.active { background: var(--brand-wash); color: var(--brand-text); }
+.tab-toolbar { gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.tab-toolbar-title { text-transform: none; letter-spacing: 0; color: var(--ink-strong); }
+.btn-primary, .btn-sync, .kyriq-toast-btn-primary {
+  background: var(--brand-dark);
+  box-shadow: none;
+}
+.btn-primary:hover, .btn-sync:hover, .kyriq-toast-btn-primary:hover {
+  background: var(--brand-deep);
+  box-shadow: none;
+  transform: none;
+}
+.btn-green { background: var(--success-text); color: var(--ink-invert); }
+.btn-green:hover { background: var(--emerald-dark); }
+.btn-red { background: var(--error-text); color: var(--ink-invert); }
+.btn-sm, .btn-xs { border-radius: var(--radius-btn); min-height: 28px; }
+.match-row, .check-card, .qb-card, .doc-card, .history-item {
+  background: var(--surface);
+  border-radius: var(--radius-input);
+  box-shadow: none;
+}
+.match-row:hover, .qb-card:hover, .doc-card:hover {
+  background: var(--surface-tint);
+  box-shadow: none;
+}
+.doc-card, .history-item { padding: 8px 12px; }
+.doc-meta, .history-meta, .check-card-meta, .qb-card-meta, .qb-card-memo,
+.match-qb .detail, .match-check .detail {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.qb-card-amount, .check-card-amount { color: var(--ink-strong); font-weight: 600; }
+.match-score .status-lbl { font-size: 10px; text-transform: none; }
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--brand-deep);
+  outline-offset: 2px;
+}
+
+/* Emoji icons were removed; an icon slot left empty collapses instead of
+   leaving a gap. Text carries the meaning. */
+:is(.empty-icon, .connect-icon, .method-icon, .upload-zone-icon, .checks-search-icon):empty { display: none; }
+.checks-search-wrap:has(.checks-search-icon:empty) .checks-search { padding-left: 10px; }
+.icon-btn svg { display: block; }

@@ -175,3 +175,13 @@
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
+
+/* ── Ledger skin values (mirror [data-skin='ledger'] in globals.css) ──────
+   The app's signed-in skin: paper canvas, solid navy shell, hairlines over
+   shadows. Applied to the side panel at the end of sidepanel.css. */
+:root {
+  --paper:         #f5f6fa;  /* 230 25% 97.5% */
+  --ledger-navy:   #1f1c4c;  /* 244 47% 20%, the app tile's navy */
+  --ledger-border: rgba(30, 27, 75, 0.1);
+  --ledger-hair:   rgba(30, 27, 75, 0.08);
+}

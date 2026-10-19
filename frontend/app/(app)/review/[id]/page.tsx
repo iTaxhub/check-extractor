@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { FileSearch } from 'lucide-react';
 import { EmptyState, buttonVariants } from '@/components/ui';
 import CheckImageViewer from './components/CheckImageViewer';
@@ -9,17 +10,26 @@ import ComparisonPanel from './components/ComparisonPanel';
 import ValidationWarnings from './components/ValidationWarnings';
 import AuditHistory from './components/AuditHistory';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Next 16: route params are a Promise. Reading `params.id` synchronously gave
 // `undefined`, so every review silently bounced to the dashboard.
 export default async function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
+  // The process page links here with its job_id (text), not a cheque UUID.
+  // Filtering checks.id by it is a Postgres cast error, so resolve the job
+  // to its first cheque instead.
+  const byJob = !UUID_RE.test(id);
   const { data: check, error } = await supabase
     .from('checks')
     .select('*')
-    .eq('id', id)
+    .eq(byJob ? 'job_id' : 'id', id)
+    .order('check_id', { ascending: true })
+    .limit(1)
     .maybeSingle();
+  if (byJob && check) redirect(`/review/${check.id}`);
 
   // A real query failure goes to the (app) error boundary, which has a retry.
   if (error) throw error;
@@ -48,7 +58,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-3xl font-semibold text-ink-strong">Review Check</h1>
+          <h1 className="font-heading text-2xl font-semibold text-ink-strong">Review cheque</h1>
           <p className="nums mt-1 text-sm text-ink-body">Check #{check.check_number || 'N/A'}</p>
         </div>
         <ApprovalActions checkId={check.id} currentStatus={check.status} />

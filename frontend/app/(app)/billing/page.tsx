@@ -449,9 +449,6 @@ export default function BillingPage() {
       {/* ── Header ──────────────────────────────────── */}
       <div>
         <h1 className="font-heading text-2xl font-semibold text-ink-strong">Billing &amp; usage</h1>
-        <p className="mt-0.5 text-sm text-ink-faint">
-          Processing usage, trial allowance and plan reference
-        </p>
       </div>
 
       {/* ── Back from Stripe. Says "confirming", never "active". ───── */}

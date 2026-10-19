@@ -926,15 +926,35 @@
   box-shadow: inset 2px 0 0 hsl(var(--emerald));
 }
 
-[data-skin='ledger'] h1 { font-size: clamp(1.75rem, 1.2rem + 1.2vw, 2.25rem); line-height: 1.1; }
-/* KPI figures read like a statement: serif numerals, a quiet label, no colour chips. */
+/* Titles stay small: the work on the page is the table, not the heading. */
+[data-skin='ledger'] h1 { font-size: 1.625rem; line-height: 1.15; }
+/* KPI figures are figures: the grotesk's tabular numerals line up across
+   tiles, a serif display face made zero look like the letter O. */
 [data-skin='ledger'] .kpi-value {
-  font-family: var(--font-serif), Georgia, serif;
-  font-weight: 400;
-  font-size: 2.25rem;
-  line-height: 1.05;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  font-size: 1.75rem;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
 }
+/* Labels in sentence case. Tracked all-caps on every label and column
+   header was the loudest "generated UI" tell, and it is slower to read. */
+[data-skin='ledger'] .text-eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+/* Tables: a solid header band, zebra rows and hairline rules, so a long
+   register can be read across without a ruler. */
+[data-skin='ledger'] thead,
+[data-skin='ledger'] thead th {
+  background-color: hsl(var(--surface-sunken));
+}
+[data-skin='ledger'] thead th { color: hsl(var(--ink-soft)); font-weight: 600; }
+[data-skin='ledger'] tbody tr:nth-child(even):not(:hover):not([aria-selected]) {
+  background-color: hsl(var(--surface-sunken) / 0.45);
+}
+[data-skin='ledger'] td { border-color: var(--glass-hairline); }
 [data-skin='ledger'] .kpi-icon { color: hsl(var(--ink-faint)); opacity: 0.7; }
 
 /* Tables: status lives in the accent rule and the pill, not a tint across

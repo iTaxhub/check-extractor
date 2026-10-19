@@ -128,7 +128,7 @@ export default function MatchProgress({
         aria-label="Cheques matched"
       >
         <div
-          className="absolute inset-y-0 left-0 rounded-pill bg-gradient-to-r from-brand-light via-brand to-brand-deep transition-[width] duration-700 ease-settle"
+          className="absolute inset-y-0 left-0 rounded-pill bg-brand-dark transition-[width] duration-700 ease-settle"
           style={{ width: `${pct}%` }}
         />
       </div>

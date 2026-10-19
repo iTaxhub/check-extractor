@@ -167,7 +167,7 @@ export default function ProcessingPage() {
       {/* ── Header ──────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-3xl font-semibold text-ink-strong">
+          <h1 className="font-heading text-2xl font-semibold text-ink-strong">
             {isComplete ? 'Extraction Results' : 'Processing Cheques'}
           </h1>
           <p className="mt-1 flex items-center gap-2 text-sm text-ink-body">
@@ -302,8 +302,8 @@ export default function ProcessingPage() {
           >
             <div
               className={cn(
-                'absolute inset-y-0 left-0 rounded-pill bg-gradient-to-r transition-[width] duration-700 ease-settle',
-                progress >= 100 ? 'from-success to-success-dark' : 'from-brand-light via-brand to-brand-deep'
+                'absolute inset-y-0 left-0 rounded-pill transition-[width] duration-700 ease-settle',
+                progress >= 100 ? 'bg-success' : 'bg-brand-dark'
               )}
               style={{ width: `${progress}%` }}
             />

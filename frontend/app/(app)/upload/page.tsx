@@ -832,10 +832,7 @@ function UploadPageInner() {
       {step === 'upload' && (
         <>
           <div>
-            <h1 className="font-heading text-2xl font-semibold text-ink-strong">Upload Document</h1>
-            <p className="mt-0.5 text-sm text-ink-body">
-              Upload a PDF. We&apos;ll detect pages and cheques before extraction.
-            </p>
+            <h1 className="font-heading text-2xl font-semibold text-ink-strong">Upload a document</h1>
           </div>
 
           <DropzoneUpload onFilesSelected={handleFilesSelected} />
