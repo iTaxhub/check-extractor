@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalShell title="Privacy Policy" updated="March 19, 2026">
+    <LegalShell title="Privacy Policy" updated="October 19, 2026">
       <h2>1. Introduction</h2>
       <p>
         Kyriq (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) provides this Privacy Policy to explain how we collect, use, disclose, and safeguard your information when you use our check reconciliation platform, including our web application, Chrome extension, and related services (collectively, the &ldquo;Service&rdquo;).
@@ -36,16 +36,23 @@ export default function PrivacyPolicyPage() {
 
       <h2>4. Data Storage and Security</h2>
       <p>
-        Your data is stored securely using industry-standard encryption (AES-256 at rest, TLS 1.3 in transit). We use Supabase as our database provider, which is SOC 2 Type II compliant. Uploaded documents and the images extracted from them are held in encrypted storage for the period described in Section 7 so that you can review, re-check, and reconcile them.
+        Uploaded PDFs are sent to our processing server, which renders the pages and crops each cheque into its own image. The uploaded PDF and the cropped cheque images are then stored in Supabase Storage, and the extracted cheque data is stored in our Supabase database, so that you can review, re-check, and reconcile them. Temporary copies on the processing server (the PDF, page renders and OCR working files) are removed once extraction finishes. Data is sent to and from the Service over HTTPS. How long stored documents are kept is described in Section 7.
       </p>
 
       <h2>5. Third-Party Services</h2>
       <p>We integrate with the following third-party services:</p>
       <ul>
-        <li><strong>Google Gemini AI:</strong> For OCR processing of check images. Images are sent via encrypted API calls and are not retained by Google beyond processing.</li>
+        <li><strong>Google (Gemini API):</strong> Cheque images are sent from our processing server to Google&rsquo;s Gemini API for OCR extraction.</li>
+        <li><strong>OpenAI:</strong> A fallback OCR engine; when enabled, cheque images may be sent from our processing server to the OpenAI API.</li>
+        <li><strong>Hugging Face:</strong> Cheque images are sent to a NuMarkdown OCR model hosted on Hugging Face Spaces.</li>
+        <li><strong>Railway:</strong> Hosts our processing server, which receives uploaded PDFs and runs extraction.</li>
+        <li><strong>Supabase:</strong> Authentication, database, and file storage for uploaded PDFs and cheque images.</li>
+        <li><strong>Vercel:</strong> Hosts the Kyriq web application and its API.</li>
         <li><strong>Intuit QuickBooks:</strong> For transaction matching and reconciliation. We access only the data you authorize via OAuth 2.0.</li>
-        <li><strong>Supabase:</strong> For authentication and data storage.</li>
       </ul>
+      <p>
+        The Kyriq Chrome extension does not send cheque images or other data to Google or any AI provider directly; it communicates only with Kyriq&rsquo;s own servers and the QuickBooks pages you open.
+      </p>
 
       <h2>6. Data Sharing</h2>
       <p>
@@ -57,13 +64,13 @@ export default function PrivacyPolicyPage() {
         We retain your account data for as long as your account is active.
       </p>
       <p>
-        <strong>Uploaded source documents are deleted 14 days after the reconciliation they belong to is completed.</strong> The 14 days are counted from completion, not from upload, so a reconciliation you pause mid-month keeps its documents until you have finished with it. Deletion removes the uploaded PDF from our storage.
+        <strong>Uploaded source documents are deleted 14 days after the reconciliation they belong to is completed.</strong> The 14 days are counted from completion, not from upload, so a reconciliation you pause mid-month keeps its documents until you have finished with it. A scheduled job performs the deletion and removes the uploaded PDF from our storage.
       </p>
       <p>
-        What we keep is the result, not the document: the extracted cheque data, the match and approval results, and the reconciliation history remain available to you after the source document has been deleted, including for reconciliations you abandoned. Records we are required to keep for billing and security purposes are retained separately.
+        The cropped cheque images are not removed by that job: they, the extracted cheque data, the match and approval results, and the reconciliation history remain stored until you delete the job in the Service or close your account. Deleting a job removes its PDF, cheque images, and extracted data from our storage and database. Records we are required to keep for billing and security purposes are retained separately.
       </p>
       <p>
-        You may request deletion of your data at any time by contacting us.
+        You may also request deletion of your data at any time by emailing <a href="mailto:privacy@itaxhub.com">privacy@itaxhub.com</a>.
       </p>
 
       <h2>8. Your Rights</h2>

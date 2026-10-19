@@ -215,10 +215,13 @@ https://kyriq.com/privacy
 ```
 Verified live and publicly reachable (HTTP 200).
 
-> ⚠️ **Owner decision before submitting.** The live policy says images are processed in memory and
-> not stored unless the user opts in, while the source describes retained documents and images.
-> State the true retention behaviour, publish it, and name the server-side processors (Google
-> Gemini, Railway). As of 1.2.0 the extension itself no longer calls Gemini or holds its key.
+The policy states what the code does: uploaded PDFs and cropped cheque images are stored in
+Supabase Storage (`checks` bucket, `jobs/{job_id}/`); a daily Vercel cron (`/api/retention/sweep`)
+deletes the uploaded PDF 14 days after the reconciliation completes (migration 035); cheque images
+and extracted data stay until the user deletes the job or closes the account. Server-side
+processors named: Google Gemini, OpenAI (fallback), Hugging Face (NuMarkdown), Railway, Supabase,
+Vercel, Intuit. As of 1.2.0 the extension itself sends nothing to Google or any AI provider.
+Before submitting, confirm migration 035 is applied in production so the 14-day sweep is live.
 
 ---
 
