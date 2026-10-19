@@ -246,6 +246,14 @@ export default function DashboardPage() {
   const completedJobs = jobs.filter((j) => j.status === 'complete').length;
   const totalPages = jobs.reduce((s, j) => s + (j.total_pages || 0), 0);
   const failedJobs = jobs.filter((j) => j.status === 'error' || j.status === 'failed').length;
+  // Failed first, then anything still running, newest first within each.
+  const attentionJobs = jobs
+    .filter((j) => j.status !== 'complete')
+    .sort((a, b) => {
+      const fa = a.status === 'error' || a.status === 'failed' ? 0 : 1;
+      const fb = b.status === 'error' || b.status === 'failed' ? 0 : 1;
+      return fa - fb || (b.created_at || '').localeCompare(a.created_at || '');
+    });
 
   // Duplicate detection
   const groupedJobs = jobs.reduce((acc, job) => {
@@ -356,6 +364,53 @@ export default function DashboardPage() {
 
       {!loading && loadError != null && (
         <ErrorState title="We couldn’t load your documents" error={loadError} onRetry={fetchJobs} />
+      )}
+
+      {/* ── Work requiring attention ─────────────────
+          Unfinished and failed documents come before passive totals: they
+          are the only rows a person has to act on. Built from the same jobs
+          list as everything else on the page; nothing is estimated. */}
+      {!loading && attentionJobs.length > 0 && (
+        <GlassCard padding="none" className="overflow-hidden">
+          <div className="flex items-baseline gap-2 border-b border-glass-hairline px-4 py-2.5">
+            <h2 className="font-heading text-sm font-semibold text-ink-strong">Work requiring attention</h2>
+            <span className="nums text-xs text-ink-faint">{attentionJobs.length} item{attentionJobs.length === 1 ? '' : 's'}</span>
+          </div>
+          <TableScroll className="max-h-56">
+            <Table className="text-xs">
+              <Thead>
+                <Tr>
+                  <Th className={DENSE_CELL}>Document</Th>
+                  <Th className={DENSE_CELL}>Uploaded</Th>
+                  <Th className={DENSE_CELL}>Status</Th>
+                  <Th className={DENSE_CELL}><span className="sr-only">Action</span></Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {attentionJobs.map((j) => {
+                  const failed = j.status === 'error' || j.status === 'failed';
+                  return (
+                    <Tr key={j.job_id}>
+                      <Td className={`${DENSE_CELL} max-w-[20rem] truncate font-medium`} title={j.pdf_name}>{j.pdf_name}</Td>
+                      <Td className={DENSE_CELL} muted>{fmtDate(j.created_at)}</Td>
+                      <Td className={DENSE_CELL}>
+                        <span className={failed ? 'inline-flex items-center gap-1 text-error-text' : 'inline-flex items-center gap-1 text-ink-body'}>
+                          {failed ? <AlertCircle size={12} aria-hidden /> : <Loader2 size={12} className="animate-spin" aria-hidden />}
+                          {failed ? (j.error ? `Failed: ${j.error}` : 'Extraction failed') : 'Processing'}
+                        </span>
+                      </Td>
+                      <Td className={`${DENSE_CELL} text-right`}>
+                        <Link href={`/process/${j.job_id}`} className="text-xs font-semibold text-brand-dark hover:underline">
+                          {failed ? 'Open' : 'View progress'}
+                        </Link>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          </TableScroll>
+        </GlassCard>
       )}
 
       {/* ── Duplicate Warning ──────────────────────── */}
@@ -559,16 +614,22 @@ export default function DashboardPage() {
 
       {/* ── Empty state ─────────────────────────────── */}
       {!loading && jobs.length === 0 && loadError == null && (
-        <EmptyState
-          icon={<FileText />}
-          title="No documents yet"
-          description="Upload a bank statement or cheque PDF and Kyriq will find and read every cheque in it."
-          action={
-            <Link href="/upload" className="inline-flex">
-              <Button icon={<Upload size={14} />}>Upload PDF</Button>
-            </Link>
-          }
-        />
+        <GlassCard className="max-w-xl">
+          <h2 className="font-heading text-base font-semibold text-ink-strong">Get started</h2>
+          <ol className="mt-3 space-y-2.5 text-sm">
+            {[
+              { n: 1, label: 'Connect QuickBooks', href: '/settings?tab=integrations', cta: 'Connect' },
+              { n: 2, label: 'Upload a cheque PDF or bank statement', href: '/upload', cta: 'Upload' },
+              { n: 3, label: 'Review matches and approve', href: '/reconcile', cta: 'Reconcile' },
+            ].map((s) => (
+              <li key={s.n} className="flex items-center gap-3">
+                <span className="nums flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-glass-border text-xs font-semibold text-ink-soft">{s.n}</span>
+                <span className="flex-1 text-ink-body">{s.label}</span>
+                <Link href={s.href} className="text-xs font-semibold text-brand-dark hover:underline">{s.cta}</Link>
+              </li>
+            ))}
+          </ol>
+        </GlassCard>
       )}
 
       {/* ══════════════════════════════════════════════
