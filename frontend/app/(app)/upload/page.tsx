@@ -4,13 +4,14 @@ import { createClient } from '@/lib/supabase/client';
 import { Suspense, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DropzoneUpload from './components/DropzoneUpload';
+import MultiFileQueue, { type QueueRow } from './components/MultiFileQueue';
 import BatchSegregation from './components/BatchSegregation';
 import PageSelectGrid, {
   defaultPageSelection,
   selectedRange,
 } from './components/PageSelectGrid';
 import {
-  Upload, FileText, Image as ImageIcon, Loader2, CheckCircle,
+  Upload, FileText, Image as ImageIcon, CheckCircle,
   ChevronRight, ChevronLeft, Eye, LayoutGrid, List, ZoomIn, ZoomOut,
   Settings2, Play, X, AlertCircle, HardDrive, CreditCard,
 } from 'lucide-react';
@@ -119,7 +120,7 @@ class DuplicateSkipped extends Error {
 }
 
 const STEP_ORDER: ('upload' | 'preview' | 'configure')[] = ['upload', 'preview', 'configure'];
-const STEP_LABELS: Record<string, string> = { upload: 'Upload', preview: 'Preview', configure: 'Configure & Extract' };
+const STEP_LABELS: Record<string, string> = { upload: 'Upload', preview: 'Preview', configure: 'Configure and extract' };
 
 /** Status dot for the multi-job strip. Colour marks state only (rule 10). */
 const STATUS_DOT: Record<JobStatus, string> = {
@@ -832,126 +833,46 @@ function UploadPageInner() {
       {step === 'upload' && (
         <>
           <div>
-            <h1 className="font-heading text-2xl font-semibold text-ink-strong">Upload a document</h1>
+            <h1 className="font-heading text-2xl font-semibold text-ink-strong">Upload documents</h1>
           </div>
 
-          <DropzoneUpload onFilesSelected={handleFilesSelected} />
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem]">
+            <DropzoneUpload onFilesSelected={handleFilesSelected} />
+            <GlassPanel radius="card" className="space-y-2 text-sm text-ink-body">
+              <p className="font-semibold text-ink-strong">Scan guidance</p>
+              <ul className="list-disc space-y-1 pl-4 text-xs">
+                <li>Flat, upright scans read best</li>
+                <li>One PDF can hold many pages and cheques</li>
+                <li>Bank statements with cheque images work too</li>
+              </ul>
+            </GlassPanel>
+          </div>
 
           {files.length > 0 && (
             <div className="space-y-3">
-              <GlassCard padding="none" className="overflow-hidden">
-                <div className="border-b border-glass-hairline px-4 py-2.5">
-                  <GlassCardTitle className="text-sm">Files ({files.length})</GlassCardTitle>
-                </div>
-                <div>
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="glass-divider flex items-center justify-between px-4 py-2.5 transition-colors duration-quick ease-settle hover:bg-brand/[0.045]"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="rounded-input bg-brand-wash p-1.5">
-                          <FileText className="text-brand-deep" size={14} aria-hidden />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-ink-strong">{file.name}</p>
-                          <p className="nums text-xs text-ink-faint">{fmtSize(file.size)}</p>
-                        </div>
-                      </div>
-                      <IconButton
-                        aria-label={`Remove ${file.name}`}
-                        size="icon-sm"
-                        onClick={() => handleRemoveFile(index)}
-                        className="text-ink-faint hover:text-error-text"
-                      >
-                        <X size={14} />
-                      </IconButton>
-                    </div>
-                  ))}
-                </div>
-              </GlassCard>
-
-              {/* Progress Display During Upload */}
-              {uploading && jobEntries.length > 0 && (
-                <GlassPanel className="border-info-border bg-info-bg/40">
-                  <div className="flex items-start gap-3">
-                    <Loader2 className="mt-0.5 shrink-0 animate-spin text-brand" size={20} aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <h3 className="font-heading text-sm font-semibold text-ink-strong">
-                          Processing documents…
-                        </h3>
-                        {files.reduce((sum, f) => sum + f.size, 0) > 5 * 1024 * 1024 && (
-                          <Badge tone="brand" size="sm">
-                            Large file — may take 1–2 minutes
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        {jobEntries.map((entry) => {
-                          const messages = progressMessages[entry.id] || [];
-                          return (
-                            <div key={entry.id} className="space-y-1">
-                              <div className="flex items-center justify-between gap-4 text-xs">
-                                <span className="max-w-[300px] truncate font-medium text-ink-strong">
-                                  {entry.file.name}
-                                </span>
-                                <div className="flex shrink-0 items-center gap-3">
-                                  {entry.status === 'uploading' && (
-                                    <span className="flex items-center gap-1 text-ink-body">
-                                      <Loader2 size={12} className="animate-spin" aria-hidden />
-                                      {messages.length > 0 ? messages[messages.length - 1] : 'Analyzing…'}
-                                    </span>
-                                  )}
-                                  {entry.status === 'analyzed' && entry.result && (
-                                    <span className="nums flex items-center gap-2 font-semibold text-success-text">
-                                      <CheckCircle size={12} aria-hidden />
-                                      {entry.result.total_pages} pages, {entry.result.total_checks} cheques found
-                                    </span>
-                                  )}
-                                  {entry.status === 'error' && (
-                                    <span className="flex items-center gap-1 text-error-text">
-                                      <AlertCircle size={12} aria-hidden />
-                                      {entry.error || 'Failed'}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              {/* Show all progress messages */}
-                              {entry.status === 'uploading' && messages.length > 0 && (
-                                <div className="ml-4 space-y-0.5">
-                                  {messages.map((msg, idx) => (
-                                    <div key={idx} className="flex items-center gap-1.5 text-xs text-ink-body">
-                                      <span className="h-1 w-1 rounded-full bg-brand" aria-hidden />
-                                      {msg}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Helpful tips during processing */}
-                      <div className="mt-3 border-t border-glass-hairline pt-3">
-                        <p className="text-xs text-ink-body">
-                          <strong className="font-semibold text-ink-strong">Tip:</strong> Processing
-                          time varies by file size.
-                          {(() => {
-                            const analyzing = jobEntries.filter(e => e.status === 'uploading').length;
-                            const completed = jobEntries.filter(e => e.status === 'analyzed').length;
-                            if (analyzing > 0 && completed > 0) {
-                              return ` ${completed} of ${jobEntries.length} completed.`;
-                            }
-                            return ' You can continue working while we process in the background.';
-                          })()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </GlassPanel>
-              )}
+              {/* One row per file. While analyzing, each row carries its own
+                  stage from jobEntries, so the name is never shown twice. */}
+              <MultiFileQueue
+                files={files}
+                onRemove={handleRemoveFile}
+                locked={uploading}
+                rows={files.map((file): QueueRow | undefined => {
+                  const entry = jobEntries.find((e) => e.file === file);
+                  if (!entry) return undefined;
+                  if (entry.status === 'error') return { state: 'error', detail: entry.error || 'Failed' };
+                  if (entry.status === 'uploading') {
+                    const messages = progressMessages[entry.id] || [];
+                    return { state: 'working', detail: messages[messages.length - 1] || 'Analyzing…' };
+                  }
+                  if (entry.result) {
+                    return {
+                      state: 'done',
+                      detail: `${entry.result.total_pages} pages, ${entry.result.total_checks} cheques found`,
+                    };
+                  }
+                  return { state: 'done' };
+                })}
+              />
 
               {/* Sorts the batch into statements / cheque sheets / nothing-found
                   from counts detection already produced. Hides itself below two
@@ -970,20 +891,29 @@ function UploadPageInner() {
                 }))}
               />
 
-              <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setFiles([])} disabled={uploading}>
-                  Clear
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleUploadAndAnalyze}
-                  loading={uploading}
-                  icon={<Upload size={14} />}
-                >
-                  {uploading
-                    ? `Analyzing ${files.length} file${files.length > 1 ? 's' : ''}…`
-                    : 'Upload & Analyze'}
-                </Button>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-glass-hairline pt-3">
+                <p className="nums text-sm text-ink-body">
+                  {files.length} file{files.length > 1 ? 's' : ''} ·{' '}
+                  {fmtSize(files.reduce((sum, f) => sum + f.size, 0))}
+                  {uploading && files.reduce((sum, f) => sum + f.size, 0) > 5 * 1024 * 1024 ? (
+                    <span className="text-ink-faint"> · large files can take 1–2 minutes</span>
+                  ) : null}
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setFiles([])} disabled={uploading}>
+                    Clear
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleUploadAndAnalyze}
+                    loading={uploading}
+                    icon={<Upload size={14} />}
+                  >
+                    {uploading
+                      ? `Analyzing ${files.length} file${files.length > 1 ? 's' : ''}…`
+                      : 'Upload and analyze'}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -997,7 +927,7 @@ function UploadPageInner() {
         <>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="font-heading text-2xl font-semibold text-ink-strong">Document Preview</h1>
+              <h1 className="font-heading text-2xl font-semibold text-ink-strong">Document preview</h1>
               <p className="mt-0.5 truncate text-sm text-ink-body">{analyzeResult.pdf_name}</p>
             </div>
             <Button
@@ -1025,7 +955,7 @@ function UploadPageInner() {
                   setActiveJobId(null);
                 }}
               >
-                Back to Upload
+                Back to upload
               </Button>
               <Button
                 size="sm"
@@ -1033,11 +963,11 @@ function UploadPageInner() {
                 icon={<X size={14} />}
                 onClick={() => router.push('/dashboard')}
               >
-                Extract Later
+                Extract later
               </Button>
             </div>
             <Button size="sm" onClick={() => setStep('configure')}>
-              Continue to Configure
+              Continue to configure
               <ChevronRight size={14} aria-hidden />
             </Button>
           </GlassCard>
@@ -1052,7 +982,7 @@ function UploadPageInner() {
               <AlertCircle className="mt-0.5 shrink-0 text-warning-text" size={20} aria-hidden />
               <div className="min-w-0 flex-1">
                 <h3 className="mb-1 font-heading text-sm font-semibold text-warning-text">
-                  Duplicate Document Detected
+                  Duplicate document detected
                 </h3>
                 <p className="text-sm text-ink-body">
                   This file has already been uploaded. Using existing job{' '}
@@ -1092,7 +1022,7 @@ function UploadPageInner() {
 
           {/* View mode toggle */}
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-heading text-sm font-semibold text-ink-strong">Page Previews</h2>
+            <h2 className="font-heading text-sm font-semibold text-ink-strong">Page previews</h2>
             <div className="glass-track inline-flex items-center gap-0.5 rounded-pill p-1">
               <button
                 onClick={() => setViewMode('card')}
@@ -1373,7 +1303,7 @@ function UploadPageInner() {
         <>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="font-heading text-2xl font-semibold text-ink-strong">Configure Extraction</h1>
+              <h1 className="font-heading text-2xl font-semibold text-ink-strong">Configure extraction</h1>
               <p className="nums mt-0.5 truncate text-sm text-ink-body">
                 {analyzeResult.pdf_name} — {totalPages} pages, {totalChecks} cheques
               </p>
@@ -1421,7 +1351,7 @@ function UploadPageInner() {
                   hint: 'Tick the pages to extract — cheque pages are pre-ticked',
                 },
                 ...(totalChecks > 0
-                  ? [{ key: 'cheques', title: 'Cheque Range', hint: 'Select specific cheques' }]
+                  ? [{ key: 'cheques', title: 'Cheque range', hint: 'Select specific cheques' }]
                   : []),
               ] as { key: RangeType; title: string; hint: string }[]).map((opt) => (
                 <div key={opt.key}>
@@ -1530,7 +1460,7 @@ function UploadPageInner() {
               loading={step === 'starting'}
               icon={<Play size={14} />}
             >
-              {step === 'starting' ? 'Starting Extraction…' : 'Start Extraction'}
+              {step === 'starting' ? 'Starting extraction…' : 'Start extraction'}
             </Button>
           </div>
         </>

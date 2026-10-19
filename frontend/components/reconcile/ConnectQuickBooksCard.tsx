@@ -49,8 +49,7 @@ export default function ConnectQuickBooksCard() {
       <div className="min-w-0 flex-1">
         <h2 className="text-sm font-semibold text-ink-strong">Connect QuickBooks</h2>
         <p className="mt-0.5 text-sm text-ink-body">
-          Kyriq matches your cheques against QuickBooks Online. Connect a company now and stay
-          on this page — you can start uploading either way.
+          Needed for matching. You can upload either way.
         </p>
       </div>
       <Button size="sm" loading={connecting} onClick={connect} className="shrink-0">

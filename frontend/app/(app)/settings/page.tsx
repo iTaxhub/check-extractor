@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2, ShieldCheck } from 'lucide-react'
+import { Save, AlertCircle, Key, ExternalLink, CheckCircle, XCircle, Users, Settings as SettingsIcon, Plug, Upload, FileText, Loader2, ShieldCheck, RefreshCw, MoreHorizontal, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { QBCompanySwitcher } from '@/components/QBCompanySwitcher'
 import QuickBooksFilters, { FilterParams } from '@/components/QuickBooksFilters'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
@@ -20,7 +21,6 @@ import {
     Skeleton,
     ErrorState,
     TabPanel,
-    Tabs,
     type TabItem,
 } from '@/components/ui'
 
@@ -28,7 +28,7 @@ const QBDataPreview = dynamic(() => import('@/components/QBDataPreview'), { ssr:
 
 const TABS: TabItem[] = [
     { value: 'general', label: 'General', icon: <SettingsIcon size={15} aria-hidden /> },
-    { value: 'integrations', label: 'Integrations', icon: <Plug size={15} aria-hidden /> },
+    { value: 'integrations', label: 'Connections', icon: <Plug size={15} aria-hidden /> },
     { value: 'team', label: 'Team', icon: <Users size={15} aria-hidden /> },
     { value: 'security', label: 'Security', icon: <ShieldCheck size={15} aria-hidden /> },
 ]
@@ -112,6 +112,7 @@ function SettingsPageContent() {
     const [settingsError, setSettingsError] = useState<unknown>(null)
     const [mounted, setMounted] = useState(false)
     const [credentialsExist, setCredentialsExist] = useState(false)
+    const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false)
 
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -131,8 +132,8 @@ function SettingsPageContent() {
         const tab = searchParams.get('tab')
         const notice = searchParams.get('notice')
         
-        if (tab === 'integrations') {
-            setActiveTab('integrations')
+        if (tab && TABS.some((t) => t.value === tab)) {
+            setActiveTab(tab)
         }
         
         if (error) {
@@ -625,26 +626,48 @@ function SettingsPageContent() {
         }
     }
 
+    const selectTab = (value: string) => {
+        setActiveTab(value)
+        // Keep ?tab= in step so /settings?tab=integrations and reloads land here.
+        router.replace(`/settings?tab=${value}`, { scroll: false })
+    }
+
     return (
-        <div className="mx-auto max-w-6xl space-y-5 p-5" data-tone="brand">
-            <div>
-                <h1 className="font-heading text-2xl font-semibold text-ink-strong">Settings</h1>
-            </div>
+        <div className="mx-auto max-w-[1200px] space-y-5 p-5 md:p-8" data-tone="brand">
+            <h1 className="font-heading text-2xl font-semibold text-ink-strong">Settings</h1>
 
-            {/* Tabs. One recessed track with a transform-driven thumb — not four
-                underlined buttons, which was the fifth header recipe in the app. */}
-            <Tabs
-                items={TABS}
-                value={activeTab}
-                onValueChange={setActiveTab}
-                aria-label="Settings sections"
-                className="max-w-xl"
-            />
+            <div className="flex flex-col gap-6 md:flex-row">
+                {/* Secondary settings menu. */}
+                <nav aria-label="Settings sections" className="md:w-48 md:shrink-0">
+                    <div role="tablist" aria-orientation="vertical" className="flex gap-1 overflow-x-auto md:flex-col">
+                        {TABS.map((tab) => {
+                            const active = activeTab === tab.value
+                            return (
+                                <button
+                                    key={tab.value}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={active}
+                                    onClick={() => selectTab(tab.value)}
+                                    className={`press flex min-h-tap items-center gap-2 whitespace-nowrap rounded-input px-3 text-sm font-medium transition-colors duration-tap focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                                        active
+                                            ? 'bg-brand/[0.1] text-brand-dark'
+                                            : 'text-ink-body hover:bg-ink-strong/[0.04] hover:text-ink-strong'
+                                    }`}
+                                >
+                                    {tab.icon}
+                                    {tab.label}
+                                </button>
+                            )
+                        })}
+                    </div>
+                </nav>
 
+                <div className="min-w-0 flex-1 space-y-5">
             {/* ── General ─────────────────────────────── */}
             <TabPanel value="general" active={activeTab} className="space-y-5">
                 <GlassCard padding="lg" className="space-y-4">
-                    <GlassCardTitle>Export Preferences</GlassCardTitle>
+                    <GlassCardTitle>Export preferences</GlassCardTitle>
 
                     <Field label="Default export status" htmlFor="export-status">
                         <Select id="export-status" className="sm:max-w-xs">
@@ -657,250 +680,245 @@ function SettingsPageContent() {
                         <input
                             type="checkbox"
                             id="auto-export"
-                            className="mt-0.5 h-4 w-4 shrink-0 rounded-[5px] border border-glass-hairline bg-white/70 accent-primary"
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded-[5px] border border-glass-hairline bg-surface accent-primary"
                         />
                         <span>Auto-export approved cheques (when confidence &gt; 95%)</span>
                     </label>
 
                     <div className="flex justify-end">
-                        <Button size="sm" icon={<Save className="h-4 w-4" />}>Save Changes</Button>
+                        <Button size="sm" icon={<Save className="h-4 w-4" />}>Save changes</Button>
                     </div>
                 </GlassCard>
 
                 {/*
-                  The matching-preferences panel from the v12/v17 prototype
-                  (auto-match threshold, possible-match threshold, amount and
-                  date tolerance, payee normalisation) is deliberately NOT here.
-                  Michael: "I'm not sure why it put the matching preference
-                  under settings? Don't think that has any value." CHECKLIST 3
-                  moves the one control worth keeping — the auto-approve
-                  threshold — next to Approve All on the Review step, where it
-                  is used. check-parcel-d.ts fails if this panel reappears.
+                  The matching-preferences panel from the v12/v17 prototype is
+                  deliberately NOT here (client decision; CHECKLIST 3 moves the
+                  auto-approve threshold to the Review step). check-parcel-d.ts
+                  fails if this panel reappears.
                 */}
             </TabPanel>
 
-            {/* ── Integrations ────────────────────────── */}
+            {/* ── Connections (tab value stays 'integrations' for ?tab=) ── */}
             <TabPanel value="integrations" active={activeTab} className="space-y-5">
                 {settingsError != null && !loadingSettings && (
                     <ErrorState surface="banner" title="Couldn’t load your QuickBooks connection" error={settingsError}
                         onRetry={() => { setLoadingSettings(true); return fetchIntegrationStatus() }} />
                 )}
+
                 {/* QuickBooks Online */}
                 <GlassCard padding="lg" className="space-y-4">
-                    <div>
-                        <GlassCardTitle className="flex items-center gap-2">
-                            QuickBooks Online
-                            {qboConnected && <CheckCircle className="text-success" size={18} aria-label="Connected" />}
-                        </GlassCardTitle>
-                        <p className="mt-1 text-sm text-ink-body">
-                            Connect to QuickBooks Online for data import and export
-                        </p>
-                    </div>
-
                     {loadingSettings ? (
-                        <GlassPanel tone="sunken" radius="tile" padding="md" className="space-y-3" aria-busy>
+                        <div className="space-y-3" aria-busy>
                             <Skeleton shape="text" className="w-36" />
                             <Skeleton shape="line" className="w-56" />
                             <Skeleton shape="pill" className="h-9 w-40" />
-                        </GlassPanel>
+                        </div>
                     ) : (
-                    <GlassPanel tone="sunken" radius="tile" padding="md">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-ink-strong">Connection Status</p>
-                                <div className="mt-2 space-y-1.5">
-                                    {qbConfigured ? (
-                                        <p className="flex items-center gap-2 text-sm text-info-text">
-                                            <Key size={14} aria-hidden />
-                                            <span>Credentials configured</span>
-                                        </p>
-                                    ) : (
-                                        <p className="flex items-center gap-2 text-sm text-warning-text">
-                                            <AlertCircle size={14} aria-hidden />
-                                            <span>Credentials not configured</span>
-                                        </p>
-                                    )}
-                                    {qboConnected ? (
-                                        <div className="space-y-1.5">
-                                            <p className="flex items-center gap-2 text-sm text-success-text">
-                                                <CheckCircle size={14} aria-hidden />
-                                                <span>Connected to QuickBooks</span>
-                                            </p>
-                                            {companyName && (
-                                                <p className="ml-5 text-sm font-semibold text-ink-strong">
-                                                    Company: {companyName}
-                                                </p>
-                                            )}
-                                            {companyId && (
-                                                <p className="nums ml-5 text-xs text-ink-faint">
-                                                    Realm ID: {companyId}
-                                                </p>
-                                            )}
-                                            <Notice tone="info" className="ml-5 mt-2 text-xs">
-                                                <p className="mb-1 font-semibold">Multiple companies?</p>
-                                                <p>To switch to a different QuickBooks company, click Disconnect, then Connect to QuickBooks again and select the company you want to use.</p>
-                                            </Notice>
-                                        </div>
-                                    ) : (
-                                        <p className="flex items-center gap-2 text-sm text-ink-faint">
-                                            <XCircle size={14} aria-hidden />
-                                            <span>Not connected &mdash; OAuth required</span>
-                                        </p>
-                                    )}
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <GlassCardTitle>QuickBooks Online</GlassCardTitle>
+                                    {qboConnected && <QBCompanySwitcher />}
                                 </div>
+                                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                                    <dt className="text-ink-soft">Company</dt>
+                                    <dd className="font-medium text-ink-strong">{qboConnected ? companyName || 'Name not available' : '—'}</dd>
+                                    <dt className="text-ink-soft">Status</dt>
+                                    <dd>
+                                        {qboConnected ? (
+                                            <span className="inline-flex items-center gap-1.5 text-success-text">
+                                                <CheckCircle size={14} aria-hidden /> Connected
+                                            </span>
+                                        ) : qbConfigured ? (
+                                            <span className="inline-flex items-center gap-1.5 text-warning-text">
+                                                <AlertCircle size={14} aria-hidden /> Not connected
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 text-ink-soft">
+                                                <XCircle size={14} aria-hidden /> Not set up
+                                            </span>
+                                        )}
+                                    </dd>
+                                </dl>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                {qbConfigured && !qboConnected && (
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={handleTestConnection}
-                                        loading={testingConnection}
-                                        icon={<Plug size={16} />}
-                                    >
-                                        Test Connection
-                                    </Button>
-                                )}
+
+                            <div className="flex flex-wrap items-center gap-2">
                                 {qboConnected ? (
-                                    <Button variant="secondary" size="sm" className="text-error-text" onClick={handleQBODisconnect}>
-                                        Disconnect
-                                    </Button>
+                                    <>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => handlePullData({})}
+                                            loading={pullingData}
+                                            icon={<RefreshCw size={14} />}
+                                        >
+                                            Sync transactions
+                                        </Button>
+                                        <details className="relative">
+                                            <summary
+                                                aria-label="Manage connection"
+                                                className="press flex min-h-tap cursor-pointer list-none items-center rounded-input border border-glass-hairline bg-surface px-2.5 text-ink-body hover:text-ink-strong [&::-webkit-details-marker]:hidden"
+                                            >
+                                                <MoreHorizontal size={16} aria-hidden />
+                                            </summary>
+                                            <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-input border border-glass-hairline bg-surface py-1 shadow-contact">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleTestConnection}
+                                                    disabled={testingConnection}
+                                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink-body hover:bg-brand/[0.06] disabled:opacity-disabled"
+                                                >
+                                                    <Plug size={14} aria-hidden /> Test connection
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowDisconnectConfirm(true)}
+                                                    className="flex w-full items-center gap-2 border-t border-glass-hairline px-3 py-2 text-left text-sm text-error-text hover:bg-error-bg"
+                                                >
+                                                    <XCircle size={14} aria-hidden /> Disconnect
+                                                </button>
+                                            </div>
+                                        </details>
+                                    </>
                                 ) : (
                                     <>
+                                        {qbConfigured && (
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={handleTestConnection}
+                                                loading={testingConnection}
+                                                icon={<Plug size={14} />}
+                                            >
+                                                Test connection
+                                            </Button>
+                                        )}
                                         <Button
                                             variant="secondary"
                                             size="sm"
                                             onClick={() => setShowQBCredentialsDialog(true)}
-                                            icon={<Key size={16} />}
+                                            icon={<Key size={14} />}
                                         >
-                                            Configure Credentials
+                                            Configure credentials
                                         </Button>
-                                        <Button size="sm" onClick={handleQBOConnect} icon={<ExternalLink size={16} />}>
+                                        <Button size="sm" onClick={handleQBOConnect} icon={<ExternalLink size={14} />}>
                                             Connect to QuickBooks
                                         </Button>
                                     </>
                                 )}
                             </div>
                         </div>
-                    </GlassPanel>
                     )}
 
-                    {/* Connection Diagnostics */}
-                    {qbConfigured && (
-                        <GlassPanel tone="sunken" radius="tile" padding="md">
-                            <p className="mb-3 text-sm font-semibold text-ink-strong">Connection Diagnostics</p>
-                            <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-                                <DiagnosticRow
-                                    ok={credentialsExist}
-                                    label={credentialsExist ? 'Credentials saved in DB' : 'No credentials in DB (using env vars)'}
-                                />
-                                <DiagnosticRow
-                                    ok={qboConnected}
-                                    label={qboConnected ? 'OAuth tokens present' : 'No OAuth tokens'}
-                                />
-                                <DiagnosticRow
-                                    ok={Boolean(companyId)}
-                                    neutral
-                                    label={companyId ? `Realm ID: ${companyId}` : 'No company selected'}
-                                />
-                                <DiagnosticRow
-                                    ok={Boolean(companyName)}
-                                    neutral
-                                    label={companyName ? `Company: ${companyName}` : 'Company name not fetched'}
-                                />
-                            </div>
-                            {qboConnected && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="mt-3"
-                                    onClick={handleTestConnection}
-                                    loading={testingConnection}
-                                    icon={<Plug size={14} />}
-                                >
-                                    Diagnose Connection
-                                </Button>
-                            )}
-                        </GlassPanel>
-                    )}
-
-                    <Notice tone="info" icon={<AlertCircle size={18} aria-hidden />}>
-                        <p className="font-semibold">What you can do:</p>
-                        <ul className="mt-1 list-inside list-disc space-y-0.5">
-                            <li>Import QuickBooks data for comparison</li>
-                            <li>Export cheques as Expenses or Check transactions</li>
-                            <li>Automatic duplicate detection</li>
-                            <li>Map payees to QuickBooks vendors</li>
-                        </ul>
-                    </Notice>
-
-                    {/* Pull Data Section with Filters */}
-                    {qboConnected && (
-                        <div className="space-y-4 border-t border-glass-hairline pt-5">
-                            <div>
-                                <GlassCardTitle className="text-base">Fetch QuickBooks Data</GlassCardTitle>
-                                <p className="mt-1 text-sm text-ink-body">
-                                    Pull cheque data from QuickBooks with optional filters to control what data is imported.
-                                </p>
-                            </div>
-
-                            <QuickBooksFilters
-                                onApplyFilters={handlePullData}
-                                isLoading={pullingData}
-                                qbConnected={qboConnected}
-                            />
-
-                            {pullResult && (
-                                <Notice
-                                    tone={pullResult.success ? 'success' : 'error'}
-                                    icon={pullResult.success
-                                        ? <CheckCircle size={18} aria-hidden />
-                                        : <AlertCircle size={18} aria-hidden />}
-                                >
-                                    <p className="whitespace-pre-line text-sm font-medium">{pullResult.message}</p>
-                                    {pullResult.success && pullResult.data && (
-                                        <div className="mt-2 text-xs">
-                                            <p className="mb-1 font-semibold">Breakdown:</p>
-                                            <ul className="nums space-y-0.5">
-                                                <li>Cheques written: {pullResult.data.breakdown?.cheques_written || 0}</li>
-                                                <li>Bills paid by cheque: {pullResult.data.breakdown?.bills_paid_by_cheque || 0}</li>
-                                                <li>Cheques received: {pullResult.data.breakdown?.cheques_received || 0}</li>
-                                            </ul>
-                                            {pullResult.data.count === 0 && (
-                                                <div className="mt-3 border-t border-success-border pt-3">
-                                                    <p className="mb-2 font-semibold text-warning-text">
-                                                        No results found with the current filters
-                                                    </p>
-                                                    <Button size="sm" onClick={() => handlePullData({})}>
-                                                        Try All Time (No Filters)
-                                                    </Button>
-                                                    <p className="mt-1.5 text-ink-faint">
-                                                        Fetches every cheque transaction, to verify data exists in QuickBooks
-                                                    </p>
-                                                </div>
-                                            )}
+                    {pullResult && (
+                        <Notice
+                            tone={pullResult.success ? 'success' : 'error'}
+                            icon={pullResult.success
+                                ? <CheckCircle size={18} aria-hidden />
+                                : <AlertCircle size={18} aria-hidden />}
+                        >
+                            <p className="whitespace-pre-line text-sm font-medium">{pullResult.message}</p>
+                            {pullResult.success && pullResult.data && (
+                                <div className="mt-2 text-xs">
+                                    <ul className="nums space-y-0.5">
+                                        <li>Cheques written: {pullResult.data.breakdown?.cheques_written || 0}</li>
+                                        <li>Bills paid by cheque: {pullResult.data.breakdown?.bills_paid_by_cheque || 0}</li>
+                                        <li>Cheques received: {pullResult.data.breakdown?.cheques_received || 0}</li>
+                                    </ul>
+                                    {pullResult.data.count === 0 && (
+                                        <div className="mt-3 border-t border-success-border pt-3">
+                                            <p className="mb-2 font-semibold text-warning-text">
+                                                No results found with the current filters
+                                            </p>
+                                            <Button size="sm" onClick={() => handlePullData({})}>
+                                                Try all time (no filters)
+                                            </Button>
                                         </div>
                                     )}
-                                </Notice>
+                                </div>
                             )}
+                        </Notice>
+                    )}
 
-                            {/* Diagnose Connection */}
-                            <div className="border-t border-glass-hairline pt-4">
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={handleDiagnose}
-                                    loading={diagnosing}
-                                    icon={<AlertCircle size={14} />}
-                                >
-                                    {diagnosing ? 'Running diagnostics…' : 'Diagnose Connection (0 results?)'}
-                                </Button>
-                                <p className="mt-1.5 text-xs text-ink-faint">
-                                    Runs wide-open QB queries with no filters to verify your token, company, and whether data exists.
-                                </p>
+                    {/* Filtered sync */}
+                    {qboConnected && (
+                        <details className="group border-t border-glass-hairline pt-4">
+                            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-ink-body hover:text-ink-strong [&::-webkit-details-marker]:hidden">
+                                <ChevronRight size={14} className="transition-transform group-open:rotate-90" aria-hidden />
+                                Sync with filters
+                            </summary>
+                            <div className="mt-3">
+                                <QuickBooksFilters
+                                    onApplyFilters={handlePullData}
+                                    isLoading={pullingData}
+                                    qbConnected={qboConnected}
+                                />
+                            </div>
+                        </details>
+                    )}
+
+                    {/* Advanced: developer diagnostics, collapsed by default. */}
+                    {qbConfigured && (
+                        <details className="group border-t border-glass-hairline pt-4">
+                            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-ink-body hover:text-ink-strong [&::-webkit-details-marker]:hidden">
+                                <ChevronRight size={14} className="transition-transform group-open:rotate-90" aria-hidden />
+                                Advanced
+                            </summary>
+
+                            <div className="mt-4 space-y-4">
+                                <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                                    <DiagnosticRow
+                                        ok={credentialsExist}
+                                        label={credentialsExist ? 'App credentials saved' : 'Using default app credentials'}
+                                    />
+                                    <DiagnosticRow
+                                        ok={qboConnected}
+                                        label={qboConnected ? 'Authorised with QuickBooks' : 'Not authorised'}
+                                    />
+                                    <DiagnosticRow
+                                        ok={Boolean(companyId)}
+                                        neutral
+                                        label={companyId ? `Realm ID: ${companyId}` : 'No company selected'}
+                                    />
+                                    <DiagnosticRow
+                                        ok={Boolean(companyName)}
+                                        neutral
+                                        label={companyName ? `Company: ${companyName}` : 'Company name not fetched'}
+                                    />
+                                </div>
+
+                                {qboConnected && (
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleDiagnose}
+                                            loading={diagnosing}
+                                            icon={<AlertCircle size={14} />}
+                                        >
+                                            {diagnosing ? 'Running diagnostics…' : 'Diagnose connection'}
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleExplore}
+                                            loading={exploring}
+                                            icon={<ExternalLink size={14} />}
+                                        >
+                                            {exploring ? 'Exploring all data…' : 'Explore QuickBooks data'}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowQBCredentialsDialog(true)}
+                                            icon={<Key size={14} />}
+                                        >
+                                            App credentials
+                                        </Button>
+                                    </div>
+                                )}
 
                                 {diagnosisResult && (
-                                    <Notice tone="warning" className="mt-3">
+                                    <Notice tone="warning">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0 flex-1">
                                                 <p className="mb-2 text-sm font-semibold">{diagnosisResult.conclusion}</p>
@@ -930,7 +948,7 @@ function SettingsPageContent() {
                                                 )}
                                                 {diagnosisResult.entitiesWithData && diagnosisResult.entitiesWithData.length === 0 && (
                                                     <p className="mt-3 rounded-input border border-error-border bg-error-bg p-2 text-xs font-medium text-error-text">
-                                                        No data found in ANY QuickBooks entity type. This company appears to be empty, or you are connected to the wrong company.
+                                                        No data found in any QuickBooks entity type. This company appears to be empty, or you are connected to the wrong company.
                                                     </p>
                                                 )}
                                             </div>
@@ -943,7 +961,7 @@ function SettingsPageContent() {
                                                     toast.success('Diagnostic report copied to clipboard', { duration: 2000 });
                                                 }}
                                             >
-                                                Copy Report
+                                                Copy report
                                             </Button>
                                         </div>
                                         <div className="scroll-region mt-3 max-h-96 space-y-2">
@@ -960,7 +978,7 @@ function SettingsPageContent() {
                                                             : <XCircle size={12} aria-hidden />}
                                                         <span>{step.step}</span>
                                                         {step.count !== undefined && (
-                                                            <span className="nums ml-auto rounded-full bg-white/70 px-2 py-0.5 text-ink-body">
+                                                            <span className="nums ml-auto rounded-full bg-surface px-2 py-0.5 text-ink-body">
                                                                 {step.count} results {step.totalCount ? `(${step.totalCount} total)` : ''}
                                                             </span>
                                                         )}
@@ -981,25 +999,9 @@ function SettingsPageContent() {
                                         </div>
                                     </Notice>
                                 )}
-                            </div>
-
-                            {/* Explore All QB Data */}
-                            <div className="border-t border-glass-hairline pt-4">
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={handleExplore}
-                                    loading={exploring}
-                                    icon={<ExternalLink size={14} />}
-                                >
-                                    {exploring ? 'Exploring all data…' : 'Explore All QB Data (14 Entity Types)'}
-                                </Button>
-                                <p className="mt-1.5 text-xs text-ink-faint">
-                                    See what data actually exists in this QuickBooks company: Bills, Invoices, Purchases, Payments, etc.
-                                </p>
 
                                 {exploreResult && (
-                                    <Notice tone="info" className="mt-3">
+                                    <Notice tone="info">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0 flex-1">
                                                 <p className="mb-2 text-sm font-semibold">
@@ -1034,7 +1036,7 @@ function SettingsPageContent() {
                                                     toast.success('Exploration report copied', { duration: 2000 });
                                                 }}
                                             >
-                                                Copy Report
+                                                Copy report
                                             </Button>
                                         </div>
                                         <div className="scroll-region mt-3 max-h-96 space-y-2">
@@ -1049,7 +1051,7 @@ function SettingsPageContent() {
                                                         <span className="font-semibold">{entity.entityType}</span>
                                                         <span className="opacity-80">&mdash; {entity.description}</span>
                                                         {entity.totalCount !== undefined && (
-                                                            <span className="nums ml-auto rounded-full bg-white/70 px-2 py-0.5 text-ink-body">
+                                                            <span className="nums ml-auto rounded-full bg-surface px-2 py-0.5 text-ink-body">
                                                                 {entity.totalCount.toLocaleString()} total
                                                             </span>
                                                         )}
@@ -1068,84 +1070,74 @@ function SettingsPageContent() {
                                         </div>
                                     </Notice>
                                 )}
-                            </div>
 
-                            {/* QB Data Preview with Tabs */}
-                            {exploreResult && exploreResult.entitiesWithData && exploreResult.entitiesWithData.length > 0 && (
-                                <div className="border-t border-glass-hairline pt-4">
-                                    <GlassCardTitle className="mb-3 text-sm">Preview Data in Tables</GlassCardTitle>
+                                {exploreResult && exploreResult.entitiesWithData && exploreResult.entitiesWithData.length > 0 && (
+                                    <div className="border-t border-glass-hairline pt-4">
+                                        <p className="mb-3 text-sm font-semibold text-ink-strong">Preview data</p>
+                                        <div className="mb-3 flex flex-wrap gap-2">
+                                            {exploreResult.entitiesWithData.map((entity: any) => (
+                                                <Button
+                                                    key={entity.type}
+                                                    size="sm"
+                                                    variant={previewType === entity.type ? 'primary' : 'secondary'}
+                                                    onClick={() => handlePreview(entity.type)}
+                                                >
+                                                    <span className="nums">{entity.type} ({entity.count.toLocaleString()})</span>
+                                                </Button>
+                                            ))}
+                                        </div>
 
-                                    <div className="mb-3 flex flex-wrap gap-2">
-                                        {exploreResult.entitiesWithData.map((entity: any) => (
-                                            <Button
-                                                key={entity.type}
-                                                size="sm"
-                                                variant={previewType === entity.type ? 'primary' : 'secondary'}
-                                                onClick={() => handlePreview(entity.type)}
-                                            >
-                                                <span className="nums">{entity.type} ({entity.count.toLocaleString()})</span>
-                                            </Button>
-                                        ))}
+                                        {loadingPreview ? (
+                                            <p className="flex items-center justify-center gap-2 py-8 text-sm text-ink-faint">
+                                                <Loader2 className="animate-spin" size={16} aria-hidden />
+                                                Loading {previewType} data…
+                                            </p>
+                                        ) : previewData?.records ? (
+                                            <QBDataPreview
+                                                entityType={previewType}
+                                                data={previewData.records}
+                                                totalCount={previewData.totalCount}
+                                            />
+                                        ) : previewData?.error ? (
+                                            <p className="py-8 text-center text-sm text-error-text">
+                                                Error loading {previewType}: {previewData.error}
+                                            </p>
+                                        ) : (
+                                            <p className="py-8 text-center text-sm text-ink-faint">
+                                                Choose an entity type to preview its data
+                                            </p>
+                                        )}
                                     </div>
-
-                                    {loadingPreview ? (
-                                        <p className="flex items-center justify-center gap-2 py-8 text-sm text-ink-faint">
-                                            <Loader2 className="animate-spin" size={16} aria-hidden />
-                                            Loading {previewType} data…
-                                        </p>
-                                    ) : previewData?.records ? (
-                                        <QBDataPreview
-                                            entityType={previewType}
-                                            data={previewData.records}
-                                            totalCount={previewData.totalCount}
-                                        />
-                                    ) : previewData?.error ? (
-                                        <p className="py-8 text-center text-sm text-error-text">
-                                            Error loading {previewType}: {previewData.error}
-                                        </p>
-                                    ) : (
-                                        <p className="py-8 text-center text-sm text-ink-faint">
-                                            Click an entity type above to preview its data
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        </details>
                     )}
                 </GlassCard>
 
-                {/* Import from File */}
-                <GlassCard padding="lg" className="space-y-4">
-                    <div>
-                        <GlassCardTitle className="flex items-center gap-2">
-                            <FileText size={18} aria-hidden />
-                            Import from File
-                        </GlassCardTitle>
-                        <p className="mt-1 text-sm text-ink-body">
-                            Upload a .qbo, .ofx, or .qfx file exported from your bank &mdash; no QuickBooks account needed
-                        </p>
-                    </div>
-
-                    <div className="relative cursor-pointer rounded-tile border-2 border-dashed border-ink-strong/20 bg-surface-sunken p-8 text-center transition-[border-color,background-color] duration-quick ease-settle hover:border-brand hover:bg-brand-wash">
-                        <input
-                            type="file"
-                            accept=".qbo,.ofx,.qfx"
-                            onChange={handleQBOFileUpload}
-                            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                            disabled={uploadingQBO}
-                            aria-label="Upload a .qbo, .ofx or .qfx file"
-                        />
-                        {uploadingQBO ? (
-                            <Loader2 size={32} className="mx-auto mb-3 animate-spin text-brand" aria-hidden />
-                        ) : (
-                            <Upload size={32} className="mx-auto mb-3 text-ink-faint" aria-hidden />
-                        )}
-                        <p className="text-sm font-medium text-ink-strong">
-                            {uploadingQBO ? 'Parsing file…' : 'Drop a .qbo / .ofx / .qfx file here or click to browse'}
-                        </p>
-                        <p className="mt-1 text-xs text-ink-faint">
-                            Download these files from your bank&apos;s online banking portal
-                        </p>
+                {/* Import from file: a separate, concise card. */}
+                <GlassCard padding="lg" className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <GlassCardTitle className="flex items-center gap-2">
+                                <FileText size={18} aria-hidden />
+                                Import from file
+                            </GlassCardTitle>
+                            <p className="mt-1 text-sm text-ink-soft">.qbo, .ofx or .qfx from your bank</p>
+                        </div>
+                        <label className={`press relative inline-flex min-h-tap cursor-pointer items-center gap-2 rounded-input border border-glass-hairline bg-surface px-3 text-sm font-medium text-ink-strong hover:bg-brand/[0.06] focus-within:ring-[3px] focus-within:ring-ring/50 ${uploadingQBO ? 'pointer-events-none opacity-disabled' : ''}`}>
+                            <input
+                                type="file"
+                                accept=".qbo,.ofx,.qfx"
+                                onChange={handleQBOFileUpload}
+                                className="sr-only"
+                                disabled={uploadingQBO}
+                                aria-label="Upload a .qbo, .ofx or .qfx file"
+                            />
+                            {uploadingQBO
+                                ? <Loader2 size={14} className="animate-spin" aria-hidden />
+                                : <Upload size={14} aria-hidden />}
+                            {uploadingQBO ? 'Parsing file…' : 'Choose file'}
+                        </label>
                     </div>
 
                     {qboUploadResult && (
@@ -1158,23 +1150,15 @@ function SettingsPageContent() {
                             <p className="text-sm">{qboUploadResult.message}</p>
                         </Notice>
                     )}
-
-                    <Notice tone="warning" icon={<AlertCircle size={18} aria-hidden />}>
-                        <p className="font-semibold">Two ways to get cheque data:</p>
-                        <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs">
-                            <li><strong>Path A (this section):</strong> upload a .qbo file from your bank &mdash; free, no accounts needed</li>
-                            <li><strong>Path B (above):</strong> connect to QuickBooks Online via API &mdash; requires a QBO subscription and an Intuit Developer account</li>
-                        </ul>
-                    </Notice>
                 </GlassCard>
             </TabPanel>
 
             {/* ── Team ────────────────────────────────── */}
             <TabPanel value="team" active={activeTab}>
                 <GlassCard padding="lg" className="space-y-4">
-                    <GlassCardTitle>Team Management</GlassCardTitle>
+                    <GlassCardTitle>Team management</GlassCardTitle>
                     <p className="text-sm text-ink-body">
-                        Invite Administrators and Users, change roles, and remove access.
+                        Invite administrators and users, change roles, and remove access.
                         Administrator only.
                     </p>
                     <Link href="/settings/team" className="inline-flex">
@@ -1186,11 +1170,11 @@ function SettingsPageContent() {
             {/* ── Security ────────────────────────────── */}
             <TabPanel value="security" active={activeTab}>
                 <GlassCard padding="lg" className="space-y-4">
-                    <GlassCardTitle>Two-Factor Authentication</GlassCardTitle>
+                    <GlassCardTitle>Two-factor authentication</GlassCardTitle>
                     <p className="text-sm text-ink-body">
                         Kyriq uses an authenticator app (TOTP) for two-factor authentication.
-                        It is <strong className="text-ink-strong">required for Administrators</strong> &mdash; an
-                        Administrator signing in without it is sent to set it up before any
+                        It is <strong className="text-ink-strong">required for administrators</strong> &mdash; an
+                        administrator signing in without it is sent to set it up before any
                         page loads.
                     </p>
                     <Link href="/mfa" className="inline-flex">
@@ -1204,13 +1188,40 @@ function SettingsPageContent() {
                     </p>
                 </GlassCard>
             </TabPanel>
+                </div>
+            </div>
+
+            {/* ── Disconnect confirmation ─────────────── */}
+            <Dialog
+                open={showDisconnectConfirm}
+                onClose={() => setShowDisconnectConfirm(false)}
+                size="sm"
+                title="Disconnect QuickBooks?"
+                description="Existing data stays in Kyriq. New syncs stop until you reconnect."
+                footer={
+                    <>
+                        <Button variant="ghost" size="sm" onClick={() => setShowDisconnectConfirm(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => { setShowDisconnectConfirm(false); handleQBODisconnect() }}
+                        >
+                            Disconnect
+                        </Button>
+                    </>
+                }
+            >
+                {companyName ? <p className="text-sm text-ink-body">{companyName}</p> : null}
+            </Dialog>
 
             {/* ── QuickBooks credentials dialog ───────── */}
             <Dialog
                 open={showQBCredentialsDialog}
                 onClose={() => setShowQBCredentialsDialog(false)}
                 size="xl"
-                title="QuickBooks Credentials"
+                title="QuickBooks app credentials"
                 description="Configure your QuickBooks OAuth credentials"
                 footer={
                     <>
@@ -1224,7 +1235,7 @@ function SettingsPageContent() {
                             disabled={!qbClientId || !qbClientSecret}
                             icon={<Save size={16} />}
                         >
-                            {saving ? 'Saving…' : 'Save Credentials'}
+                            {saving ? 'Saving…' : 'Save credentials'}
                         </Button>
                     </>
                 }

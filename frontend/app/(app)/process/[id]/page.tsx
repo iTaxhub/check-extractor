@@ -4,12 +4,12 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useCheckProcessing } from '@/lib/hooks/useCheckProcessing';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  CheckCircle, Loader2, FileText, Image as ImageIcon,
+  CheckCircle, Loader2, Image as ImageIcon,
   Download, Eye, ChevronLeft, ChevronRight, LayoutGrid, List,
   ZoomIn, ZoomOut, RefreshCw,
 } from 'lucide-react';
 import {
-  Badge, Button, Dialog, GlassCard, GlassCardTitle, GlassPanel, IconButton, KpiTile, StatusPill, Tabs,
+  Badge, Button, Dialog, GlassCard, GlassCardTitle, GlassPanel, IconButton, StatusPill, Tabs,
   Table, TableScroll, TableShell, Tbody, Td, Th, Thead, Tr, type StatusKey,
   EmptyState, ErrorState, Skeleton, buttonVariants,
 } from '@/components/ui';
@@ -19,10 +19,10 @@ import { cn } from '@/lib/utils';
 type ViewMode = 'card' | 'table';
 
 const STAGES = [
-  { name: 'upload', label: 'Upload & Validate' },
-  { name: 'segmentation', label: 'Cheque Detection' },
-  { name: 'extraction', label: 'Data Extraction' },
-  { name: 'merging', label: 'Merge & Validate' },
+  { name: 'upload', label: 'Upload and validate' },
+  { name: 'segmentation', label: 'Detecting cheques' },
+  { name: 'extraction', label: 'Extracting data' },
+  { name: 'merging', label: 'Merging results' },
   { name: 'complete', label: 'Complete' },
 ];
 
@@ -77,7 +77,7 @@ export default function ProcessingPage() {
     return m ? m.split(',') : ['hybrid'];
   }, [searchParams]);
 
-  const { currentStage, progress, isComplete, error, jobData, methodsProgress } =
+  const { currentStage, isComplete, error, jobData, methodsProgress } =
     useCheckProcessing(jobId, selectedMethods);
 
   // Auto-redirect to review page when extraction completes
@@ -168,7 +168,7 @@ export default function ProcessingPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-heading text-2xl font-semibold text-ink-strong">
-            {isComplete ? 'Extraction Results' : 'Processing Cheques'}
+            {isComplete ? 'Extraction results' : 'Processing documents'}
           </h1>
           <p className="mt-1 flex items-center gap-2 text-sm text-ink-body">
             {jobData ? (
@@ -235,116 +235,80 @@ export default function ProcessingPage() {
         <ErrorState surface="banner" title="Couldn’t restart extraction" error={reExtractError} onRetry={() => handleReExtract(missingCount === 0)} />
       )}
 
-      {/* ── Stats row ───────────────────────────────────────── */}
-      {jobData && (jobData.total_pages > 0 || jobData.total_checks > 0) && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <KpiTile tone="brand" label="Pages" value={jobData.total_pages} icon={<FileText size={20} />} />
-          <KpiTile tone="success" label="Cheques" value={jobData.total_checks} icon={<ImageIcon size={20} />} />
-          <KpiTile
-            tone={isComplete ? 'success' : 'brand'}
-            label="Status"
-            value={<span className="capitalize">{isComplete ? 'Complete' : jobData.status}</span>}
-            icon={<CheckCircle size={20} />}
-          />
-        </div>
-      )}
-
       {/* ══════════════════════════════════════════════════════
           PROCESSING VIEW (while not complete)
 
           The Extraction Engines and Live Progress panels were REMOVED
-          deliberately (Michael, 21 Sep). Status card + stage stepper only.
+          deliberately (Michael, 21 Sep). One row for this file, its real
+          stage, and a bar only where progress is actually measured: the
+          processed/processing cheque counts from the job. The hook's overall
+          percentage is a stage-weighted estimate, so it is not shown.
          ══════════════════════════════════════════════════════ */}
-      {!isComplete && (
-        <GlassCard padding="lg">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-full',
-                  progress >= 100 ? 'bg-success-bg' : 'bg-info-bg'
-                )}
-              >
-                {progress >= 100 ? (
-                  <CheckCircle className="text-success-text" size={20} />
-                ) : (
-                  <Loader2 className="animate-spin text-info-text" size={20} />
-                )}
-              </div>
-              <div>
-                <GlassCardTitle>
-                  {currentStage === 'upload' ? 'Uploading & Validating' :
-                   currentStage === 'segmentation' ? 'Detecting Cheques' :
-                   currentStage === 'extraction' ? 'Extracting Data' :
-                   currentStage === 'merging' ? 'Merging Results' : 'Processing'}
-                </GlassCardTitle>
-                <p className="nums text-sm text-ink-faint">
-                  {processingCount > 0
-                    ? `${processedCount} of ${processingCount} cheques processed`
-                    : 'Preparing extraction pipeline...'}
+      {!isComplete && !error && (() => {
+        const measured = processingCount > 0;
+        const pct = measured ? Math.min(100, Math.round((processedCount / processingCount) * 100)) : 0;
+        return (
+          <GlassCard padding="md" className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Loader2 className="shrink-0 animate-spin text-brand-dark" size={16} aria-hidden />
+                <p className="text-sm font-semibold text-ink-strong">
+                  {STAGES[stageIndex]?.label ?? 'Processing'}
                 </p>
               </div>
+              <p className="nums text-sm text-ink-soft">
+                {measured
+                  ? `${processedCount} of ${processingCount} cheques processed`
+                  : 'Preparing extraction'}
+                {jobData && jobData.total_pages > 0 ? ` · ${jobData.total_pages} pages` : ''}
+              </p>
             </div>
-            <div className="text-right">
-              <p className="nums font-heading text-3xl font-semibold text-ink-strong">{progress}%</p>
-              <p className="mt-0.5 text-xs text-ink-faint">overall</p>
-            </div>
-          </div>
 
-          {/* Progress bar. The WIDTH is the only inline style — it has to be.
-              Colour, radius and the inset track are all tokens. */}
-          <div
-            className="relative h-4 w-full overflow-hidden rounded-pill bg-surface-sunken shadow-inner-track"
-            role="progressbar"
-            aria-valuenow={progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div
-              className={cn(
-                'absolute inset-y-0 left-0 rounded-pill transition-[width] duration-700 ease-settle',
-                progress >= 100 ? 'bg-success' : 'bg-brand-dark'
-              )}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+            {/* The WIDTH is the only inline style — it has to be. */}
+            {measured ? (
+              <div
+                className="relative h-1.5 w-full overflow-hidden rounded-pill bg-surface-sunken"
+                role="progressbar"
+                aria-label="Cheques processed"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  className="absolute inset-y-0 left-0 rounded-pill bg-brand-dark transition-[width] duration-700 ease-settle"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            ) : null}
 
-          {/* Pipeline stage stepper */}
-          <div className="mt-4 flex items-start justify-between gap-1">
-            {STAGES.map((stage, index) => {
-              const isDone = index < stageIndex || (isComplete && index <= stageIndex);
-              const isCurrent = index === stageIndex && !isComplete;
-              return (
-                <div key={stage.name} className="flex flex-1 flex-col items-center gap-1 text-center">
-                  <div
+            {/* Pipeline stages, as text as well as colour. */}
+            <ol className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              {STAGES.slice(0, -1).map((stage, index) => {
+                const isDone = index < stageIndex;
+                const isCurrent = index === stageIndex;
+                return (
+                  <li
+                    key={stage.name}
+                    aria-current={isCurrent ? 'step' : undefined}
                     className={cn(
-                      'flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-transform duration-settle ease-settle',
-                      isDone && 'bg-success text-white',
-                      isCurrent && 'scale-110 bg-brand text-white ring-4 ring-brand/20',
-                      !isDone && !isCurrent && 'bg-ink-strong/[0.1] text-ink-faint'
+                      'flex items-center gap-1',
+                      isCurrent ? 'font-medium text-brand-dark' : isDone ? 'text-success-text' : 'text-ink-faint'
                     )}
                   >
-                    {isDone ? '✓' : index + 1}
-                  </div>
-                  <span
-                    className={cn(
-                      'text-[10px] font-medium',
-                      isCurrent ? 'text-brand-deep' : isDone ? 'text-success-text' : 'text-ink-faint'
-                    )}
-                  >
+                    {isDone ? <CheckCircle size={12} aria-hidden /> : <span className="nums">{index + 1}.</span>}
                     {stage.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </GlassCard>
-      )}
+                  </li>
+                );
+              })}
+            </ol>
+          </GlassCard>
+        );
+      })()}
 
       {/* ── Cheque image previews (show during processing too) ── */}
       {!isComplete && checks.length > 0 && (
         <GlassCard padding="lg">
-          <GlassCardTitle className="mb-4">Detected Cheques ({checks.length})</GlassCardTitle>
+          <GlassCardTitle className="mb-4">Detected cheques ({checks.length})</GlassCardTitle>
           {/* One blurred container; the tiles inside are GlassPanels with no
               blur of their own, so the cost does not scale with cheque count. */}
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -387,7 +351,7 @@ export default function ProcessingPage() {
           {/* View mode toggle + header */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-heading text-lg font-semibold text-ink-strong">
-              Extracted Cheques ({checks.length})
+              Extracted cheques ({checks.length})
             </h2>
             <div className="flex items-center gap-3">
               <p className="hidden text-xs text-ink-faint md:block">Click to view details. Arrow keys to navigate.</p>
@@ -438,7 +402,7 @@ export default function ProcessingPage() {
                       <div className="space-y-2 p-4">
                         <div className="flex items-baseline justify-between gap-2">
                           <p className="truncate font-semibold text-ink-strong">
-                            {extVal(ext, 'payee') || 'Unknown Payee'}
+                            {extVal(ext, 'payee') || 'Unknown payee'}
                           </p>
                           <p className="nums whitespace-nowrap font-semibold text-success-text">
                             {extVal(ext, 'amount') ? `$${extVal(ext, 'amount')}` : '—'}
@@ -556,7 +520,7 @@ export default function ProcessingPage() {
           <GlassCard padding="lg">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <GlassCardTitle>Export Results</GlassCardTitle>
+                <GlassCardTitle>Export results</GlassCardTitle>
                 <p className="mt-0.5 text-sm text-ink-body">Download extracted cheque data in your preferred accounting format</p>
               </div>
               <div className="flex items-center gap-2 text-sm text-ink-faint">
@@ -706,17 +670,17 @@ export default function ProcessingPage() {
               </GlassPanel>
 
               <div className="scroll-region min-h-0 max-h-[62vh] flex-1">
-                <h4 className="text-eyebrow mb-4 text-ink-faint">Extracted Data</h4>
+                <h4 className="text-eyebrow mb-4 text-ink-faint">Extracted data</h4>
                 {selected.extraction ? (
                   <div className="space-y-3">
                     {[
                       { label: 'Payee', field: 'payee' },
                       { label: 'Amount', field: 'amount' },
                       { label: 'Date', field: 'checkDate' },
-                      { label: 'Check Number', field: 'checkNumber' },
+                      { label: 'Check number', field: 'checkNumber' },
                       { label: 'Bank', field: 'bankName' },
                       { label: 'Memo', field: 'memo' },
-                      { label: 'Amount Written', field: 'amountWritten' },
+                      { label: 'Amount written', field: 'amountWritten' },
                     ].map(({ label, field }) => {
                       const val = extVal(selected.extraction, field);
                       const conf = extConf(selected.extraction, field);

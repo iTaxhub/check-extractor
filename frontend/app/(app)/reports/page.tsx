@@ -54,6 +54,17 @@ function monthWindow(): { from: string; to: string } {
   return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
 }
 
+function fmtRange(from: string, to: string): string {
+  const f = (d: string) =>
+    new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+  return `${f(from)} – ${f(to)}`;
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   batches: 'reconciliation batches',
   checks: 'extracted cheques',
@@ -156,23 +167,13 @@ export default function ReportsPage() {
           <Badge tone="outline" size="sm">
             Administrators only
           </Badge>
-          <Button
-            size="sm"
-            variant="secondary"
-            icon={<Download size={13} />}
-            loading={exporting}
-            disabled={!report || !!failure}
-            onClick={exportCsv}
-          >
-            Export CSV
-          </Button>
         </div>
       </div>
 
       {/* ── Filters ───────────────────────────────────────────── */}
-      <GlassCard padding="md">
-        <GlassCardTitle className="text-base">Filters</GlassCardTitle>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <GlassCard padding="sm">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="From" htmlFor="report-from">
             <Input
               id="report-from"
@@ -209,11 +210,7 @@ export default function ReportsPage() {
               ))}
             </Select>
           </Field>
-          <Field
-            label="Account"
-            htmlFor="report-account"
-            hint="Bank account name or id, as recorded on the reconciliation."
-          >
+          <Field label="Account" htmlFor="report-account">
             <Input
               id="report-account"
               value={account}
@@ -221,8 +218,8 @@ export default function ReportsPage() {
               onChange={(e) => setAccount(e.target.value)}
             />
           </Field>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+          </div>
+          <div className="flex flex-wrap items-center gap-2 pb-0.5">
           <Button size="sm" onClick={apply} disabled={rangeInvalid || loading}>
             Apply
           </Button>
@@ -231,6 +228,7 @@ export default function ReportsPage() {
           <Button size="sm" variant="link" onClick={reset} disabled={loading}>
             Reset to this month
           </Button>
+          </div>
         </div>
       </GlassCard>
 
@@ -276,11 +274,34 @@ export default function ReportsPage() {
       {/* ── Figures ───────────────────────────────────────────── */}
       {!failure ? (
         <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="nums text-sm text-ink-body">
+              {fmtRange(applied.from, applied.to)}
+              {applied.realmId
+                ? ` · ${companies.find((c) => c.realm_id === applied.realmId)?.company_name || applied.realmId}`
+                : ' · All companies'}
+              {applied.account ? ` · ${applied.account}` : ' · All accounts'}
+            </p>
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={<Download size={13} />}
+              loading={exporting}
+              disabled={!report || !!failure}
+              onClick={exportCsv}
+            >
+              Export CSV
+            </Button>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <KpiTile
               label="Cheques processed"
               value={report?.cheques_processed.count ?? 0}
-              caption="usage ledger, by date processed"
+              caption={
+                report && !report.cheques_processed.account_filter_applied
+                  ? 'By date processed · account filter not applied'
+                  : 'By date processed'
+              }
               loading={loading}
             />
             <KpiTile
@@ -299,7 +320,7 @@ export default function ReportsPage() {
             <KpiTile
               label="Needs attention"
               value={report?.volume.needs_attention ?? 0}
-              caption="still unresolved in range"
+              caption="Still unresolved in range"
               tone={report && report.volume.needs_attention > 0 ? 'warning' : 'neutral'}
               loading={loading}
             />
@@ -308,8 +329,9 @@ export default function ReportsPage() {
           {/* Where each figure comes from, in the page rather than in a doc. A
               reader should never have to guess whether a number is real. */}
           <GlassPanel tone="plain" radius="tile" padding="sm">
-            <p className="text-xs text-ink-faint">
-              <span className="font-semibold text-ink-body">How these are counted.</span>{' '}
+            <details className="text-xs text-ink-faint">
+              <summary className="cursor-pointer font-semibold text-ink-body">How these are counted</summary>
+              <p className="mt-1">
               Cheques processed is one row per successfully processed cheque in the usage ledger,
               by the date it was processed
               {report && !report.cheques_processed.account_filter_applied
@@ -320,7 +342,8 @@ export default function ReportsPage() {
               on a reconciliation rather than &ldquo;touched in August&rdquo;. Exports are counted
               from export history by date only{' '}
               {report?.exports.scope ? `(${report.exports.scope})` : ''}.
-            </p>
+              </p>
+            </details>
           </GlassPanel>
 
           {missingSources.length > 0 ? (
@@ -334,7 +357,9 @@ export default function ReportsPage() {
           {/* ── Exports in range ───────────────────────────────── */}
           <GlassCard padding="md">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <GlassCardTitle className="text-base">Exports in range</GlassCardTitle>
+              <GlassCardTitle className="text-base">
+                Exports in range <span className="text-xs font-normal text-ink-faint">· date only</span>
+              </GlassCardTitle>
               <span className="nums text-sm text-ink-body">{report?.exports.total ?? 0}</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -385,7 +410,12 @@ export default function ReportsPage() {
                     <TableEmpty
                       colSpan={7}
                       title="Nothing in this range"
-                      description="Widen the dates, or clear the company and account filters."
+                      description={fmtRange(applied.from, applied.to)}
+                      action={
+                        <Button size="sm" variant="link" onClick={reset}>
+                          Clear filters
+                        </Button>
+                      }
                     />
                   ) : (
                     report!.rows.map((r) => (

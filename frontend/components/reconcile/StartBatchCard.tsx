@@ -72,13 +72,10 @@ export default function StartBatchCard({
     <GlassPanel radius="card" className="space-y-3">
       <div className="flex items-center gap-2">
         <CalendarDays className="h-4 w-4 text-brand-deep" aria-hidden />
-        <p className="text-sm font-semibold text-ink-strong">Start a reconciliation</p>
+        <p className="text-sm font-semibold text-ink-strong">New reconciliation</p>
       </div>
-      <p className="text-sm text-ink-body">
-        Kyriq suggests the month that just closed. Change it if you are catching up.
-      </p>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1.4fr]">
         <Field label="Period start" htmlFor="batch-period-start">
           <Input
             id="batch-period-start"

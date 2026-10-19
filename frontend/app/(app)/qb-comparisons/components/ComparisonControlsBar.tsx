@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, Upload, Download, ChevronDown, RefreshCw, X, SlidersHorizontal, AlertTriangle } from 'lucide-react';
-import { Badge, Button, GlassCard, Input, Select } from '@/components/ui';
+import { Badge, Button, Input, Select } from '@/components/ui';
 
 /**
  * Filter + action chrome for the grid. ONE row.
@@ -52,6 +52,8 @@ interface ComparisonControlsBarProps {
   showIssuesOnly: boolean;
   setShowIssuesOnly: (show: boolean) => void;
   issueCount: number;
+  /** Status tabs with counts; they replace the status select. */
+  statusTabs?: React.ReactNode;
 }
 
 export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
@@ -83,6 +85,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
   showIssuesOnly,
   setShowIssuesOnly,
   issueCount,
+  statusTabs,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
@@ -105,7 +108,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
   }, [showFilters]);
 
   return (
-    <GlassCard padding="sm" className="mx-4 mt-3">
+    <div className="border-b border-glass-hairline px-4 py-2">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[14rem] flex-1">
           <Search
@@ -115,7 +118,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
           <Input
             inputSize="sm"
             aria-label="Search comparisons"
-            placeholder="Search check #, payee, amount…"
+            placeholder="Search cheque no., payee, amount…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-8 pr-8"
@@ -132,19 +135,21 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
           )}
         </div>
 
-        <Select
-          inputSize="sm"
-          aria-label="Filter by match status"
-          className="w-auto min-w-[10rem]"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="all">All Status</option>
-          <option value="matched">Matched</option>
-          <option value="mismatch">Mismatched</option>
-          <option value="missing-in-qb">Missing in QB</option>
-          <option value="missing-in-extraction">Missing in Extraction</option>
-        </Select>
+        {statusTabs ?? (
+          <Select
+            inputSize="sm"
+            aria-label="Filter by match status"
+            className="w-auto min-w-[10rem]"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="matched">Matched</option>
+            <option value="mismatch">Mismatched</option>
+            <option value="missing-in-qb">Missing in QB</option>
+            <option value="missing-in-extraction">Missing in cheques</option>
+          </Select>
+        )}
 
         {/* Date range, document, QB account and QB source. */}
         <div className="relative" ref={filtersRef}>
@@ -190,7 +195,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
                   value={selectedPdfName}
                   onChange={(e) => setSelectedPdfName(e.target.value)}
                 >
-                  <option value="all">All Documents</option>
+                  <option value="all">All documents</option>
                   {pdfNames.map((name) => (
                     <option key={name} value={name}>
                       {name}
@@ -204,7 +209,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
                   value={selectedAccount}
                   onChange={(e) => setSelectedAccount(e.target.value)}
                 >
-                  <option value="all">All QB Accounts</option>
+                  <option value="all">All QB accounts</option>
                   {accountNames.map((account) => (
                     <option key={account} value={account}>
                       {account}
@@ -218,14 +223,14 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
                   value={selectedQBSource}
                   onChange={(e) => setSelectedQBSource(e.target.value)}
                 >
-                  <option value="all">All QB Sources</option>
+                  <option value="all">All QB sources</option>
                   {qbSources.map((source) => {
                     const label =
-                      source === 'cheque_written'      ? '📝 Cheque Written'   :
-                      source === 'bill_paid_by_cheque' ? '💸 Bill Paid'         :
-                      source === 'cheque_received'     ? '✉️ Cheque Received'  :
-                      source === 'payroll_check'       ? '💰 Payroll'           :
-                      source === 'qbo_file_upload'     ? '📂 File Upload'       :
+                      source === 'cheque_written'      ? 'Cheque written'   :
+                      source === 'bill_paid_by_cheque' ? 'Bill paid'         :
+                      source === 'cheque_received'     ? 'Cheque received'  :
+                      source === 'payroll_check'       ? 'Payroll'           :
+                      source === 'qbo_file_upload'     ? 'File upload'       :
                       source;
                     return (
                       <option key={source} value={source}>
@@ -256,21 +261,21 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
 
         <Button
           size="sm"
-          variant={showIssuesOnly ? 'destructive' : 'secondary'}
+          variant={showIssuesOnly ? 'primary' : 'secondary'}
           onClick={() => setShowIssuesOnly(!showIssuesOnly)}
           icon={<AlertTriangle size={12} />}
           title={showIssuesOnly ? 'Show all data' : 'Show only issues (duplicates & discrepancies)'}
         >
-          {showIssuesOnly ? 'Showing Issues' : 'Issues'}
+          {showIssuesOnly ? 'Showing issues' : 'Issues only'}
           {issueCount > 0 && (
-            <Badge size="sm" tone={showIssuesOnly ? 'outline' : 'error'}>
+            <Badge size="sm" tone={showIssuesOnly ? 'outline' : 'neutral'}>
               {issueCount}
             </Badge>
           )}
         </Button>
 
-        <Button size="sm" onClick={onUpload} icon={<Upload size={14} />}>
-          Upload QB Data
+        <Button size="sm" variant="secondary" onClick={onUpload} icon={<Upload size={14} />}>
+          Upload QB data
         </Button>
 
         <div className="relative export-dropdown">
@@ -307,6 +312,6 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
           Refresh
         </Button>
       </div>
-    </GlassCard>
+    </div>
   );
 };

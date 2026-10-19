@@ -10,21 +10,21 @@ interface ColumnSettingsProps {
 }
 
 const COLUMNS: { key: keyof VisibleColumns; label: string }[] = [
-  { key: 'checkNumber', label: 'Check Number' },
-  { key: 'date', label: 'Date' },
-  { key: 'amount', label: 'Amount' },
+  { key: 'checkNumber', label: 'Cheque number' },
   { key: 'payee', label: 'Payee' },
-  { key: 'bankAccount', label: 'Bank/Account' },
+  { key: 'amount', label: 'Amounts and difference' },
+  { key: 'matchStatus', label: 'Status' },
+  { key: 'actions', label: 'Review action' },
+  { key: 'date', label: 'Date' },
+  { key: 'bankAccount', label: 'Bank / account' },
   { key: 'memo', label: 'Memo' },
-  { key: 'source', label: 'Source' },
-  { key: 'matchStatus', label: 'Match Status' },
   { key: 'issues', label: 'Issues' },
   { key: 'confidence', label: 'Confidence' },
-  { key: 'qbSource', label: 'QB Transaction Source' },
-  { key: 'qbType', label: 'QB Transaction Type' },
+  { key: 'qbSource', label: 'QB source' },
+  { key: 'qbType', label: 'QB transaction type' },
   { key: 'currency', label: 'Currency' },
-  { key: 'pdfName', label: 'PDF Document Name' },
-  { key: 'actions', label: 'Actions' },
+  { key: 'pdfName', label: 'Document name' },
+  { key: 'source', label: 'Found in' },
 ];
 
 export const ColumnSettings: React.FC<ColumnSettingsProps> = ({
@@ -37,8 +37,7 @@ export const ColumnSettings: React.FC<ColumnSettingsProps> = ({
     open={isOpen}
     onClose={onClose}
     size="sm"
-    title="Column Settings"
-    description="Choose which columns the comparison grid shows."
+    title="Columns"
     footer={
       <>
         <Button
@@ -53,7 +52,7 @@ export const ColumnSettings: React.FC<ColumnSettingsProps> = ({
             )
           }
         >
-          Show All
+          Show all
         </Button>
         <Button size="sm" onClick={onClose}>
           Done

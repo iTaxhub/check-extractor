@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Wrench } from 'lucide-react';
-import { Badge, Button, Dialog, ErrorState, GlassCard, Toast, friendlyError } from '@/components/ui';
+import { Badge, Button, Dialog, ErrorState, Toast, friendlyError } from '@/components/ui';
+import { EvidencePanel } from './components/EvidencePanel';
 import { applyFixesToQB, computeCorrections } from './utils/fixDiscrepancy';
 import { QBCompanySwitcher } from '@/components/QBCompanySwitcher';
 import Link from 'next/link';
@@ -98,6 +99,8 @@ export default function QBComparisonsPage() {
   const [fixingAll, setFixingAll] = useState(false);
   const [fixAllProgress, setFixAllProgress] = useState<{ done: number; total: number } | null>(null);
   const [showFixAllConfirm, setShowFixAllConfirm] = useState(false);
+  // Row whose evidence shows beside the grid (separate from the review dialog).
+  const [evidenceRow, setEvidenceRow] = useState<ComparisonRow | null>(null);
 
   const showToast = useCallback((type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ type, message });
@@ -752,7 +755,7 @@ export default function QBComparisonsPage() {
       {!loading && qbEntries.length === 0 && (
         <div className="mx-4 mt-3 rounded-card border border-error-border bg-error-bg px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Link href="/settings" className="flex min-w-0 items-center gap-3">
+            <Link href="/settings?tab=integrations" className="flex min-w-0 items-center gap-3">
               <AlertCircle size={20} className="shrink-0 text-error-text" aria-hidden />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-error-text">
@@ -785,74 +788,60 @@ export default function QBComparisonsPage() {
                 onClick={() => setShowUploadModal(true)}
                 icon={<Upload size={14} />}
               >
-                Upload .QBO File
+                Upload .QBO file
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Page chrome. Light glass, not the old navy slab: the dark shell is
-          what makes these surfaces read as elevated. */}
-      <GlassCard tier="chrome" padding="sm" className="mx-4 mt-3 rounded-card border">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="font-heading text-2xl font-semibold text-ink-strong">
-              QuickBooks comparisons
-            </h1>
+      {/* One header: title, company/account, source and connection state. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-glass-hairline px-4 py-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="font-heading text-xl font-semibold text-ink-strong">
+            QuickBooks comparisons
+          </h1>
+          <QBCompanySwitcher />
+          {selectedAccount !== 'all' && (
+            <span className="text-sm text-ink-body">{selectedAccount}</span>
+          )}
 
-            {/* The counts, as filtering chips rather than five KPI tiles. */}
-            <StatisticsPanel
-              total={statistics.total}
-              matched={statistics.matched}
-              mismatched={statistics.mismatched}
-              missingInQB={statistics.missingInQB}
-              missingInExtraction={statistics.missingInExtraction}
-              filterStatus={filterStatus}
-              onSelectStatus={(status) => {
-                setFilterStatus(status);
-                setCurrentPage(1);
-              }}
-            />
+          {/* QB data source. */}
+          <div role="group" aria-label="QuickBooks data source" className="inline-flex items-center rounded-input border border-glass-hairline p-0.5">
+            {(['online', 'uploaded', 'both'] as const).map((src) => (
+              <button
+                key={src}
+                type="button"
+                aria-pressed={qbDataSource === src}
+                onClick={() => setQbDataSource(src)}
+                className={`press rounded-input px-2.5 py-1 text-xs font-medium ${
+                  qbDataSource === src
+                    ? 'bg-brand/[0.1] text-brand-dark'
+                    : 'text-ink-body hover:text-ink-strong'
+                }`}
+              >
+                {src === 'online' ? 'QB Online' : src === 'uploaded' ? 'Uploaded' : 'Both'}
+              </button>
+            ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <QBCompanySwitcher />
+          {/* Connection state and synced volume in one mark. */}
+          <Badge
+            tone={qbConnected ? 'success' : qbConfigured ? 'warning' : 'neutral'}
+            className="nums"
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                qbConnected ? 'bg-success' : qbConfigured ? 'bg-warning' : 'bg-ink-faint'
+              }`}
+              aria-hidden
+            />
+            {qbConnected ? 'Connected' : qbConfigured ? 'Configured' : 'Not set up'}
+            {qbEntries.length > 0 && ` · ${qbEntries.length} entries`}
+          </Badge>
+        </div>
 
-            {/* QB data source — a segmented control on a recessed track. */}
-            <div className="glass-track inline-flex items-center rounded-pill p-1">
-              {(['online', 'uploaded', 'both'] as const).map((src) => (
-                <button
-                  key={src}
-                  type="button"
-                  aria-pressed={qbDataSource === src}
-                  onClick={() => setQbDataSource(src)}
-                  className={`press rounded-pill px-3 py-1 text-xs font-medium capitalize ${
-                    qbDataSource === src
-                      ? 'bg-brand text-white shadow-brand-glow'
-                      : 'text-ink-body hover:text-ink-strong'
-                  }`}
-                >
-                  {src === 'online' ? 'QB Online' : src}
-                </button>
-              ))}
-            </div>
-
-            {/* Connection state and synced volume in one mark, not two. */}
-            <Badge
-              tone={qbConnected ? 'success' : qbConfigured ? 'warning' : 'neutral'}
-              className="nums"
-            >
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  qbConnected ? 'animate-pulse bg-success' : qbConfigured ? 'bg-warning' : 'bg-ink-faint'
-                }`}
-                aria-hidden
-              />
-              {qbConnected ? 'QB Connected' : qbConfigured ? 'QB Configured' : 'QB Not Setup'}
-              {qbEntries.length > 0 && ` · ${qbEntries.length} entries`}
-            </Badge>
-
+        <div className="flex flex-wrap items-center gap-2">
             {fixableCount > 0 && (
               <Button
                 size="sm"
@@ -863,7 +852,7 @@ export default function QBComparisonsPage() {
               >
                 {fixingAll && fixAllProgress
                   ? `Fixing ${fixAllProgress.done}/${fixAllProgress.total}…`
-                  : `Fix All (${fixableCount})`}
+                  : `Fix all (${fixableCount})`}
               </Button>
             )}
 
@@ -885,16 +874,15 @@ export default function QBComparisonsPage() {
                   : undefined
               }
             />
-          </div>
         </div>
-      </GlassCard>
+      </header>
 
       {/* Fix All confirmation */}
       <Dialog
         open={showFixAllConfirm}
         onClose={() => !fixingAll && setShowFixAllConfirm(false)}
         size="md"
-        title="Fix All Discrepancies in QuickBooks?"
+        title="Fix all discrepancies in QuickBooks?"
         footer={
           <>
             <Button
@@ -913,7 +901,7 @@ export default function QBComparisonsPage() {
             >
               {fixingAll
                 ? `Fixing ${fixAllProgress?.done || 0}/${fixAllProgress?.total || 0}…`
-                : 'Fix All'}
+                : 'Fix all'}
             </Button>
           </>
         }
@@ -957,11 +945,26 @@ export default function QBComparisonsPage() {
         showIssuesOnly={showIssuesOnly}
         setShowIssuesOnly={setShowIssuesOnly}
         issueCount={issueCount}
+        statusTabs={
+          <StatisticsPanel
+            total={statistics.total}
+            matched={statistics.matched}
+            mismatched={statistics.mismatched}
+            missingInQB={statistics.missingInQB}
+            missingInExtraction={statistics.missingInExtraction}
+            filterStatus={filterStatus}
+            onSelectStatus={(status) => {
+              setFilterStatus(status);
+              setCurrentPage(1);
+            }}
+          />
+        }
       />
 
-      {/* The grid. Its glass shell is the surface; the pagination bar rides
-          inside it so there is no second stacked card. */}
-      <div className="flex min-h-0 flex-1 flex-col p-4">
+      {/* The grid, full width, with the selected row's evidence beside it on
+          wide screens. Pagination rides inside the table shell. */}
+      <div className="flex min-h-0 flex-1 gap-3 p-4">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <ComparisonTable
           data={comparisonData}
           sortField={sortField}
@@ -969,7 +972,15 @@ export default function QBComparisonsPage() {
           visibleColumns={visibleColumns}
           dateFormat={dateFormat}
           onSort={handleSort}
-          onRowClick={setSelectedRow}
+          onRowClick={(row) => {
+            setEvidenceRow(row);
+            // Below xl the evidence panel is hidden, so open the review dialog.
+            if (typeof window !== 'undefined' && !window.matchMedia('(min-width: 1280px)').matches) {
+              setSelectedRow(row);
+            }
+          }}
+          onReview={setSelectedRow}
+          selectedId={evidenceRow?.id ?? null}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
           onVouch={handleVouch}
@@ -991,6 +1002,13 @@ export default function QBComparisonsPage() {
               }}
             />
           }
+        />
+        </div>
+        <EvidencePanel
+          row={evidenceRow ? comparisonData.find((r) => r.id === evidenceRow.id) ?? null : null}
+          dateFormat={dateFormat}
+          onReview={setSelectedRow}
+          onClose={() => setEvidenceRow(null)}
         />
       </div>
 
@@ -1023,9 +1041,9 @@ export default function QBComparisonsPage() {
         isOpen={showDeleteAllModal}
         onClose={() => setShowDeleteAllModal(false)}
         onConfirm={handleDeleteAllQB}
-        title="Delete All QuickBooks Data"
+        title="Delete all QuickBooks data"
         message={`Are you sure you want to delete all ${qbEntries.length} QuickBooks entries? This will remove all QB data from comparisons. This action cannot be undone.`}
-        confirmText="Delete All"
+        confirmText="Delete all"
         cancelText="Cancel"
       />
 
