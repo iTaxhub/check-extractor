@@ -28,6 +28,7 @@ interface JobCheck {
   extraction?: any;
   methods_used?: string[];
   engine_results?: Record<string, any>;
+  engine_extractions?: Record<string, any>;
   engine_times_ms?: Record<string, number>;
 }
 
@@ -61,6 +62,24 @@ function extVal(ext: any, field: string): string {
   if (typeof f === 'string') return f;
   if (typeof f === 'number') return String(f);
   return '';
+}
+
+/**
+ * The extraction to show for a cheque. The hybrid merge (`extraction`) is
+ * preferred, but when it is missing or empty the backend still stores each
+ * engine's own result; showing nothing in that case made fully read cheques
+ * look unread.
+ */
+const ENGINE_ORDER = ['gemini', 'numarkdown', 'tesseract'];
+const SHOWN_FIELDS = ['payee', 'amount', 'checkDate', 'checkNumber', 'bankName'];
+function bestExtraction(c: { extraction?: any; engine_extractions?: Record<string, any> }): any {
+  const hasAny = (ext: any) => !!ext && SHOWN_FIELDS.some((k) => extVal(ext, k));
+  if (hasAny(c.extraction)) return c.extraction;
+  const engines = c.engine_extractions || {};
+  for (const name of [...ENGINE_ORDER, ...Object.keys(engines)]) {
+    if (hasAny(engines[name])) return engines[name];
+  }
+  return c.extraction;
 }
 
 function fmtSize(bytes?: number): string {
@@ -560,7 +579,7 @@ export default function DashboardPage() {
                         </td>
                       </tr>
                     ) : filteredChecks.map((c: any, idx: number) => {
-                      const ext = c.extraction;
+                      const ext = bestExtraction(c);
                       return (
                         <Tr
                           key={`${c.job_id}-${c.check_id}`}
