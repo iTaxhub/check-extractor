@@ -2,8 +2,8 @@
 
 Every field, ready to paste. Written against what the code actually does, not marketing copy.
 
-- **Item ID**: `acmmjfmlpemmigbbpkohebaehnofcdkg`
-- **Package to upload**: version **1.0.1** (see *Packaging* at the end)
+- **Item ID**: `apnglhjejjghgmcinkoeganejmkjmkpk` (confirmed by the owner, 19 Oct 2026; the older ID `acmmjfmlpemmigbbpkohebaehnofcdkg` is not the one to update)
+- **Package to upload**: version **1.2.0**, `dist/kyriq-extension-1.2.0.zip` built by `python chrome-extension/package_store.py`
 - **Status**: Draft, never submitted
 
 > **Do not copy from `chrome-extension/WEB-STORE-SUBMISSION.md`.** It is stale and will get the
@@ -54,8 +54,11 @@ WHAT IT DOES
 
 WHAT IT DOES NOT DO
 
-• It never clears anything you have not approved. One approval affects one row.
-• It does not change amounts, payees or dates in QuickBooks.
+• It never clears anything you have not approved. A single approval affects one row; the
+  bulk option approves only matches at 95% confidence or higher, shows the count, and asks
+  you to confirm first.
+• It only edits an amount, payee or date in QuickBooks when you choose Fix on a discrepancy
+  you are reviewing, and only on that row.
 • It runs only on QuickBooks (intuit.com) pages. It does nothing on any other site.
 
 REQUIREMENTS
@@ -173,9 +176,8 @@ Each host is one service the extension must talk to, and nothing broader:
 • yqbmzerdagqevjdwhlwh.supabase.co — the Kyriq database that stores that user's checks and
   matches.
 • check-extractor-production-2026.up.railway.app — the Kyriq service that processes uploaded
-  check images.
-• generativelanguage.googleapis.com — Google Gemini, which reads the check image to extract
-  the check number, date, amount and payee.
+  check images. Text extraction happens on that server; the extension holds no AI provider
+  key and calls no AI provider directly.
 
 The content script runs only on https://*.intuit.com/*, which is where the user's
 QuickBooks register lives. The extension does nothing on any other website.
@@ -213,10 +215,10 @@ https://kyriq.com/privacy
 ```
 Verified live and publicly reachable (HTTP 200).
 
-> ⚠️ **Update the policy before submitting.** `frontend/app/(public)/privacy/page.tsx` does not name
-> **Google Gemini** as a processor, although check images are sent to it, nor Railway. Reviewers
-> compare the disclosed data flow against the host permissions, and `generativelanguage.googleapis.com`
-> is listed there. Add both as named sub-processors.
+> ⚠️ **Owner decision before submitting.** The live policy says images are processed in memory and
+> not stored unless the user opts in, while the source describes retained documents and images.
+> State the true retention behaviour, publish it, and name the server-side processors (Google
+> Gemini, Railway). As of 1.2.0 the extension itself no longer calls Gemini or holds its key.
 
 ---
 
