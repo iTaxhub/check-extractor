@@ -385,6 +385,7 @@ def _job_from_row(row: dict) -> dict:
             "height": cd.get("height", 0),
             "extraction": cd.get("extraction"),  # Hybrid merged result
             "methods_used": cd.get("methods_used", []),
+            "caption": cd.get("caption"),
             "storage_url": cd.get("image_url", ""),
             "engine_results": cd.get("engine_results", {}),  # Raw fields per engine
             "engine_extractions": cd.get("engine_extractions", {}),  # Full extraction per engine
@@ -1052,6 +1053,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
                 "width": im.size[0],
                 "height": im.size[1],
                 "extraction": None,
+                "caption": app_ext.captions_by_id.get(cid),
             })
         jobs[job_id]["checks"] = checks
 
@@ -1188,6 +1190,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
                 "image_url": c.get("storage_url", f"/api/checks/{job_id}/{c['check_id']}/image"),
                 "extraction": c.get("extraction"),  # Hybrid merged result
                 "methods_used": c.get("methods_used", []),
+                "caption": c.get("caption"),
                 "engine_results": c.get("engine_results", {}),  # Raw fields per engine
                 "engine_extractions": c.get("engine_extractions", {}),  # Full extraction per engine
                 "engine_times_ms": c.get("engine_times_ms", {}),
@@ -1483,6 +1486,7 @@ async def upload_analyze(
                 "width": im.size[0],
                 "height": im.size[1],
                 "extraction": None,
+                "caption": app_ext.captions_by_id.get(cid),
             })
 
         # Same verdict the upload page computes (frontend/lib/document-kind.ts),
@@ -1811,6 +1815,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                                 "width": im.size[0],
                                 "height": im.size[1],
                                 "extraction": None,
+                                "caption": app_ext.captions_by_id.get(cid),
                             })
                         job["checks"] = checks
 
@@ -1982,6 +1987,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                     if len(job["progress_logs"]) > 100:
                         job["progress_logs"] = job["progress_logs"][-100:]
 
+            app_ext.captions_by_id.update({c["check_id"]: c["caption"] for c in checks if c.get("caption")})
             app_ext.run_parallel_ocr(filtered_manifest, methods=req.methods, progress_callback=_on_progress)
             app_ext.save_summary(filtered_manifest)
 
@@ -2048,6 +2054,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                     "image_url": c.get("storage_url", f"/api/checks/{req.job_id}/{c['check_id']}/image"),
                     "extraction": c.get("extraction"),  # Hybrid merged result
                     "methods_used": c.get("methods_used", []),
+                    "caption": c.get("caption"),
                     "engine_results": c.get("engine_results", {}),  # Raw fields per engine
                     "engine_extractions": c.get("engine_extractions", {}),  # Full extraction per engine
                     "engine_times_ms": c.get("engine_times_ms", {}),
@@ -3529,6 +3536,8 @@ if __name__ == "__main__":
                                         "image_url": c.get("storage_url", f"/api/checks/{jid}/{c['check_id']}/image"),
                                         "extraction": c.get("extraction"),
                                         "methods_used": c.get("methods_used", []),
+                                        "caption": c.get("caption"),
+                    "caption": c.get("caption"),
                                         "engine_results": c.get("engine_results", {}),
                                         "engine_extractions": c.get("engine_extractions", {}),
                                         "engine_times_ms": c.get("engine_times_ms", {}),
