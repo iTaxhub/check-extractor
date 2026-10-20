@@ -132,6 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 pdf_url: job.pdf_url,
                 file_size: job.file_size,
                 doc_format: job.doc_format,
+                doc_kind: job.doc_kind ?? null,
                 total_pages: job.total_pages,
                 total_checks: job.total_checks,
                 checks: checks,

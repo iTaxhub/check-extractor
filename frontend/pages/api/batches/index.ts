@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import type { DocumentKind } from '@/lib/document-kind';
 import { requireCapability, getActiveRealm } from '@/lib/match-helpers';
 import { auditLog } from '@/lib/team-helpers';
 import {
@@ -96,6 +97,27 @@ async function listBatches(req: NextApiRequest, res: NextApiResponse, ctx: any) 
   const batches: BatchPayload[] = rows.map((row: any) =>
     toBatchPayload(row, countsById[row.id] ? toCounts(countsById[row.id]) : EMPTY_COUNTS)
   );
+
+  // Document kinds per run, one query for the page. A database without
+  // migration 044 has no doc_kind column: then every run shows no kinds, which
+  // is the honest answer, not a failure.
+  if (batches.length > 0) {
+    const { data: kindRows, error: kindErr } = await supabase
+      .from('check_jobs')
+      .select('batch_id, doc_kind')
+      .eq('tenant_id', tenantId)
+      .in('batch_id', batches.map((b) => b.id))
+      .not('doc_kind', 'is', null);
+    if (kindErr && !isMissingObject(kindErr)) {
+      throw new BatchError(500, 'read_failed', kindErr.message);
+    }
+    const byBatch: Record<string, NonNullable<BatchPayload['doc_kinds']>> = {};
+    for (const r of (kindRows || []) as { batch_id: string; doc_kind: DocumentKind }[]) {
+      const bucket = (byBatch[r.batch_id] ||= {});
+      bucket[r.doc_kind] = (bucket[r.doc_kind] || 0) + 1;
+    }
+    for (const b of batches) b.doc_kinds = byBatch[b.id] || {};
+  }
 
   return res.status(200).json({
     batches,

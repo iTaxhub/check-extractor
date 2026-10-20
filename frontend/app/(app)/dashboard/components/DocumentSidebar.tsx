@@ -1,13 +1,15 @@
 'use client';
 
 import { FileText, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
-import { GlassCard, STATUS_TONES, type StatusKey } from '@/components/ui';
+import { Badge, GlassCard, STATUS_TONES, type StatusKey } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { KIND_LABEL, type DocumentKind } from '@/lib/document-kind';
 
 interface Job {
   job_id: string;
   status: string;
   pdf_name: string;
+  doc_kind?: DocumentKind | null;
   total_pages: number;
   total_checks: number;
   created_at: string;
@@ -119,6 +121,15 @@ export default function DocumentSidebar({
                 <div className="mt-0.5 flex items-center gap-2 text-[10px] text-ink-faint">
                   <span className="nums">{job.total_pages}pg</span>
                   <span className="nums">{job.total_checks}chk</span>
+                  {job.doc_kind ? (
+                    <Badge
+                      tone={job.doc_kind === 'no-cheques' ? 'warning' : 'outline'}
+                      size="sm"
+                      className="px-1.5 py-0 text-[9px]"
+                    >
+                      {KIND_LABEL[job.doc_kind]}
+                    </Badge>
+                  ) : null}
                   <StatusIcon status={job.status} />
                 </div>
               </div>
