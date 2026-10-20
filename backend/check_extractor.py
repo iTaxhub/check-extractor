@@ -32,6 +32,10 @@ from datetime import datetime
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pdf2image import convert_from_path
+try:
+    import pdf_pages  # embedded cheque rects + captions (needs PyMuPDF)
+except ImportError:  # keep the pixel path alive on a box without the wheel
+    pdf_pages = None
 from PIL import Image
 import pytesseract
 
@@ -1056,6 +1060,19 @@ def extract_with_gemini(img_path, key=None):
 #  HYBRID MERGE (3 engines)
 # ═════════════════════════════════════════════════════════════════════
 
+CAPTION_FIELDS = {"checkNumber": "check_number", "amount": "amount", "checkDate": "date"}
+
+
+def apply_caption(hybrid, caption):
+    """The bank's own printed caption beats every OCR engine for the fields it
+    carries. Mutates and returns the hybrid extraction dict."""
+    for field, key in CAPTION_FIELDS.items():
+        value = (caption or {}).get(key)
+        if value is not None:
+            hybrid[field] = {"value": value, "confidence": 1.0, "source": "caption"}
+    return hybrid
+
+
 def merge_all(tess, numd, gemini):
     """
     Merge 3 engine results. Priority for handwritten fields (payee):
@@ -1170,6 +1187,11 @@ class CheckExtractorApp:
         self.output_dir = output_dir
         self.pages = []
         self.page_boxes = {}
+        # Per page, a caption dict per box (same order as page_boxes) or None.
+        # Captions come from the PDF text next to embedded cheque images; the
+        # contour path never has them.
+        self.page_captions = {}
+        self.captions_by_id = {}
 
         os.makedirs(f"{output_dir}/images", exist_ok=True)
 
@@ -1222,10 +1244,32 @@ class CheckExtractorApp:
         total = 0
         fmt = self.doc_format
 
+        # Born-digital statements place each cheque as an embedded image with a
+        # printed caption. Those rects are exact, so they win over contours on
+        # any page that has them; scanned pages still go through the detector.
+        embedded = {}
+        if pdf_pages is not None:
+            try:
+                for pg, page in zip(pdf_pages.read(self.pdf_path), self.pages):
+                    boxes, captions = pdf_pages.cheque_boxes(pg, page.width, page.height)
+                    if boxes:
+                        embedded[pg["index"]] = (boxes, captions)
+            except Exception as e:
+                print(f"  Embedded-image read failed, using contours only: {e}")
+        if embedded:
+            # A born-digital document: its other pages are statement text,
+            # covers and adverts, where contours only ever found false cheques
+            # (the Chase header strip, a table on a BotW balance page).
+            print(f"  Embedded cheque images on {len(embedded)} pages; contour detection skipped")
+
         def _detect(idx_page):
             idx, page = idx_page
+            if idx in embedded:
+                return (idx, *embedded[idx])
+            if embedded:
+                return idx, [], []
             boxes = detect_checks_on_page(page, format_hint=fmt)
-            return idx, boxes
+            return idx, boxes, [None] * len(boxes)
 
         if not self.pages:
             print("  No pages to detect checks on")
@@ -1234,8 +1278,9 @@ class CheckExtractorApp:
         with ThreadPoolExecutor(max_workers=min(8, max(1, len(self.pages)))) as pool:
             results = pool.map(_detect, enumerate(self.pages))
 
-        for idx, boxes in sorted(results, key=lambda x: x[0]):
+        for idx, boxes, captions in sorted(results, key=lambda x: x[0]):
             self.page_boxes[idx] = boxes
+            self.page_captions[idx] = captions
             if boxes:
                 total += len(boxes)
                 print(f"  Page {idx+1}: {len(boxes)} checks detected")
@@ -1263,7 +1308,8 @@ class CheckExtractorApp:
             os.makedirs(page_dir, exist_ok=True)
             cheque_on_page = 0
             page_img = self.pages[pg]
-            for (x1, y1, x2, y2) in boxes:
+            captions = self.page_captions.get(pg) or [None] * len(boxes)
+            for (x1, y1, x2, y2), caption in zip(boxes, captions):
                 x1, y1 = max(0, x1), max(0, y1)
                 x2, y2 = min(page_img.width, x2), min(page_img.height, y2)
                 if x2 <= x1 or y2 <= y1:
@@ -1279,6 +1325,8 @@ class CheckExtractorApp:
                 # Also save well-labeled copy in per-page subfolder
                 crop.save(os.path.join(page_dir, f"cheque_{cheque_on_page}.png"))
                 manifest.append((cid, img_path, page_num))
+                if caption:
+                    self.captions_by_id[cid] = caption
                 counter += 1
 
         print(f"\nPhase 1 complete: {len(manifest)} check images saved to {img_dir}/")
@@ -1381,6 +1429,7 @@ class CheckExtractorApp:
 
             # Merge (works even if some engines returned empty fields)
             hybrid = merge_all(tess_result, numd_result, gemi_result)
+            apply_caption(hybrid, self.captions_by_id.get(cid))
             
             # Collect API usage data for billing
             api_usage = {}
