@@ -47,6 +47,7 @@ import hashlib
 from doc_kind import classify_document, checks_per_page_from_manifest
 import page_kinds as _page_kinds
 import statement_rows as _statement_rows
+import reconcile_rows as _reconcile_rows
 
 from check_extractor import CheckExtractorApp
 from usage_rules import ledger_idempotency_key, is_billable
@@ -1660,6 +1661,14 @@ async def upload_analyze(
         # cheque images found above. Kept in memory for the endpoint's fallback
         # and written to statement_rows (migration 047) when there is a tenant.
         stmt_rows = _compute_statement_rows(app_ext, page_kinds)
+        if stmt_rows:
+            # Pair each listed cheque with its image now, so the link is stored with the row.
+            res = _reconcile_rows.reconcile(stmt_rows, [_reconcile_rows.image_from_check(c) for c in checks])
+            linked = {(m["page"], m["row_index"]): m for m in res["matches"]}
+            for r in stmt_rows:
+                m = linked.get((r["page"], r["row_index"]))
+                r["matched_check_id"] = m["check_id"] if m else None
+                r["match_score"] = m["score"] if m else None
         jobs[job_id]["_statement_rows"] = stmt_rows   # underscore: kept out of job payloads
         if stmt_rows:
             _store_statement_rows(job_id, tenant_id, stmt_rows)
@@ -2463,9 +2472,24 @@ def get_statement_rows(job_id: str, request: Request):
     if not rows:
         rows = job.get("_statement_rows") or []   # not stored yet (migration 047 pending, or no tenant)
     rows = sorted(rows, key=lambda r: (r.get("page", 0), r.get("row_index", 0)))
+    shown = [{k: r.get(k) for k in ("page", "row_index", "check_number", "date", "amount", "payee", "source")}
+             for r in rows]
+
+    # Pair rows with this job's cheque images now, not from what was stored at
+    # upload: OCR fills in numbers and amounts after extraction, so the answer
+    # improves as the job completes.
+    images = [_reconcile_rows.image_from_check(c) for c in (job.get("checks") or [])]
+    result = _reconcile_rows.reconcile(shown, images)
+    linked = {(m["page"], m["row_index"]): m for m in result["matches"]}
+    for r in shown:
+        m = linked.get((r["page"], r["row_index"]))
+        r["matched_check_id"] = m["check_id"] if m else None
+        r["match_score"] = m["score"] if m else None
     return {
-        "rows": [{k: r.get(k) for k in ("page", "row_index", "check_number", "date", "amount", "payee", "source")}
-                 for r in rows],
+        "rows": shown,
+        "unmatched_rows": result["unmatched_rows"],
+        "unmatched_images": result["unmatched_images"],
+        "summary": _reconcile_rows.summary(result, len(shown), len(images)),
     }
 
 

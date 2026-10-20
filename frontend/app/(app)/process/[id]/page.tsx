@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { summarizeKinds } from '@/lib/document-kind';
+import StatementPanel from './StatementPanel';
 
 type ViewMode = 'card' | 'table';
 
@@ -327,6 +328,11 @@ export default function ProcessingPage() {
           </GlassCard>
         );
       })()}
+
+      {/* ── Statement vs images: only when the upload has a statement table ── */}
+      {jobData?.page_kinds?.some((k) => k === 'statement' || k === 'both') && (
+        <StatementPanel jobId={jobId} imageCount={checks.length} />
+      )}
 
       {/* ── Cheque image previews (show during processing too) ── */}
       {!isComplete && checks.length > 0 && (
