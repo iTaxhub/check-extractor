@@ -659,7 +659,14 @@ _tenant_by_user: dict = {}
 
 def _auth_context(request) -> dict:
     """{'user_id': ..., 'tenant_id': ...}; either may be None."""
-    claims = _claims_from_request(request)
+    # _verify_token has already confirmed this token with Supabase Auth and
+    # cached {"sub": ...}; that is the owner, and it is set even when the
+    # token cannot be decoded locally (projects without an HS256 secret).
+    # Jobs on the live project were being written with no tenant or user
+    # because this went straight to the local decode.
+    auth = request.headers.get("Authorization", "") or ""
+    cached = _auth_cache.get(auth[7:]) if auth.startswith("Bearer ") else None
+    claims = cached if cached and cached.get("sub") else _claims_from_request(request)
     user_id = (claims or {}).get("sub")
     if not user_id:
         return {"user_id": None, "tenant_id": None}
