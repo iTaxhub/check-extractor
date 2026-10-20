@@ -46,6 +46,7 @@ from PIL import Image as PILImage
 import hashlib
 from doc_kind import classify_document, checks_per_page_from_manifest
 import page_kinds as _page_kinds
+import statement_rows as _statement_rows
 
 from check_extractor import CheckExtractorApp
 from usage_rules import ledger_idempotency_key, is_billable
@@ -392,6 +393,66 @@ def _compute_page_kinds(app_ext, manifest):
     except Exception as e:
         print(f"  page_kinds failed (non-fatal): {type(e).__name__}: {e}")
         return []
+
+
+def _supabase_upsert(table: str, rows: list, on_conflict: str, chunk: int = 500):
+    """Bulk upsert (merge on the unique key), so re-analysing a job rewrites its
+    rows instead of failing on the unique constraint. Returns True when every
+    chunk landed. The caller sets tenant_id on every row."""
+    if not _supabase_ok or not rows:
+        return False
+    headers = _sb_headers()
+    headers["Prefer"] = "resolution=merge-duplicates,return=minimal"
+    for i in range(0, len(rows), chunk):
+        try:
+            resp = _requests.post(
+                f"{_sb_url}/rest/v1/{table}?on_conflict={on_conflict}",
+                headers=headers, json=rows[i:i + chunk], timeout=60,
+            )
+        except Exception as e:
+            print(f"  Supabase upsert {table} failed: {type(e).__name__}")
+            return False
+        if resp.status_code >= 400:
+            print(f"  Supabase upsert {table} error ({resp.status_code}): {resp.text[:200]}")
+            return False
+    return True
+
+
+def _compute_statement_rows(app_ext, page_kinds):
+    """The cheques a bank statement lists (backend/statement_rows.py): text
+    layer first, OCR for a scanned statement page, an AI pass for a statement
+    page that still yields nothing. Never raises; [] means none found."""
+    try:
+        meta = getattr(app_ext, "pdf_meta", None)
+        if not meta:
+            return []
+
+        def ask(idx):
+            import io
+            buf = io.BytesIO()
+            img = app_ext.pages[idx].copy()
+            img.thumbnail((1600, 1600))
+            img.save(buf, format="PNG")
+            from check_extractor import gemini_text
+            return gemini_text(_statement_rows.AI_PROMPT, buf.getvalue(), max_tokens=8192)
+
+        return _statement_rows.extract_rows(
+            meta, page_kinds, render=lambda i: app_ext.pages[i], ai=ask)
+    except Exception as e:
+        print(f"  statement_rows failed (non-fatal): {type(e).__name__}: {e}")
+        return []
+
+
+def _store_statement_rows(job_id: str, tenant_id, rows: list):
+    """Persist statement rows. Never writes a row without a tenant_id: with no
+    tenant (local dev, auth off) the rows stay in memory only."""
+    if not tenant_id or not rows:
+        return False
+    return _supabase_upsert(
+        "statement_rows",
+        [{**r, "tenant_id": tenant_id, "job_id": job_id} for r in rows],
+        on_conflict="tenant_id,job_id,page,row_index",
+    )
 
 
 def _job_from_row(row: dict) -> dict:
@@ -1595,6 +1656,14 @@ async def upload_analyze(
             job_row["batch_id"] = resolved_batch
         _insert_check_job(job_row)
 
+        # The cheques the statement says went out, for reconciling against the
+        # cheque images found above. Kept in memory for the endpoint's fallback
+        # and written to statement_rows (migration 047) when there is a tenant.
+        stmt_rows = _compute_statement_rows(app_ext, page_kinds)
+        jobs[job_id]["_statement_rows"] = stmt_rows   # underscore: kept out of job payloads
+        if stmt_rows:
+            _store_statement_rows(job_id, tenant_id, stmt_rows)
+
         # Upload PDF to storage
         try:
             with open(pdf_path, "rb") as f:
@@ -2374,6 +2443,30 @@ def list_jobs(request: Request, limit: int = 50, offset: int = 0, status: str = 
     page = all_jobs[offset:offset + limit]
     
     return {"jobs": page, "total": total, "limit": limit, "offset": offset}
+
+
+@app.get("/api/jobs/{job_id}/statement-rows")
+def get_statement_rows(job_id: str, request: Request):
+    """The cheques this job's statement lists, in statement order. Tenant-scoped:
+    with auth on, a job that is not the caller's is a 404, never a 403."""
+    job = _job(job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found")
+    tenant_id = job.get("tenant_id")
+    if _require_auth and (not request.state.tenant_id or tenant_id != request.state.tenant_id):
+        raise HTTPException(404, "Job not found")
+
+    rows = []
+    if tenant_id:
+        # PostgREST caps a response at 1000 rows; a statement lists far fewer.
+        rows = _supabase_select("statement_rows", filters={"job_id": job_id, "tenant_id": tenant_id}, limit=1000)
+    if not rows:
+        rows = job.get("_statement_rows") or []   # not stored yet (migration 047 pending, or no tenant)
+    rows = sorted(rows, key=lambda r: (r.get("page", 0), r.get("row_index", 0)))
+    return {
+        "rows": [{k: r.get(k) for k in ("page", "row_index", "check_number", "date", "amount", "payee", "source")}
+                 for r in rows],
+    }
 
 
 @app.get("/api/jobs/{job_id}/pdf")
