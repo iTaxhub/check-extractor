@@ -15,6 +15,7 @@ import {
 } from '@/components/ui';
 import ChequeDialog from './components/ChequeDialog';
 import DocumentSidebar from './components/DocumentSidebar';
+import type { DocumentKind } from '@/lib/document-kind';
 import ConfigureExtractionDialog from './components/ConfigureExtractionDialog';
 import { DashboardBodySkeleton } from './loading';
 
@@ -38,6 +39,7 @@ interface Job {
   pdf_name: string;
   file_size?: number;
   doc_format?: string;
+  doc_kind?: DocumentKind | null;
   total_pages: number;
   total_checks: number;
   checks: JobCheck[];

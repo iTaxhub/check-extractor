@@ -44,6 +44,7 @@ from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from PIL import Image as PILImage
 import hashlib
+from doc_kind import classify_document, checks_per_page_from_manifest
 
 from check_extractor import CheckExtractorApp
 from usage_rules import ledger_idempotency_key, is_billable
@@ -354,6 +355,16 @@ def _supabase_rpc(fn_name: str, params: dict = None):
         return None
 
 
+def _insert_check_job(row: dict):
+    """check_jobs insert that still lands on a database without migration 044:
+    if the row with doc_kind is refused, retry without it rather than lose the
+    job (that is how rows lost their owner before, see batch_id below)."""
+    out = _supabase_insert("check_jobs", row)
+    if out is None and "doc_kind" in row:
+        out = _supabase_insert("check_jobs", {k: v for k, v in row.items() if k != "doc_kind"})
+    return out
+
+
 def _job_from_row(row: dict) -> dict:
     """The one way a check_jobs row becomes an in-memory job. Used at startup
     and whenever a request names a job this process has never seen (restart,
@@ -386,6 +397,7 @@ def _job_from_row(row: dict) -> dict:
         "pdf_url": row.get("pdf_url"),
         "file_size": row.get("file_size"),
         "doc_format": row.get("doc_format"),
+        "doc_kind": row.get("doc_kind"),
         "total_pages": row.get("total_pages", 0),
         "total_checks": row.get("total_checks", 0),
         "checks": checks,
@@ -1037,11 +1049,16 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         jobs[job_id]["checks"] = checks
 
         # ── Create Supabase DB row (one row per PDF job) ─────────
-        db_row = _supabase_insert("check_jobs", {
+        jobs[job_id]["doc_kind"] = classify_document(
+            jobs[job_id]["total_pages"], len(checks),
+            checks_per_page_from_manifest(jobs[job_id]["total_pages"], manifest),
+        )
+        db_row = _insert_check_job({
             "job_id": job_id,
             "pdf_name": pdf_name,
             "status": "detecting",
             "doc_format": jobs[job_id]["doc_format"],
+            "doc_kind": jobs[job_id]["doc_kind"],
             "total_pages": jobs[job_id]["total_pages"],
             "total_checks": len(checks),
             "checks_data": json.dumps([]),
@@ -1461,6 +1478,13 @@ async def upload_analyze(
                 "extraction": None,
             })
 
+        # Same verdict the upload page computes (frontend/lib/document-kind.ts),
+        # persisted so History can tell a statement from a sheet of cheques.
+        doc_kind = classify_document(
+            len(app_ext.pages), len(manifest),
+            checks_per_page_from_manifest(len(app_ext.pages), manifest),
+        )
+
         # Store in memory
         jobs[job_id] = {
             "job_id": job_id,
@@ -1470,6 +1494,7 @@ async def upload_analyze(
             "file_size": file_size,
             "file_hash": file_hash,
             "doc_format": doc_format,
+            "doc_kind": doc_kind,
             "total_pages": len(app_ext.pages),
             "total_checks": len(manifest),
             "checks": checks,
@@ -1509,6 +1534,7 @@ async def upload_analyze(
             "pdf_name": file.filename,
             "status": "analyzed",
             "doc_format": doc_format,
+            "doc_kind": doc_kind,
             "total_pages": len(app_ext.pages),
             "total_checks": len(manifest),
             "file_size": file_size,
@@ -1519,7 +1545,7 @@ async def upload_analyze(
         # how check_jobs rows lost their owner the last time.
         if resolved_batch:
             job_row["batch_id"] = resolved_batch
-        _supabase_insert("check_jobs", job_row)
+        _insert_check_job(job_row)
 
         # Upload PDF to storage
         try:
@@ -1564,6 +1590,7 @@ async def upload_analyze(
             "pdf_name": file.filename,
             "file_size": file_size,
             "doc_format": doc_format,
+            "doc_kind": doc_kind,
             "total_pages": len(app_ext.pages),
             "total_checks": len(manifest),
             "pages": pages_info,
@@ -2258,6 +2285,7 @@ def list_jobs(request: Request, limit: int = 50, offset: int = 0, status: str = 
                     "status": db_job["status"],
                     "pdf_name": db_job.get("pdf_name", ""),
                     "doc_format": db_job.get("doc_format"),
+                    "doc_kind": db_job.get("doc_kind"),
                     "total_pages": db_job.get("total_pages", 0),
                     "total_checks": db_job.get("total_checks", 0),
                     "checks": checks_data,

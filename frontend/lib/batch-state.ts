@@ -47,6 +47,8 @@ export type BatchStepKey = (typeof BATCH_STEPS)[number];
 /** 1 = Upload, 2 = Match, 3 = Review, 4 = Approve. */
 export type BatchStepNumber = 1 | 2 | 3 | 4;
 
+import type { DocumentKind } from '@/lib/document-kind';
+
 export type BatchStatus = 'open' | 'complete' | 'abandoned';
 
 /** Exactly what public.batch_counts(uuid) returns. All non-negative integers. */
@@ -263,6 +265,12 @@ export function periodLabel(periodStart: string): string {
 /** The shape every batch endpoint returns for one batch. */
 export interface BatchPayload {
   id: string;
+  /**
+   * How many of this run's uploads were each document kind (check_jobs.doc_kind,
+   * migration 044). Attached by GET /api/batches; absent on other endpoints.
+   * Uploads classified before the migration are not counted.
+   */
+  doc_kinds?: Partial<Record<DocumentKind, number>>;
   tenant_id: string;
   created_by: string | null;
   realm_id: string;

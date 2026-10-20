@@ -41,6 +41,7 @@ import {
   type HistoryStatus,
 } from '@/lib/history-client';
 import type { BatchPayload } from '@/lib/batch-state';
+import { KIND_LABEL, KIND_ORDER, type DocumentKind } from '@/lib/document-kind';
 import { cn } from '@/lib/utils';
 
 /**
@@ -103,6 +104,14 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/* Kind badges: only "no cheques" is a warning, the rest are descriptive. */
+const KIND_TONE: Record<DocumentKind, 'neutral' | 'brand' | 'warning' | 'outline'> = {
+  'no-cheques': 'warning',
+  'bank-statement': 'brand',
+  'cheque-sheet': 'neutral',
+  'single-cheque': 'outline',
+};
+
 function approverLabel(batch: BatchPayload, approvers: ApproverMap): string {
   if (!batch.approved_by) return '—';
   const a = approvers[batch.approved_by];
@@ -125,6 +134,7 @@ export default function HistoryPage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [accounts, setAccounts] = useState<Record<string, string>>({});
+  const [kind, setKind] = useState<DocumentKind | ''>('');
 
   useEffect(() => {
     // Only to avoid rendering a control that would 403. The endpoint is the gate.
@@ -179,13 +189,16 @@ export default function HistoryPage() {
   );
 
   // Narrows the page already loaded; pagination stays server-side.
+  // ponytail: the kind filter narrows the loaded page like the search box; move
+  // it into GET /api/batches if firms page past runs of one kind.
   const q = query.trim().toLowerCase();
-  const visible = q
-    ? batches.filter((b) =>
+  const visible = batches.filter(
+    (b) =>
+      (!q ||
         [b.company_name, b.realm_id, b.account_name, b.account_id, b.summary?.period, b.period_start, b.period_end]
-          .some((v) => (v || '').toLowerCase().includes(q))
-      )
-    : batches;
+          .some((v) => (v || '').toLowerCase().includes(q))) &&
+      (!kind || (b.doc_kinds?.[kind] || 0) > 0)
+  );
 
   const exportBatch = async (batch: BatchPayload) => {
     setExporting(batch.id);
@@ -275,6 +288,21 @@ export default function HistoryPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
+          Document kind
+          <select
+            value={kind}
+            onChange={(e) => setKind(e.target.value as DocumentKind | '')}
+            className="h-9 rounded-md border border-glass-hairline bg-surface px-2 text-sm text-ink-strong"
+          >
+            <option value="">All kinds</option>
+            {KIND_ORDER.map((k) => (
+              <option key={k} value={k}>
+                {KIND_LABEL[k]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
           Period from
           <Input
             type="date"
@@ -298,7 +326,7 @@ export default function HistoryPage() {
             }}
           />
         </label>
-        {accountId || from || to ? (
+        {accountId || from || to || kind ? (
           <button
             type="button"
             className={ROW_ACTION}
@@ -306,6 +334,7 @@ export default function HistoryPage() {
               setAccountId('');
               setFrom('');
               setTo('');
+              setKind('');
               setOffset(0);
             }}
           >
@@ -360,6 +389,7 @@ export default function HistoryPage() {
                 <Tr>
                   <Th>Company &amp; account</Th>
                   <Th>Period</Th>
+                  <Th>Documents</Th>
                   <Th>Status</Th>
                   <Th numeric>Cheques</Th>
                   <Th numeric>Needs attention</Th>
@@ -371,7 +401,7 @@ export default function HistoryPage() {
                 {loading ? (
                   [0, 1, 2, 3].map((i) => (
                     <Tr key={i}>
-                      {[0, 1, 2, 3, 4, 5, 6].map((c) => (
+                      {[0, 1, 2, 3, 4, 5, 6, 7].map((c) => (
                         <Td key={c}>
                           <Skeleton shape="text" className="w-full" />
                         </Td>
@@ -380,7 +410,7 @@ export default function HistoryPage() {
                   ))
                 ) : batches.length === 0 ? (
                   <TableEmpty
-                    colSpan={7}
+                    colSpan={8}
                     title="No reconciliations yet"
                     description={
                       status === 'all'
@@ -395,7 +425,7 @@ export default function HistoryPage() {
                   />
                 ) : visible.length === 0 ? (
                   <TableEmpty
-                    colSpan={7}
+                    colSpan={8}
                     title="No matches on this page"
                     action={
                       <button type="button" className={ROW_ACTION} onClick={() => setQuery('')}>
@@ -424,6 +454,20 @@ export default function HistoryPage() {
                           <div className="text-ink-strong">{batch.summary?.period}</div>
                           <div className="nums mt-0.5 text-xs text-ink-faint">
                             {batch.period_start} &ndash; {batch.period_end}
+                          </div>
+                        </Td>
+                        <Td>
+                          {/* One badge per kind seen in the run's uploads; blank
+                              for runs analysed before doc_kind was recorded. */}
+                          <div className="flex flex-wrap gap-1">
+                            {KIND_ORDER.filter((k) => (batch.doc_kinds?.[k] || 0) > 0).map((k) => (
+                              <Badge key={k} tone={KIND_TONE[k]} size="sm">
+                                {KIND_LABEL[k]}
+                                {(batch.doc_kinds?.[k] || 0) > 1 ? (
+                                  <span className="nums">{batch.doc_kinds?.[k]}</span>
+                                ) : null}
+                              </Badge>
+                            ))}
                           </div>
                         </Td>
                         <Td>
