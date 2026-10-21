@@ -35,7 +35,7 @@ import requests
 
 from check_extractor import GEMINI_KEYS, GEMINI_PROMPT
 
-GEMINI_MODEL = os.getenv("LAB_GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = os.getenv("LAB_GEMINI_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
 POLL_SECONDS = 2.5
 POLL_TIMEOUT = float(os.getenv("LAB_POLL_TIMEOUT", "240"))
 

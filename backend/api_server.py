@@ -122,7 +122,7 @@ def _log_api_usage(job_id: str, check_id: str, api_provider: str, usage_data: di
             "job_id": job_id,
             "check_id": check_id,
             "api_provider": api_provider,
-            "api_model": usage_data.get("model", "gemini-2.0-flash" if api_provider == "gemini" else "gpt-4o"),
+            "api_model": usage_data.get("model", os.environ.get("GEMINI_MODEL", "gemini-3.8-flash") if api_provider == "gemini" else "gpt-4o"),
             "prompt_tokens": usage_data.get("prompt_tokens", 0),
             "completion_tokens": usage_data.get("completion_tokens", 0),
             "total_tokens": usage_data.get("total_tokens", 0),
@@ -392,6 +392,21 @@ def _compute_page_kinds(app_ext, manifest):
     except Exception as e:
         print(f"  page_kinds failed (non-fatal): {type(e).__name__}: {e}")
         return []
+
+
+def _has_values(check: dict) -> bool:
+    """True when a cheque's extraction holds at least one real field value.
+
+    An extraction dict whose fields are all None (every engine failed, e.g. a
+    retired model returning 404) used to count as extracted: the job said
+    "complete, nothing failed" and retry-failed found nothing to retry."""
+    ext = check.get("extraction") or {}
+    for v in ext.values():
+        if isinstance(v, dict):
+            v = v.get("value")
+        if v not in (None, "", [], {}):
+            return True
+    return False
 
 
 def _job_from_row(row: dict) -> dict:
@@ -1258,7 +1273,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         jobs[job_id]["checks"] = checks
 
         # Track incomplete extractions
-        incomplete = [c for c in checks if not c.get("extraction")]
+        incomplete = [c for c in checks if not _has_values(c)]
         if incomplete:
             jobs[job_id]["has_incomplete"] = True
             jobs[job_id]["incomplete_count"] = len(incomplete)
@@ -2124,7 +2139,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
             job["completed_at"] = datetime.now().isoformat()
 
             # Track incomplete extractions
-            incomplete = [c for c in checks if not c.get("extraction")]
+            incomplete = [c for c in checks if not _has_values(c)]
             if incomplete:
                 job["has_incomplete"] = True
                 job["incomplete_count"] = len(incomplete)
@@ -2768,7 +2783,7 @@ def retry_failed(job_id: str, _auth=Depends(_verify_token)):
     if job["status"] in ("extracting", "ocr_running"):
         return {"job_id": job_id, "status": job["status"], "message": "Already processing"}
 
-    incomplete = [c for c in job.get("checks", []) if not c.get("extraction")]
+    incomplete = [c for c in job.get("checks", []) if not _has_values(c)]
     if not incomplete:
         return {"job_id": job_id, "message": "All checks already extracted", "incomplete": 0}
 
