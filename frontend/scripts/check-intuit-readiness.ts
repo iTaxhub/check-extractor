@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describeCall, intuitTid, qbFetch } from '../lib/qb-http';
+import { describeCall, intuitTid, qbFetch, sandboxAware } from '../lib/qb-http';
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '../lib/support';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -66,6 +66,33 @@ async function main() {
   }
   assert.equal(describeCall('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'), '/oauth2/v1/tokens/bearer');
   assert.equal(describeCall('not a url'), 'unparseable-url');
+
+  // ── development keys connect a SANDBOX company, which only the sandbox host serves ──
+  const prod = 'https://quickbooks.api.intuit.com/v3/company/4620816365353047000/companyinfo/4620816365353047000?minorversion=73';
+  const oauth = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
+  const was = process.env.QB_SANDBOX;
+  try {
+    delete process.env.QB_SANDBOX;
+    assert.equal(sandboxAware(prod), prod, 'unset: production host untouched');
+    process.env.QB_SANDBOX = 'false';
+    assert.equal(sandboxAware(prod), prod, 'only the string "true" switches');
+    process.env.QB_SANDBOX = 'true';
+    assert.equal(sandboxAware(prod), prod.replace('//quickbooks.api', '//sandbox-quickbooks.api'));
+    assert.equal(String(sandboxAware(new URL(prod))), prod.replace('//quickbooks.api', '//sandbox-quickbooks.api'));
+    assert.equal(sandboxAware(oauth), oauth, 'the OAuth endpoints are the same for sandbox and production');
+    const already = prod.replace('//quickbooks.api', '//sandbox-quickbooks.api');
+    assert.equal(sandboxAware(already), already, 'an already-sandbox URL is not rewritten twice');
+  } finally {
+    if (was === undefined) delete process.env.QB_SANDBOX; else process.env.QB_SANDBOX = was;
+  }
+
+  // ── the company switchers lead with the company name; the realm id is a small reference ──
+  for (const f of ['components/CompanySwitcher.tsx', 'components/QBCompanySwitcher.tsx']) {
+    const src = read(f);
+    assert.ok(!/companyName \|\| `Realm/.test(src), `${f} still shows the realm id as the title`);
+    assert.ok(src.includes("conn.companyName || 'QuickBooks company'"), `${f} has no company-name title`);
+    assert.ok(/text-\[10px\][^"]*">Realm \{conn\.realmId\}/.test(src), `${f} does not show the realm id small`);
+  }
 
   // ── every Intuit call goes through qbFetch ──────────────────────────────────
   const routes = [

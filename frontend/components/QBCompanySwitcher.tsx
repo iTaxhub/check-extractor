@@ -149,8 +149,9 @@ export function QBCompanySwitcher({ className = '', compact = false }: QBCompany
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-semibold">
-                    {conn.companyName || `Realm ${conn.realmId}`}
+                    {conn.companyName || 'QuickBooks company'}
                   </span>
+                  <span className="nums block truncate text-[10px] font-normal text-ink-faint">Realm {conn.realmId}</span>
                   {conn.pendingCount > 0 && (
                     <span className="nums block text-[10px] font-medium text-warning-text">
                       {conn.pendingCount} pending
