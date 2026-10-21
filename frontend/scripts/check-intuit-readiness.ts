@@ -94,8 +94,8 @@ async function main() {
     }
     return out;
   }
-  const stale = walk(path.join(root, 'app')).filter((f) => readFileSync(f, 'utf8').includes('chequeextractor.com'));
-  assert.deepEqual(stale, [], `the old chequeextractor.com domain is still shown in: ${stale.join(', ')}`);
+  const stale = walk(path.join(root, 'app')).filter((f) => /chequeextractor.com|itaxhub.com/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(stale, [], `an old domain (chequeextractor.com or itaxhub.com) is still shown in: ${stale.join(', ')}`);
 
   console.log('check-intuit-readiness: intuit_tid is recorded on all 24 Intuit calls, and Help is one tap away');
 }

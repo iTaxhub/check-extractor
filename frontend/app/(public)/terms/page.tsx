@@ -103,7 +103,7 @@ export default function TermsOfServicePage() {
       <h2>15. Contact</h2>
       <p>
         For questions about these Terms, contact us at{' '}
-        <a href="mailto:legal@itaxhub.com">legal@itaxhub.com</a>.
+        <a href="mailto:legal@kyriq.com">legal@kyriq.com</a>.
       </p>
     
     </LegalShell>
