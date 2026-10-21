@@ -28,8 +28,27 @@ export function describeCall(input: unknown): string {
   }
 }
 
+const PROD_HOST = 'quickbooks.api.intuit.com';
+const SANDBOX_HOST = 'sandbox-quickbooks.api.intuit.com';
+
+/**
+ * With development keys the connected company is a SANDBOX company, and a
+ * sandbox company answers only on the sandbox host. Nine routes (and the connect
+ * callback that reads the company name) hard-code the production host, so with
+ * QB_SANDBOX=true they quietly failed: no company name, no sync. Routing the
+ * host here fixes every caller at once.
+ *
+ * Production keys: leave QB_SANDBOX unset. Only the QuickBooks API host is
+ * rewritten; the Intuit OAuth endpoints are the same for both.
+ */
+export function sandboxAware(input: string | URL): string | URL {
+  if (process.env.QB_SANDBOX !== 'true') return input;
+  const raw = typeof input === 'string' ? input : input.href;
+  return raw.replace(`://${PROD_HOST}/`, `://${SANDBOX_HOST}/`);
+}
+
 export async function qbFetch(input: string | URL, init?: RequestInit): Promise<Response> {
-  const res = await fetch(input, init);
+  const res = await fetch(sandboxAware(input), init);
   // Logging must never change what the caller sees: a malformed response (or a
   // test double with no headers) is logged as best it can be, never thrown.
   try {

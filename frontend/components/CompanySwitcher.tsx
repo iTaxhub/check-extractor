@@ -239,12 +239,14 @@ export default function CompanySwitcher() {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5">
                       <span className="truncate text-[13px] font-medium text-ink-strong">
-                        {conn.companyName || `Realm ${conn.realmId}`}
+                        {conn.companyName || 'QuickBooks company'}
                       </span>
                       {conn.isActive && (
                         <Check aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand" />
                       )}
                     </span>
+                    {/* The company name is the title; the realm id is only a small reference. */}
+                    <span className="nums block truncate text-[10px] text-ink-faint">Realm {conn.realmId}</span>
                     <StatusLine conn={conn} />
                   </span>
                   {conn.pendingCount > 0 && (
