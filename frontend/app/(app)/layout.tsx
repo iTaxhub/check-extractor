@@ -8,6 +8,8 @@ import QBProviderWrapper from '@/components/QBProviderWrapper';
 import ShellTopBar from '@/components/ShellTopBar';
 import SuperAdminLink from '@/components/SuperAdminLink';
 import { NAV_GROUPS, activeNavHref } from '@/lib/shell-nav';
+import { SUPPORT_MAILTO } from '@/lib/support';
+import { LifeBuoy } from 'lucide-react';
 
 /**
  * The app shell.
@@ -81,6 +83,12 @@ export default function AppLayout({
             ))}
 
             <div className="my-2 border-t border-glass-hairline-dark" />
+
+            {/* The in-app way to reach support (Intuit asks for one). A plain mailto: no widget, no account. */}
+            <a href={SUPPORT_MAILTO} className={`sidebar-item ${SHELL_NAV_ROW}`}>
+              <LifeBuoy className="w-4 h-4" />
+              <span>Help &amp; support</span>
+            </a>
 
             <SuperAdminLink />
           </nav>

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
 import { getQbToken } from '@/lib/qb-token';
+import { qbFetch } from '@/lib/qb-http';
 
 const QBO_BASE = 'https://quickbooks.api.intuit.com';
 const QBO_SANDBOX = 'https://sandbox-quickbooks.api.intuit.com';
@@ -145,7 +146,7 @@ async function postSparseUpdate(params: {
 }): Promise<{ ok: boolean; status: number; body: string; parsed?: any }> {
   const { base, realmId, txnType, accessToken, payload } = params;
   const url = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}?minorversion=73`;
-  const res = await fetch(url, {
+  const res = await qbFetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -198,7 +199,7 @@ export async function clearQBTransactionServer(
 
   // ── 1. GET the current entity (needed for SyncToken + required refs + ClearedStatus read) ──
   const readUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}/${txnId}?minorversion=73`;
-  const readRes = await fetch(readUrl, {
+  const readRes = await qbFetch(readUrl, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
   });
 

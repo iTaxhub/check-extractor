@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
 import { getQbToken, resolveQbConnection } from '@/lib/qb-token';
+import { qbFetch } from '@/lib/qb-http';
 
 const QBO_BASE = 'https://quickbooks.api.intuit.com';
 
@@ -77,7 +78,7 @@ export default async function handler(
       url: companyInfoUrl
     });
 
-    const response = await fetch(companyInfoUrl, {
+    const response = await qbFetch(companyInfoUrl, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json',

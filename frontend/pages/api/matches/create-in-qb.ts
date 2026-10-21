@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAuthContext, getActiveRealm, getValidToken, audit } from '@/lib/match-helpers';
+import { qbFetch } from '@/lib/qb-http';
 
 /**
  * POST /api/matches/create-in-qb
@@ -44,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       qbPayload.EntityRef = { name: check.payee, type: 'Vendor' };
     }
 
-    const qbRes = await fetch(
+    const qbRes = await qbFetch(
       `https://quickbooks.api.intuit.com/v3/company/${realmId}/check`,
       {
         method: 'POST',

@@ -11,6 +11,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { qbFetch } from '@/lib/qb-http';
 
 const QBO_BASE = 'https://quickbooks.api.intuit.com';
 const QBO_SANDBOX = 'https://sandbox-quickbooks.api.intuit.com';
@@ -66,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ── GET ──
     const getUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}/${txnId}?minorversion=73`;
-    const getRes = await fetch(getUrl, {
+    const getRes = await qbFetch(getUrl, {
       headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: 'application/json' },
     });
     const getBody = await getRes.text();
@@ -109,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else {
         payload[field] = 'Cleared';
       }
-      const r = await fetch(writeUrl, {
+      const r = await qbFetch(writeUrl, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${tokens.access_token}`,
