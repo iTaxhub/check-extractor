@@ -3644,7 +3644,7 @@ if __name__ == "__main__":
 # checks the super-admin allowlist, and this route re-checks the verified
 # token's email against LAB_ADMIN_EMAILS so a direct call cannot spend the
 # engines' credits.
-_LAB_ADMINS = {e.strip().lower() for e in os.getenv("LAB_ADMIN_EMAILS", "michael@itaxhub.com").split(",") if e.strip()}
+_LAB_ADMINS = {e.strip().lower() for e in os.getenv("LAB_ADMIN_EMAILS", "michael@kyriq.com,michael@itaxhub.com").split(",") if e.strip()}
 _LAB_MAX_BYTES = 25 * 1024 * 1024
 _LAB_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
