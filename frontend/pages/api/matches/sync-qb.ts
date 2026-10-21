@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAuthContext, getActiveRealm, getValidToken } from '@/lib/match-helpers';
 import { runMatching } from '@/lib/matching-algorithm';
 import { createServiceClient } from '@/lib/supabase/api';
+import { qbFetch } from '@/lib/qb-http';
 
 /**
  * POST /api/matches/sync-qb
@@ -33,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const q of queries) {
       try {
-        const qbRes = await fetch(
+        const qbRes = await qbFetch(
           `https://quickbooks.api.intuit.com/v3/company/${realmId}/query?query=${encodeURIComponent(q.query)}&minorversion=73`,
           { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } }
         );

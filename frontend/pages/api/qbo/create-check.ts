@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
 import { getQbToken } from '@/lib/qb-token';
+import { qbFetch } from '@/lib/qb-http';
 
 const QBO_BASE = 'https://quickbooks.api.intuit.com';
 const QBO_SANDBOX = 'https://sandbox-quickbooks.api.intuit.com';
@@ -77,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const endpoint = txnType === 'Purchase' ? 'purchase' : 'deposit';
   const url = `${base}/v3/company/${realmId}/${endpoint}?minorversion=73`;
 
-  const qbRes = await fetch(url, {
+  const qbRes = await qbFetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

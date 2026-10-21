@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { qbFetch } from '@/lib/qb-http';
 
 /**
  * QuickBooks Disconnect Endpoint
@@ -46,7 +47,7 @@ export default async function handler(
           `${integration.qb_client_id}:${integration.qb_client_secret}`
         ).toString('base64');
 
-        await fetch('https://developer.api.intuit.com/v2/oauth2/tokens/revoke', {
+        await qbFetch('https://developer.api.intuit.com/v2/oauth2/tokens/revoke', {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${auth}`,

@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { Upload } from 'lucide-react';
+import { LifeBuoy, Upload } from 'lucide-react';
+import { SUPPORT_MAILTO } from '@/lib/support';
 
 /**
  * The app's top bar, and the home of BOTH switchers (CHECKLIST section 4).
@@ -55,6 +56,15 @@ export default function ShellTopBar() {
           <AccountSwitcher />
           <TrialMeter />
         </div>
+
+        {/* Help is in the sidebar from md up; this keeps it one tap away at phone width too. */}
+        <a
+          href={SUPPORT_MAILTO}
+          aria-label="Help and support"
+          className="md:hidden shrink-0 rounded-input p-1.5 press"
+        >
+          <LifeBuoy aria-hidden className="h-4 w-4 text-ink-body" />
+        </a>
 
         <Link
           href="/upload"

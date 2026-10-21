@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
 import { getQbToken } from '@/lib/qb-token';
+import { qbFetch } from '@/lib/qb-http';
 
 const QBO_BASE = 'https://quickbooks.api.intuit.com';
 const QBO_SANDBOX = 'https://sandbox-quickbooks.api.intuit.com';
@@ -128,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // GET current entity to obtain SyncToken and required entity refs.
     const readUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}/${txnId}?minorversion=73`;
-    const readRes = await fetch(readUrl, {
+    const readRes = await qbFetch(readUrl, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
     });
     if (!readRes.ok) {
@@ -187,7 +188,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // POST sparse update to QB IDS.
     const writeUrl = `${base}/v3/company/${realmId}/${txnType.toLowerCase()}?minorversion=73`;
-    const writeRes = await fetch(writeUrl, {
+    const writeRes = await qbFetch(writeUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,

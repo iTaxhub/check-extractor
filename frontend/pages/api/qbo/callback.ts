@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { adminRecipients, sendOnce } from '@/lib/email/send';
 import { createClientFromCookies, createServiceClient } from '@/lib/supabase/api';
 import { peekState, verifyState } from '@/lib/qbo-state';
+import { qbFetch } from '@/lib/qb-http';
 
 /**
  * QuickBooks OAuth Callback Endpoint
@@ -140,7 +141,7 @@ export default async function handler(
       codePrefix: (code as string).substring(0, 20) + '...',
     });
 
-    const tokenResponse = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+    const tokenResponse = await qbFetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -180,7 +181,7 @@ export default async function handler(
     // Fetch company name from QB to store alongside tokens
     let companyName: string | null = null;
     try {
-      const companyRes = await fetch(
+      const companyRes = await qbFetch(
         `https://quickbooks.api.intuit.com/v3/company/${realmId}/companyinfo/${realmId}?minorversion=73`,
         {
           headers: {

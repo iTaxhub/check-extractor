@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FileQuestion, Home, ArrowLeft } from 'lucide-react';
 import { Button, GlassCard, buttonVariants } from '@/components/ui';
+import { SUPPORT_MAILTO } from '@/lib/support';
 
 const QUICK_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -61,7 +62,7 @@ export default function NotFound() {
 
         <p className="text-sm text-ink-body mt-6">
           Need help?{' '}
-          <a href="mailto:support@chequeextractor.com" className="text-primary-text hover:underline">
+          <a href={SUPPORT_MAILTO} className="text-primary-text hover:underline">
             Contact Support
           </a>
         </p>

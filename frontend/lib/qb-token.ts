@@ -1,3 +1,4 @@
+import { qbFetch } from '@/lib/qb-http';
 import { classifyRefreshFailure, markQbConnection, type QbConnectionStatus } from '@/lib/qb-health';
 
 /**
@@ -299,7 +300,7 @@ export async function getQbToken(
 
   let response: Response;
   try {
-    response = await fetch(INTUIT_TOKEN_URL, {
+    response = await qbFetch(INTUIT_TOKEN_URL, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
