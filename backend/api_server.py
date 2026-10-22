@@ -2775,7 +2775,7 @@ def list_export_formats():
 
 
 @app.post("/api/jobs/{job_id}/retry-failed")
-def retry_failed(job_id: str, _auth=Depends(_verify_token)):
+def retry_failed(job_id: str, request: Request, _auth=Depends(_verify_token)):
     """Re-extract only checks that have null extraction (failed/incomplete)."""
     job = _job(job_id)
     if job is None:
@@ -2794,7 +2794,10 @@ def retry_failed(job_id: str, _auth=Depends(_verify_token)):
         methods=job.get("selected_methods", ["gemini"]),
         force=False,
     )
-    return start_extraction(req, _auth=None)
+    # start_extraction resolves the caller's tenant from the request, so it must
+    # be passed through; without it every retry raised TypeError (a 500 the
+    # frontend proxy reported as "extraction service unavailable").
+    return start_extraction(req, request, _auth=None)
 
 
 @app.delete("/api/jobs/{job_id}")
