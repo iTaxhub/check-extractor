@@ -18,7 +18,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             method: 'POST',
             headers: { ...auth, 'Content-Type': 'application/json' },
         })
-        const data = await response.json()
+        // A backend crash answers with a plain-text 500; parsing that as JSON
+        // used to throw and surface as a misleading 503 "unavailable".
+        const text = await response.text()
+        let data: unknown
+        try { data = JSON.parse(text) } catch { data = { error: text.slice(0, 300) || response.statusText } }
 
         if (!response.ok) {
             return res.status(response.status).json(data)
