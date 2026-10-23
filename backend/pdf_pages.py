@@ -157,9 +157,11 @@ def cheque_boxes(page, px_width, px_height):
     caller can run the contour detector instead.
     """
     bound = bind_captions(page)
-    if not bound and page["image_rects"] and CHEQUE_PAGE_RE.search(page["text"]):
+    if not bound and len(page["image_rects"]) >= 2 and CHEQUE_PAGE_RE.search(page["text"]):
         # Caption-less layout (the cheque image carries every field, e.g. the
         # Kyriq demo statement): the rects are still exact; OCR reads the fields.
+        # ponytail: a lone image is a bank banner (BofA/BotW page 1), so a page
+        # with a single caption-less cheque is missed; tighten if one shows up.
         bound = [(r, None) for r in sorted(page["image_rects"], key=lambda r: (r[1], r[0]))]
     if not bound:
         return [], []

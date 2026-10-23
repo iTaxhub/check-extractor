@@ -37,6 +37,8 @@ ACTIVITY_RE = re.compile(r"CHECK\s*#\s*(\d{3,7})", re.I)
 BOFA = re.compile(r"^Checks(\s*-\s*continued)?$", re.I)
 BOTW_CLEARED = re.compile(r"^Checks Cleared(\s*\(continued\))?$", re.I)
 BOTW_ACTIVITY = re.compile(r"^Account Activity(\s*\(continued\))?$", re.I)
+# One full-width table headed e.g. "Date paid Check # Payee Amount" (Kyriq demo).
+SINGLE = re.compile(r"^Date\b.*\bCheck\s*(?:#|No\b|Number\b).*\bAmount$", re.I)
 STOP = re.compile(
     r"^(Total checks|Total # of checks|Daily ledger balances|Daily Balances|"
     r"Overdraft and Returned Item Fees|Service fees|"
@@ -97,8 +99,16 @@ def parse_page(words, page_width):
             mode = "cleared"
         elif BOTW_ACTIVITY.match(text):
             mode = "activity"
+        elif mode is None and SINGLE.match(text):
+            mode = "single"
         elif STOP.match(text):
             mode = None
+        elif mode == "single":
+            cell = _cell([w[4] for w in line], require_negative=False)
+            if cell:
+                table.append(cell)
+            else:
+                mode = None        # first non-row line ends the table
         elif mode in ("bofa", "cleared"):
             for half in ([w[4] for w in line if w[0] < mid], [w[4] for w in line if w[0] >= mid]):
                 cell = _cell(half, require_negative=(mode == "bofa"))
