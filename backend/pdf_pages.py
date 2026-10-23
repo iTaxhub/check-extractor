@@ -21,7 +21,8 @@ Verified layouts (docs/testfiles):
 Scanned PDFs have no embedded cheque rects and no text; callers fall back to
 the contour detector for those pages. Caption-less rects (adverts, logos) are
 ignored for the same reason: a page only counts as "embedded cheques" when at
-least one rect gets a caption with an amount, date or number.
+least one rect gets a caption with an amount, date or number, or, with no
+captions at all, when the page's own text says it holds checks/cheques.
 """
 import re
 
@@ -34,6 +35,7 @@ ABOVE_PT, BELOW_PT = 45, 20   # how far a caption may sit from its image
 
 DATE_RE = re.compile(r"\b(\d{1,2}/\d{1,2}/\d{2,4})\b")
 AMOUNT_RE = re.compile(r"\$\s?(-?[\d,]+\.\d{2})")
+CHEQUE_PAGE_RE = re.compile(r"\bche(?:ck|que)s?\b", re.I)
 NUMBER_RE = re.compile(r"(?:check\s*(?:number|no\.?|nbr|#)\s*:?\s*#?|#)\s*(\d{3,7})", re.I)
 
 
@@ -155,6 +157,10 @@ def cheque_boxes(page, px_width, px_height):
     caller can run the contour detector instead.
     """
     bound = bind_captions(page)
+    if not bound and page["image_rects"] and CHEQUE_PAGE_RE.search(page["text"]):
+        # Caption-less layout (the cheque image carries every field, e.g. the
+        # Kyriq demo statement): the rects are still exact; OCR reads the fields.
+        bound = [(r, None) for r in sorted(page["image_rects"], key=lambda r: (r[1], r[0]))]
     if not bound:
         return [], []
     sx, sy = px_width / page["width"], px_height / page["height"]
