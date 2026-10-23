@@ -269,8 +269,7 @@ let _attentionFilter = '';
 // The Approve tab is the Match view narrowed to rows that actually have an
 // Approve action. Not a separate data set, so not a separate view.
 let _approveMode = false;
-// Anything below this score is "lower confidence". Same threshold the bulk
-// approve button uses, so one number governs both.
+// Anything below this score is "lower confidence".
 const CONFIDENCE_FLOOR = 95;
 
 let _matchSearch = '';
@@ -520,10 +519,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('#approve-confirm-ok')?.addEventListener('click', async () => {
     const idx = _pendingApproveIdx;
-    const bulkCb = _pendingBulkCb;
     hideApproveConfirm();
-    if (bulkCb) await bulkCb();
-    else if (idx !== null) await approveAndClear(idx);
+    if (idx !== null) await approveAndClear(idx);
   });
 
   // NOTE: CHECK_UPDATED handling moved to the single top-level
@@ -929,14 +926,6 @@ function renderMatches() {
     if (el) el.textContent = counts[k] || 0;
   });
 
-  // Keep bulk-approve button label + enabled state in sync
-  const bulkBtn = $('#btn-bulk-approve');
-  if (bulkBtn) {
-    const eligible = matches.filter(m => ['matched', 'pending'].includes(m.status) && m.score >= 95).length;
-    bulkBtn.textContent = `Approve all 95%+ (${eligible})`;
-    bulkBtn.disabled = eligible === 0;
-  }
-
   if (filtered.length === 0) {
     const hasData = matches.length > 0;
     list.innerHTML = `
@@ -988,7 +977,7 @@ function renderMatchRow(m, index) {
       <div class="match-actions">
         <button class="btn-sm btn-ghost" data-action="review" data-idx="${index}">Review</button>
         ${m.status === 'unmatched' ? `<button class="btn-sm btn-ghost" data-action="search" data-idx="${index}">Find</button>` : ''}
-        ${['matched', 'pending', 'discrepancy'].includes(m.status) ? `<button class="btn-sm btn-primary row-primary" data-action="approve" data-idx="${index}">Approve</button>` : ''}
+        ${['matched', 'pending'].includes(m.status) && m.qbTxn && !(m.amtDiff > 0.01) ? `<button class="btn-sm btn-primary row-primary" data-action="approve" data-idx="${index}">Approve</button>` : ''}
         ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-ghost row-warn" data-action="fix" data-idx="${index}" title="Push the cheque amount to QuickBooks to resolve the difference">Fix in QuickBooks</button>` : ''}
         ${m.status === 'approved' ? `<button class="btn-sm btn-ghost" data-action="undo" data-idx="${index}">Undo</button>` : ''}
         ${m.status !== 'approved' ? `<button class="btn-sm btn-ghost" data-action="flag" data-idx="${index}">Flag</button>` : ''}
@@ -1052,26 +1041,10 @@ function bindMatchEvents() {
 
 // ── Approve confirmation dialog ─────────────────────────────
 let _pendingApproveIdx = null;
-let _pendingBulkCb = null;
-
-function showBulkApproveConfirm(count, cb) {
-  _pendingBulkCb = cb;
-  _pendingApproveIdx = null;
-  const titleEl = document.querySelector('#approve-confirm-overlay .approve-confirm-title');
-  const descEl  = document.querySelector('#approve-confirm-overlay .approve-confirm-desc');
-  const detEl   = $('#approve-confirm-details');
-  const okBtn   = $('#approve-confirm-ok');
-  if (titleEl) titleEl.textContent = `Approve ${count} matches?`;
-  if (descEl)  descEl.innerHTML = `This will mark <strong>${count} QuickBooks transactions</strong> as Cleared and stamp a verification note. Only matches with score ≥95% and status matched/pending are included.`;
-  if (detEl)   detEl.innerHTML = `<div style="font-size:11px;color:#6b7280;padding:4px 0;">This action cannot be undone. Per-row Approve buttons process one check at a time.</div>`;
-  if (okBtn)   okBtn.textContent = `Approve ${count} Matches`;
-  const overlay = $('#approve-confirm-overlay');
-  if (overlay) overlay.style.display = 'flex';
-}
 
 function showApproveConfirm(idx) {
   const match = matches[idx];
-  if (!match) return;
+  if (!match || !match.qbTxn || match.status === 'discrepancy' || match.amtDiff > 0.01) return;
   _pendingApproveIdx = idx;
   const c = match.check || {};
   const q = match.qbTxn || {};
@@ -1100,7 +1073,6 @@ function hideApproveConfirm() {
   const overlay = $('#approve-confirm-overlay');
   if (overlay) overlay.style.display = 'none';
   _pendingApproveIdx = null;
-  _pendingBulkCb = null;
   // Restore single-approve defaults so next per-row use gets the right text
   const titleEl = document.querySelector('#approve-confirm-overlay .approve-confirm-title');
   const descEl  = document.querySelector('#approve-confirm-overlay .approve-confirm-desc');
@@ -1110,41 +1082,33 @@ function hideApproveConfirm() {
   if (okBtn)   okBtn.textContent = 'Approve';
 }
 
-function approveAndClear(idx) {
+async function approveAndClear(idx) {
   const match = matches[idx];
-  if (!match) return;
+  if (!match || !match.qbTxn || match.status === 'discrepancy' || match.amtDiff > 0.01) {
+    showWarningBanner('Review this cheque and its QuickBooks match before approving.');
+    return false;
+  }
 
-  // Optimistic UI: flip status + render immediately. Keep the user moving.
   ensureDebugPanelOpen();
   const checkId = match.check?.id;
   const jobId   = match.check?.job_id;
   const label   = match.check?.payee || match.qbTxn?.payee || `match[${idx}]`;
   dbg(`▶ Approve & Clear — ${label} (${match.qbTxn?.intuit_id || 'no qb id'})`);
-  match.status = 'approved';
-  renderMatches();
-
-  if (!match.qbTxn) {
-    if (checkId && jobId) {
-      sendMsg({ type: 'UPDATE_CHECK_STATUS', checkId, jobId, status: 'approved' }).catch(() => {});
-    }
-    showWarningBanner('Approved — no QB transaction linked to this check');
-    dbg('Approved locally only (no QB txn linked)', 'warn');
-    return;
-  }
-
-  // Fire SW request in the background; surface results via dbg + toast only.
-  sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: match.qbTxn, check: match.check || null, checkId, jobId })
-    .then((res) => {
+  try {
+    const res = await sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: match.qbTxn, check: match.check || null, checkId, jobId });
       if (!res) {
         dbg('SW: no response (timeout or crash)', 'error');
         showErrorDialog('QB Approve Failed', 'The extension service worker did not respond. Try reloading the extension.', null);
-        return;
+        return false;
       }
-      if (res.error) {
-        dbg(`SW error: ${res.error}`, 'error');
-        showErrorDialog('QB Approve Failed', res.error, res.qbRaw || null);
-        return;
+      if (res.error || !res.success) {
+        const reason = res.error || res.persistError || res.warning || 'Approval could not be saved.';
+        dbg(`SW error: ${reason}`, 'error');
+        showErrorDialog('QB Approve Failed', reason, res.qbRaw || null);
+        return false;
       }
+      match.status = 'approved';
+      renderMatches();
       switch (res.qbStatus) {
         case 'already_cleared':
           dbg('QB already cleared ✓', 'success'); showQBConfirmation(res); break;
@@ -1162,8 +1126,12 @@ function approveAndClear(idx) {
           if (res.warning) dbg(`QB: ${res.warning}`, 'warn');
           else { dbg('QB updated ✓', 'success'); showQBConfirmation(res); }
       }
-    })
-    .catch((e) => dbg(`SW exception: ${e?.message}`, 'error'));
+      return true;
+  } catch (e) {
+    dbg(`SW exception: ${e?.message}`, 'error');
+    showErrorDialog('QB Approve Failed', e?.message || 'Could not complete approval.', null);
+    return false;
+  }
 }
 
 // When runFullMatch tags rows with needsAutoApprove (QB intuit_id appears in
@@ -2547,39 +2515,6 @@ function bindEvents() {
     await autoApproveCleared();
   });
 
-  // ── Bulk approve ──
-  $('#btn-bulk-approve').addEventListener('click', () => {
-    const toApprove = matches.filter(m => ['matched', 'pending'].includes(m.status) && m.score >= 95);
-    if (toApprove.length === 0) return;
-    showBulkApproveConfirm(toApprove.length, async () => {
-      let approved = 0, failed = 0, localOnly = 0;
-
-      const results = await runWithLimit(toApprove, 3, m =>
-        sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: m.qbTxn, check: m.check || null, checkId: m.check?.id, jobId: m.check?.job_id })
-          .then(res => ({ m, res }))
-          .catch(err => ({ m, res: { success: false, error: err?.message || String(err) } }))
-      );
-
-      for (const { m, res } of results) {
-        if (res?.success) {
-          m.status = 'approved';
-          approved++;
-          if (res.cleared === false) localOnly++;
-        } else {
-          failed++;
-          dbg(`Bulk approve failed for check ${m.check?.check_number || '?'}: ${res?.error}`, 'error');
-        }
-      }
-      renderMatches();
-      const parts = [`${approved} approved`];
-      if (localOnly > 0) parts.push(`${localOnly} locally only (no QB link)`);
-      if (failed > 0) parts.push(`${failed} failed — see debug log`);
-      dbg(`Bulk approve done: ${parts.join(', ')}`, failed > 0 ? 'error' : 'success');
-      if (failed > 0) showErrorBanner(`Bulk approve: ${parts.join(', ')}.`);
-      else if (approved > 0) showSuccessBanner(`Bulk approve: ${parts.join(', ')}.`);
-    });
-  });
-
   // ── Upload zone ──
   const zone = $('#upload-zone');
   const fileInput = $('#file-input');
@@ -2743,7 +2678,8 @@ function bindEvents() {
       const matchIdx = matches.findIndex(m => m === _reviewMatch);
       if (matchIdx !== -1) {
         if (btn) { btn.disabled = false; btn.textContent = 'Approve'; }
-        await approveAndClear(matchIdx);
+        const approved = await approveAndClear(matchIdx);
+        if (!approved) return;
         // Sync checks list cache so the check shows as approved.
         if (_cachedChecks) {
           const ci = _cachedChecks.findIndex(c => c.id === _reviewCheck.id);
