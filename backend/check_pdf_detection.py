@@ -55,4 +55,10 @@ assert pdf_pages.parse_caption("Check number: 16958   !  Amount:  $988.02") == {
 assert pdf_pages.parse_caption("Account number: 4880 8532 3117 Amount: $840.00")["check_number"] is None
 assert pdf_pages.parse_caption("Post date: 04/30/2026 Amount: $ 4500.00 Account: 710182002 Check Number: 5291") == {"check_number": "5291", "amount": 4500.0, "date": "04/30/2026"}
 
+# Caption-less cheque images (Kyriq demo statement): kept only on a page that says "check".
+bare = {"width": 612, "height": 792, "words": [], "image_rects": [(38, 343, 574, 525), (38, 128, 574, 310)]}
+boxes, caps = pdf_pages.cheque_boxes({**bare, "text": "Paid check images"}, 612, 792)
+assert boxes == [(38, 128, 574, 310), (38, 343, 574, 525)] and caps == [None, None], (boxes, caps)
+assert pdf_pages.cheque_boxes({**bare, "text": "Spring offers"}, 612, 792) == ([], [])
+
 print("check_pdf_detection OK: Chase 49/51, BofA 339, BotW 227 captioned cheques")
