@@ -685,31 +685,20 @@ async function loadChecksIntoMatches() {
     if (matchRes?.matches) {
       matches = matchRes.matches;
       dbg(`Matching done: ${matches.length} results`, 'success');
-      const matchAccounts = [...new Set(matches.filter(m => m.qbTxn?.account).map(m => m.qbTxn.account))].sort();
-      if (matchAccounts.length > 0) {
-        const sel = $('#account-select');
-        if (sel) {
-          const prev = sel.value;
-          // Preserve any QB Account.Id values already loaded by populateAccountSelect()
-          // so toast CTAs can build a real /reconcileAccount URL even after a re-match.
-          const savedIds = {};
-          [...sel.options].forEach(o => {
-            if (o.dataset.accountName && o.dataset.accountId)
-              savedIds[o.dataset.accountName] = o.dataset.accountId;
-          });
-          while (sel.options.length > 1) sel.remove(1);
-          matchAccounts.forEach(a => {
-            const opt = document.createElement('option');
-            const knownId = savedIds[a] || '';
-            opt.value = a;                  // always name — keeps _accountFilter working
-            opt.dataset.accountId = knownId;
-            opt.dataset.accountName = a;
-            opt.textContent = a.slice(0, 28);
-            sel.appendChild(opt);
-          });
-          if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
-        }
-        dbg(`Account select refreshed: ${matchAccounts.length} accounts`);
+      // Add accounts seen in matches; never drop the full QB list populateAccountSelect() loaded.
+      const matchAccounts = [...new Set(matches.filter(m => m.qbTxn?.account).map(m => m.qbTxn.account))];
+      const sel = $('#account-select');
+      if (sel && matchAccounts.length > 0) {
+        const have = new Set([...sel.options].map(o => o.value));
+        matchAccounts.filter(a => !have.has(a)).forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a;                  // always name — keeps _accountFilter working
+          opt.dataset.accountId = '';
+          opt.dataset.accountName = a;
+          opt.textContent = a.slice(0, 28);
+          sel.appendChild(opt);
+        });
+        dbg(`Account select: ${sel.options.length - 1} accounts`);
       }
     }
     renderMatches();
