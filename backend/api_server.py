@@ -51,7 +51,7 @@ import statement_rows as _statement_rows
 from check_extractor import CheckExtractorApp
 from usage_rules import ledger_idempotency_key, is_billable
 
-# ── Supabase REST (lightweight – no heavy SDK needed) ─────────────
+# â”€â”€ Supabase REST (lightweight â€“ no heavy SDK needed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import requests as _requests
 
 _sb_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "").strip()
@@ -60,9 +60,9 @@ _sb_anon_key = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "").strip()
 _auth_cache: dict = {}  # token -> verified payload, see _verify_token
 _supabase_ok = bool(_sb_url and _sb_key and _sb_url.startswith("http"))
 if _supabase_ok:
-    print(f"✓ Supabase configured: {_sb_url[:40]}…")
+    print(f"âœ“ Supabase configured: {_sb_url[:40]}â€¦")
 else:
-    print("⚠ Supabase not configured – results will NOT be saved to DB")
+    print("âš  Supabase not configured â€“ results will NOT be saved to DB")
 
 
 def _sb_headers():
@@ -92,23 +92,23 @@ def _supabase_insert(table: str, data: dict, retries=3):
                 return None
             data = resp.json()
             if attempt > 0:
-                print(f"  ✓ Supabase insert succeeded on attempt {attempt + 1}")
+                print(f"  âœ“ Supabase insert succeeded on attempt {attempt + 1}")
             return data[0] if isinstance(data, list) and data else data
         except _requests.exceptions.Timeout:
             if attempt < retries - 1:
                 wait_time = 2 ** attempt
-                print(f"  ⚠️ Supabase insert timeout (attempt {attempt + 1}/{retries}), retrying in {wait_time}s...")
+                print(f"  âš ï¸ Supabase insert timeout (attempt {attempt + 1}/{retries}), retrying in {wait_time}s...")
                 time.sleep(wait_time)
             else:
-                print(f"  ❌ Supabase insert timeout for table {table} after {retries} attempts")
+                print(f"  âŒ Supabase insert timeout for table {table} after {retries} attempts")
                 return None
         except Exception as e:
             if attempt < retries - 1:
                 wait_time = 2 ** attempt
-                print(f"  ⚠️ Supabase insert error (attempt {attempt + 1}/{retries}): {e}, retrying in {wait_time}s...")
+                print(f"  âš ï¸ Supabase insert error (attempt {attempt + 1}/{retries}): {e}, retrying in {wait_time}s...")
                 time.sleep(wait_time)
             else:
-                print(f"  ❌ Supabase insert exception after {retries} attempts: {e}")
+                print(f"  âŒ Supabase insert exception after {retries} attempts: {e}")
                 return None
 
 
@@ -123,7 +123,7 @@ def _log_api_usage(job_id: str, check_id: str, api_provider: str, usage_data: di
             "job_id": job_id,
             "check_id": check_id,
             "api_provider": api_provider,
-            "api_model": usage_data.get("model", "gemini-2.0-flash" if api_provider == "gemini" else "gpt-4o"),
+            "api_model": usage_data.get("model", os.environ.get("GEMINI_MODEL", "gemini-3.8-flash") if api_provider == "gemini" else "gpt-4o"),
             "prompt_tokens": usage_data.get("prompt_tokens", 0),
             "completion_tokens": usage_data.get("completion_tokens", 0),
             "total_tokens": usage_data.get("total_tokens", 0),
@@ -132,9 +132,9 @@ def _log_api_usage(job_id: str, check_id: str, api_provider: str, usage_data: di
             "response_metadata": usage_data,
         }
         _supabase_insert("api_usage_logs", log_entry)
-        print(f"    💰 Logged API usage: {api_provider} - {usage_data.get('total_tokens', 0)} tokens, ${usage_data.get('cost_usd', 0):.6f}")
+        print(f"    ðŸ’° Logged API usage: {api_provider} - {usage_data.get('total_tokens', 0)} tokens, ${usage_data.get('cost_usd', 0):.6f}")
     except Exception as e:
-        print(f"    ⚠️ Failed to log API usage: {e}")
+        print(f"    âš ï¸ Failed to log API usage: {e}")
 
 
 def _get_billing_fallback(start_date: str = None, end_date: str = None):
@@ -224,22 +224,22 @@ def _supabase_update(table: str, match: dict, updates: dict, retries=3):
                 return
             # Success
             if attempt > 0:
-                print(f"  ✓ Supabase update succeeded on attempt {attempt + 1}")
+                print(f"  âœ“ Supabase update succeeded on attempt {attempt + 1}")
             return
         except _requests.exceptions.Timeout:
             if attempt < retries - 1:
                 wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
-                print(f"  ⚠️ Supabase update timeout (attempt {attempt + 1}/{retries}), retrying in {wait_time}s...")
+                print(f"  âš ï¸ Supabase update timeout (attempt {attempt + 1}/{retries}), retrying in {wait_time}s...")
                 time.sleep(wait_time)
             else:
-                print(f"  ❌ Supabase update timeout for table {table} after {retries} attempts")
+                print(f"  âŒ Supabase update timeout for table {table} after {retries} attempts")
         except Exception as e:
             if attempt < retries - 1:
                 wait_time = 2 ** attempt
-                print(f"  ⚠️ Supabase update error (attempt {attempt + 1}/{retries}): {e}, retrying in {wait_time}s...")
+                print(f"  âš ï¸ Supabase update error (attempt {attempt + 1}/{retries}): {e}, retrying in {wait_time}s...")
                 time.sleep(wait_time)
             else:
-                print(f"  ❌ Supabase update exception after {retries} attempts: {e}")
+                print(f"  âŒ Supabase update exception after {retries} attempts: {e}")
 
 
 def _supabase_upload_file(bucket: str, path: str, file_bytes: bytes, content_type: str = "application/octet-stream"):
@@ -313,7 +313,7 @@ def _supabase_delete_folder(bucket: str, folder_path: str):
             if delete_resp.status_code >= 400:
                 print(f"  Storage delete error ({delete_resp.status_code}): {delete_resp.text[:200]}")
             else:
-                print(f"  ✓ Deleted {len(file_paths)} files from Storage: {folder_path}")
+                print(f"  âœ“ Deleted {len(file_paths)} files from Storage: {folder_path}")
     except Exception as e:
         print(f"  Storage folder delete error: {e}")
 
@@ -455,6 +455,21 @@ def _store_statement_rows(job_id: str, tenant_id, rows: list):
     )
 
 
+def _has_values(check: dict) -> bool:
+    """True when a cheque's extraction holds at least one real field value.
+
+    An extraction dict whose fields are all None (every engine failed, e.g. a
+    retired model returning 404) used to count as extracted: the job said
+    "complete, nothing failed" and retry-failed found nothing to retry."""
+    ext = check.get("extraction") or {}
+    for v in ext.values():
+        if isinstance(v, dict):
+            v = v.get("value")
+        if v not in (None, "", [], {}):
+            return True
+    return False
+
+
 def _job_from_row(row: dict) -> dict:
     """The one way a check_jobs row becomes an in-memory job. Used at startup
     and whenever a request names a job this process has never seen (restart,
@@ -523,7 +538,7 @@ def _load_jobs_from_supabase():
         jobs[jid] = _job_from_row(row)
         loaded += 1
     if loaded:
-        print(f"✓ Loaded {loaded} jobs from Supabase")
+        print(f"âœ“ Loaded {loaded} jobs from Supabase")
 
 
 def _cleanup_local_files(job_id: str, pdf_path: str = None, keep_images: bool = False):
@@ -648,7 +663,7 @@ def _convert_fields_to_extraction(fields: dict, source: str) -> dict:
     return extraction
 
 
-# ── Optional JWT auth ────────────────────────────────────────
+# â”€â”€ Optional JWT auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _require_auth = os.environ.get("REQUIRE_AUTH", "").lower() in ("true", "1", "yes")
 _jwt_secret = os.environ.get("SUPABASE_JWT_SECRET", "")
 
@@ -701,8 +716,8 @@ def _verify_token(request: Request):
     return payload
 
 
-# ── Tenant resolution, duplicate detection, trial gate, usage ledger ─────────
-# Everything below talks to the tables added in migrations 026–029.
+# â”€â”€ Tenant resolution, duplicate detection, trial gate, usage ledger â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Everything below talks to the tables added in migrations 026â€“029.
 #
 # Why the backend resolves the tenant itself rather than trusting a header:
 # check_jobs rows were being written with no tenant_id at all, and the API usage
@@ -774,7 +789,7 @@ def _auth_context(request) -> dict:
     return {"user_id": user_id, "tenant_id": tenant_id}
 
 
-# ── Batches (migration 032) ──────────────────────────────────────────────────
+# â”€â”€ Batches (migration 032) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # A batch is one reconciliation run: company + bank account + period + position
 # in Upload -> Match -> Review -> Approve. Jobs carry batch_id; the batch itself
 # stores no step number, because every step's completion is derived from facts
@@ -787,7 +802,7 @@ def _auth_context(request) -> dict:
 def _resolve_batch(tenant_id: str, batch_id: str) -> Optional[str]:
     """The batch id when it is an open batch of this tenant, else None.
 
-    Returns None — never raises — when the batches table is absent, so a
+    Returns None â€” never raises â€” when the batches table is absent, so a
     database without migration 032 keeps processing uploads as before.
     """
     if not tenant_id or not batch_id:
@@ -796,10 +811,10 @@ def _resolve_batch(tenant_id: str, batch_id: str) -> Optional[str]:
         "batches", "id,status", {"id": batch_id, "tenant_id": tenant_id}, limit=1
     )
     if not rows:
-        print(f"  Batch {batch_id} not found for this tenant (or table absent) — job left unattached")
+        print(f"  Batch {batch_id} not found for this tenant (or table absent) â€” job left unattached")
         return None
     if rows[0].get("status") != "open":
-        print(f"  Batch {batch_id} is {rows[0].get('status')}, not open — job left unattached")
+        print(f"  Batch {batch_id} is {rows[0].get('status')}, not open â€” job left unattached")
         return None
     return rows[0].get("id")
 
@@ -808,7 +823,7 @@ def _attach_checks_to_batch(job_id: str, tenant_id: str, check_ids: list):
     """Stamp checks.batch_id for the cheques a finished job produced.
 
     Runs after flatten_checks_from_job(). The cheques are matched by check_id
-    rather than job_id because the live checks table has no job_id column —
+    rather than job_id because the live checks table has no job_id column â€”
     migration 020 dropped it from the insert list. matches.batch_id follows via
     the triggers in migration 032, in either arrival order.
     """
@@ -834,7 +849,7 @@ def _attach_checks_to_batch(job_id: str, tenant_id: str, check_ids: list):
         if resp.status_code >= 400:
             print(f"  Batch attach error ({resp.status_code}): {resp.text[:200]}")
         else:
-            print(f"  ✓ Attached {len(check_ids)} cheque(s) of job {job_id} to batch {batch_id}")
+            print(f"  âœ“ Attached {len(check_ids)} cheque(s) of job {job_id} to batch {batch_id}")
     except Exception as e:
         print(f"  Batch attach exception: {e}")
 
@@ -944,17 +959,17 @@ def _record_ledger_for_job(job_id: str, checks: list, tenant_id: str = None,
     actually appended; a retry returns 0 because the idempotency key exists.
 
     Billing rules this enforces, all from CHECKLIST section 8:
-      * success only  — a cheque with no `extraction` is skipped, so failed OCR
+      * success only  â€” a cheque with no `extraction` is skipped, so failed OCR
                         never bills.
-      * per cheque    — the loop is over detected cheques, so several on one page
+      * per cheque    â€” the loop is over detected cheques, so several on one page
                         are several rows and a 40-page statement with 6 cheques
                         is 6 rows, not 40.
-      * no double count — see usage_rules.ledger_idempotency_key.
+      * no double count â€” see usage_rules.ledger_idempotency_key.
     """
     if not _supabase_ok:
         return 0
     if not tenant_id:
-        print(f"  ⚠️ usage ledger skipped for {job_id}: no tenant resolved")
+        print(f"  âš ï¸ usage ledger skipped for {job_id}: no tenant resolved")
         return 0
 
     recorded = 0
@@ -978,7 +993,7 @@ def _record_ledger_for_job(job_id: str, checks: list, tenant_id: str = None,
         if isinstance(out, dict) and out.get("recorded"):
             recorded += 1
     already = max(0, len(checks or []) - not_billable - recorded)
-    print(f"  📒 usage ledger {job_id}: {recorded} new, {already} already counted, {not_billable} not billable")
+    print(f"  ðŸ“’ usage ledger {job_id}: {recorded} new, {already} already counted, {not_billable} not billable")
     return recorded
 
 app = FastAPI(title="Check Extractor API", version="1.0.0")
@@ -1006,7 +1021,7 @@ if _frontend_urls:
 # any old deployment is still reachable.
 _allowed_origin_regex = r"https://(kyriq|cheque-extractor|check-extractor)[a-z0-9-]*\.vercel\.app"
 
-# ── API gate: authentication + tenant ownership for every /api route ────────
+# â”€â”€ API gate: authentication + tenant ownership for every /api route â”€â”€â”€â”€â”€â”€â”€â”€
 # Routes used to opt in to auth one by one, and eleven read routes (jobs,
 # checks, page/check images, PDFs, exports) never did, so any anonymous caller
 # could list every firm's jobs. This middleware runs before all of them:
@@ -1067,7 +1082,7 @@ app.add_middleware(
 
 
 if _require_auth:
-    print("✓ Backend auth enabled — JWT verification required on API calls")
+    print("âœ“ Backend auth enabled â€” JWT verification required on API calls")
 
 # In-memory job store
 jobs: dict = {}
@@ -1119,7 +1134,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         )
         jobs[job_id]["total_pages"] = len(app_ext.pages)
 
-        # ── Phase 1: Extract images ──────────────────────────────
+        # â”€â”€ Phase 1: Extract images â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         jobs[job_id]["status"] = "extracting"
         
         # Update DB immediately
@@ -1148,7 +1163,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
             })
         jobs[job_id]["checks"] = checks
 
-        # ── Create Supabase DB row (one row per PDF job) ─────────
+        # â”€â”€ Create Supabase DB row (one row per PDF job) â”€â”€â”€â”€â”€â”€â”€â”€â”€
         jobs[job_id]["page_kinds"] = _compute_page_kinds(app_ext, manifest)
         jobs[job_id]["doc_kind"] = classify_document(
             jobs[job_id]["total_pages"], len(checks),
@@ -1167,7 +1182,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
             "checks_data": json.dumps([]),
         })
 
-        # ── Upload PDF to Supabase Storage ───────────────────────
+        # â”€â”€ Upload PDF to Supabase Storage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         pdf_storage_url = None
         try:
             with open(pdf_path, "rb") as f:
@@ -1177,7 +1192,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         except Exception as e:
             print(f"  PDF upload to storage failed: {e}")
 
-        # ── Upload check images to Supabase Storage (parallel) ───
+        # â”€â”€ Upload check images to Supabase Storage (parallel) â”€â”€â”€
         print(f"  Uploading {len(checks)} check images to Supabase Storage in parallel...")
         uploaded_count = 0
         upload_lock = threading.Lock()
@@ -1198,13 +1213,13 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
                     with upload_lock:
                         uploaded_count += 1
             except Exception as e:
-                print(f"    ✗ {check['check_id']}: {e}")
+                print(f"    âœ— {check['check_id']}: {e}")
 
         with ThreadPoolExecutor(max_workers=min(20, len(checks))) as _up_pool:
             list(_up_pool.map(_upload_one_check, checks))
         print(f"  Uploaded {uploaded_count}/{len(checks)} check images to Storage")
 
-        # ── Phase 2: Run OCR (Tesseract + Gemini) ────────────────
+        # â”€â”€ Phase 2: Run OCR (Tesseract + Gemini) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         jobs[job_id]["status"] = "ocr_running"
         jobs[job_id]["processing_count"] = len(manifest)
         jobs[job_id]["processed_count"] = 0
@@ -1237,7 +1252,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
             print(f"OCR phase error (non-fatal): {ocr_err}")
             traceback.print_exc()
 
-        # ── Parallel upload: page images + OCR JSONs to Storage ──
+        # â”€â”€ Parallel upload: page images + OCR JSONs to Storage â”€â”€
         # Upload in parallel BEFORE marking complete (was background thread)
         print(f"  Uploading page images + OCR results to Storage in parallel...")
         try:
@@ -1267,12 +1282,12 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
 
             with ThreadPoolExecutor(max_workers=20) as _storage_pool:
                 list(_storage_pool.map(_do_upload, upload_tasks))
-            print(f"  ✓ Storage uploads complete ({len(upload_tasks)} files)")
+            print(f"  âœ“ Storage uploads complete ({len(upload_tasks)} files)")
         except Exception as storage_err:
             print(f"  Storage upload error (non-fatal): {storage_err}")
 
-        # ── Save final results to Supabase immediately after OCR ─
-        # (Storage uploads run concurrently in background — don't block completion)
+        # â”€â”€ Save final results to Supabase immediately after OCR â”€
+        # (Storage uploads run concurrently in background â€” don't block completion)
         # Build clean checks_data JSON (no local paths)
         checks_data = []
         for c in checks:
@@ -1299,7 +1314,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
             "pdf_url": pdf_storage_url,
             "completed_at": datetime.now().isoformat(),
         })
-        print(f"  ✓ Database updated successfully")
+        print(f"  âœ“ Database updated successfully")
 
         # Billable event: one ledger row per cheque that actually extracted.
         _job = jobs.get(job_id, {})
@@ -1319,7 +1334,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         jobs[job_id]["checks"] = checks
 
         # Track incomplete extractions
-        incomplete = [c for c in checks if not c.get("extraction")]
+        incomplete = [c for c in checks if not _has_values(c)]
         if incomplete:
             jobs[job_id]["has_incomplete"] = True
             jobs[job_id]["incomplete_count"] = len(incomplete)
@@ -1338,7 +1353,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
             [c.get("check_id") for c in checks],
         )
 
-        # ── Cleanup local files after successful DB save ───────────
+        # â”€â”€ Cleanup local files after successful DB save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         # All files are now in Storage, safe to delete everything locally
         _cleanup_local_files(job_id, pdf_path, keep_images=False)
 
@@ -1353,7 +1368,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         traceback.print_exc()
 
 
-# ── Endpoints ─────────────────────────────────────────────────────
+# â”€â”€ Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.get("/api/health")
 def health():
@@ -1407,7 +1422,7 @@ async def upload_pdf(
                     and existing.get("file_hash") == file_hash
                     and existing.get("status") not in ("error",)):
                 return {"job_id": existing["job_id"], "status": existing["status"],
-                        "message": "Duplicate detected — returning existing job", "duplicate": True}
+                        "message": "Duplicate detected â€” returning existing job", "duplicate": True}
 
     job_id = str(uuid.uuid4())[:8]
     pdf_path = str(UPLOAD_DIR / f"{job_id}.pdf")
@@ -1470,7 +1485,7 @@ async def upload_analyze(
     batch_id: str = None,
     _auth=Depends(_verify_token),
 ):
-    """Upload a PDF, detect cheques, return page info with dimensions — no OCR yet.
+    """Upload a PDF, detect cheques, return page info with dimensions â€” no OCR yet.
 
     `confirm_reupload` (query param) is the user opting in after being warned
     the file was uploaded before and will be counted again.
@@ -1500,12 +1515,12 @@ async def upload_analyze(
     if file_size > 100 * 1024 * 1024:  # 100MB limit
         raise HTTPException(413, "File too large (max 100MB)")
 
-    # ── Who is this, and may they process? ───────────────────────────────────
+    # â”€â”€ Who is this, and may they process? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ctx = _auth_context(request)
     tenant_id, user_id = ctx["tenant_id"], ctx["user_id"]
     _assert_processing_allowed(tenant_id)
 
-    # ── Duplicate detection, database-backed (migration 028) ─────────────────
+    # â”€â”€ Duplicate detection, database-backed (migration 028) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # The old check scanned the in-memory `jobs` dict, so a restart made the
     # same file look brand new. `file_hash` stays md5 for the legacy in-memory
     # fields; the durable fingerprint is sha256 of the bytes.
@@ -1526,7 +1541,7 @@ async def upload_analyze(
                     and existing.get("status") not in ("error",)):
                 print(f"  Duplicate detected (in-memory): {existing['job_id']}")
                 return {"job_id": existing["job_id"], "status": existing["status"],
-                        "message": "Duplicate detected — returning existing job", "duplicate": True}
+                        "message": "Duplicate detected â€” returning existing job", "duplicate": True}
 
     job_id = str(uuid.uuid4())[:8]
     pdf_path = str(UPLOAD_DIR / f"{job_id}.pdf")
@@ -1650,7 +1665,7 @@ async def upload_analyze(
             "checks_data": json.dumps([]),
         }
         # Only when resolved: on a database without migration 032 the column
-        # does not exist, and sending it would fail the whole insert — which is
+        # does not exist, and sending it would fail the whole insert â€” which is
         # how check_jobs rows lost their owner the last time.
         if resolved_batch:
             job_row["batch_id"] = resolved_batch
@@ -1736,7 +1751,7 @@ class StartExtractionRequest(BaseModel):
     # The user opting in after being warned this file was uploaded before.
     confirm_reupload: bool = False
     # The reconciliation run this job belongs to (migration 032). Only used when
-    # the job is not already attached — upload-analyze is the normal place.
+    # the job is not already attached â€” upload-analyze is the normal place.
     batch_id: Optional[str] = None
 
 
@@ -1784,7 +1799,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
             job["batch_id"] = resolved_batch
             _supabase_update("check_jobs", {"job_id": req.job_id}, {"batch_id": resolved_batch})
 
-    # ── Duplicate warning, at the point where it can actually be given ───────
+    # â”€â”€ Duplicate warning, at the point where it can actually be given â”€â”€â”€â”€â”€â”€â”€
     # Detection (upload-analyze) is free; extraction is the billable act, so the
     # "uploaded previously on <date>" prompt belongs here, where the tenant is
     # resolved. Confirming sets is_reupload on every ledger row for this job.
@@ -1832,13 +1847,13 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                 
                 if has_images:
                     # Build manifest from existing check images
-                    print(f"  ✓ Using existing check images for re-extraction (PDF not needed)")
+                    print(f"  âœ“ Using existing check images for re-extraction (PDF not needed)")
                     for check in checks:
                         cid = check["check_id"]
                         img_path = str(images_dir / f"{cid}.png")
                         if os.path.exists(img_path):
                             manifest.append((cid, img_path, check["page"]))
-                    print(f"  ✓ Found {len(manifest)} existing check images")
+                    print(f"  âœ“ Found {len(manifest)} existing check images")
                     
                     # Create a minimal CheckExtractorApp instance for OCR operations
                     # We don't need PDF, just the output directory for OCR results
@@ -1847,7 +1862,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                 
                 # If no local images, try to download from Supabase Storage
                 if not manifest:
-                    print(f"  → No local check images found, checking Supabase Storage...")
+                    print(f"  â†’ No local check images found, checking Supabase Storage...")
                     if _supabase_ok:
                         try:
                             # Try to download check images from storage
@@ -1868,14 +1883,14 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                                     with open(img_path, "wb") as f:
                                         f.write(resp.content)
                                     manifest.append((cid, str(img_path), check["page"]))
-                                    print(f"  ✓ Downloaded check image {cid} from Storage")
+                                    print(f"  âœ“ Downloaded check image {cid} from Storage")
                             
                         except Exception as e:
                             # One bad download must not discard the ones that
                             # succeeded; whatever is in the manifest is usable.
-                            print(f"  ✗ Storage download stopped early: {e}")
+                            print(f"  âœ— Storage download stopped early: {e}")
                         if manifest:
-                            print(f"  ✓ Downloaded {len(manifest)} check images from Storage")
+                            print(f"  âœ“ Downloaded {len(manifest)} check images from Storage")
                             # Minimal CheckExtractorApp for OCR only. Created after
                             # the try so a mid-loop error can't leave it None.
                             app_ext = CheckExtractorApp(None, output_dir=out_dir)
@@ -1888,13 +1903,13 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                         if _supabase_ok and job.get("pdf_name"):
                             storage_url = f"{_sb_url}/storage/v1/object/public/checks/jobs/{req.job_id}/{job['pdf_name']}"
                             try:
-                                print(f"  → Downloading PDF from Storage: {storage_url}")
+                                print(f"  â†’ Downloading PDF from Storage: {storage_url}")
                                 resp = _requests.get(storage_url, timeout=30)
                                 if resp.status_code == 200:
                                     UPLOAD_DIR.mkdir(exist_ok=True)
                                     with open(pdf_path, "wb") as f:
                                         f.write(resp.content)
-                                    print(f"  ✓ Downloaded PDF ({len(resp.content)} bytes)")
+                                    print(f"  âœ“ Downloaded PDF ({len(resp.content)} bytes)")
                                 else:
                                     raise HTTPException(404, f"No check images or PDF found. Please re-upload the PDF.")
                             except HTTPException:
@@ -1907,7 +1922,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                     # Extract images from PDF
                     app_ext = CheckExtractorApp(pdf_path, output_dir=out_dir)
                     manifest = app_ext.extract_all_images()
-                    print(f"  ✓ Extracted {len(manifest)} check images from PDF")
+                    print(f"  âœ“ Extracted {len(manifest)} check images from PDF")
                     if not checks:
                         # Hydrated from a row written before extraction ran
                         # (checks_data was []): rebuild the list from the
@@ -1927,7 +1942,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                             })
                         job["checks"] = checks
 
-            # ── Filter manifest by range ──────────────────────────
+            # â”€â”€ Filter manifest by range â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             filtered_manifest = list(manifest)
 
             if req.cheque_range:
@@ -1935,7 +1950,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                 c_from = max(1, req.cheque_range.get("from", 1))
                 c_to = min(len(manifest), req.cheque_range.get("to", len(manifest)))
                 filtered_manifest = filtered_manifest[c_from - 1 : c_to]
-                print(f"  Cheque range filter: #{c_from}-#{c_to} → {len(filtered_manifest)} checks")
+                print(f"  Cheque range filter: #{c_from}-#{c_to} â†’ {len(filtered_manifest)} checks")
             elif req.pages:
                 # Explicit list wins over page_range: the client sends both, the
                 # range only so an older server still does something sensible.
@@ -1944,7 +1959,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                     (cid, ip, pn) for cid, ip, pn in filtered_manifest
                     if pn in wanted
                 ]
-                print(f"  Page list filter: {len(wanted)} pages → {len(filtered_manifest)} checks")
+                print(f"  Page list filter: {len(wanted)} pages â†’ {len(filtered_manifest)} checks")
             elif req.page_range:
                 p_from = req.page_range.get("from", 1)
                 p_to = req.page_range.get("to", job.get("total_pages", 9999))
@@ -1952,9 +1967,9 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                     (cid, ip, pn) for cid, ip, pn in filtered_manifest
                     if p_from <= pn <= p_to
                 ]
-                print(f"  Page range filter: pages {p_from}-{p_to} → {len(filtered_manifest)} checks")
+                print(f"  Page range filter: pages {p_from}-{p_to} â†’ {len(filtered_manifest)} checks")
 
-            # ── Smart re-extraction logic ─────────────────────────
+            # â”€â”€ Smart re-extraction logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             # Resolve requested engine set for comparison
             requested_methods = set(req.methods)
             if "hybrid" in requested_methods:
@@ -1972,7 +1987,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
             results_dir = os.path.join(out_dir, "ocr_results")
 
             if not req.force:
-                # Build a lookup of check_id → set of methods already used
+                # Build a lookup of check_id â†’ set of methods already used
                 checks_by_id = {c["check_id"]: c for c in checks}
                 before = len(filtered_manifest)
                 keep = []
@@ -1997,16 +2012,16 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                                 break
 
                     if not has_data:
-                        # No valid results — must extract
+                        # No valid results â€” must extract
                         keep.append(item)
-                        print(f"    → {cid}: No valid data, will extract")
+                        print(f"    â†’ {cid}: No valid data, will extract")
                     elif not requested_engines.issubset(existing_methods):
                         # New methods requested that weren't run before
                         keep.append(item)
-                        print(f"    → {cid}: New methods requested, will extract")
+                        print(f"    â†’ {cid}: New methods requested, will extract")
                     else:
-                        # Already extracted with same or superset of methods — skip
-                        print(f"    → {cid}: Already has data, skipping")
+                        # Already extracted with same or superset of methods â€” skip
+                        print(f"    â†’ {cid}: Already has data, skipping")
                         pass
 
                 filtered_manifest = keep
@@ -2029,7 +2044,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
             job["extraction_progress"] = 0
             _supabase_update("check_jobs", {"job_id": req.job_id}, {"status": "ocr_running"})
 
-            # Progress callback — updates job dict so polling endpoint returns live data
+            # Progress callback â€” updates job dict so polling endpoint returns live data
             def _on_progress(info):
                 evt = info.get("event")
                 total = info.get("total", 1)
@@ -2087,7 +2102,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                     level = "warn" if has_err else "success"
                     job["progress_logs"].append({
                         "ts": datetime.now().isoformat(),
-                        "msg": f"[{done}/{total}] ✓ {cid} — payee={payee} | {' '.join(parts)}",
+                        "msg": f"[{done}/{total}] âœ“ {cid} â€” payee={payee} | {' '.join(parts)}",
                         "level": level,
                     })
 
@@ -2097,13 +2112,28 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
 
             app_ext.captions_by_id.update({c["check_id"]: c["caption"] for c in checks if c.get("caption")})
             app_ext.run_parallel_ocr(filtered_manifest, methods=req.methods, progress_callback=_on_progress)
-            app_ext.save_summary(filtered_manifest)
 
             # Load all engine results back into checks (for ALL checks, not just filtered)
             for check in checks:
                 _load_engine_results(results_dir, check)
 
-            # ── Background: upload page images + OCR JSONs (non-blocking) ──
+            # One automatic second pass for cheques that came back with no
+            # values (a timeout, a rate limit, a flaky response). Without it the
+            # user had to find and press Retry. One pass only: if the cause is
+            # permanent (billing, a dead model) a loop would just burn time.
+            empty_ids = {c["check_id"] for c in checks if not _has_values(c)}
+            retry_manifest = [m for m in filtered_manifest if m[0] in empty_ids]
+            if retry_manifest:
+                print(f"  Auto-retry: {len(retry_manifest)} cheque(s) came back empty, one more pass")
+                time.sleep(3)
+                app_ext.run_parallel_ocr(retry_manifest, methods=req.methods, progress_callback=_on_progress)
+                for check in checks:
+                    if check["check_id"] in empty_ids:
+                        _load_engine_results(results_dir, check)
+
+            app_ext.save_summary(filtered_manifest)
+
+            # â”€â”€ Background: upload page images + OCR JSONs (non-blocking) â”€â”€
             def _bg_uploads_reextract():
                 try:
                     upload_tasks = []
@@ -2131,7 +2161,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
 
                     with ThreadPoolExecutor(max_workers=10) as _bg_p:
                         list(_bg_p.map(_do, upload_tasks))
-                    print(f"  ✓ BG uploads complete ({len(upload_tasks)} files)")
+                    print(f"  âœ“ BG uploads complete ({len(upload_tasks)} files)")
                 except Exception as bg_err:
                     print(f"  BG upload error: {bg_err}")
 
@@ -2193,7 +2223,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
             job["completed_at"] = datetime.now().isoformat()
 
             # Track incomplete extractions
-            incomplete = [c for c in checks if not c.get("extraction")]
+            incomplete = [c for c in checks if not _has_values(c)]
             if incomplete:
                 job["has_incomplete"] = True
                 job["incomplete_count"] = len(incomplete)
@@ -2212,7 +2242,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
                 [c.get("check_id") for c in checks],
             )
 
-            # ── Cleanup local files after successful extraction ────
+            # â”€â”€ Cleanup local files after successful extraction â”€â”€â”€â”€
             # All files are now in Storage, safe to delete everything locally
             pdf_path = str(UPLOAD_DIR / f"{req.job_id}.pdf")
             _cleanup_local_files(req.job_id, pdf_path, keep_images=False)
@@ -2295,7 +2325,7 @@ def get_billing_usage(start_date: str = None, end_date: str = None, _auth=Depend
         
         # Handle missing table gracefully (404 or 406 means table doesn't exist)
         if resp.status_code in (404, 406):
-            print(f"⚠️ api_usage_logs table not found (status {resp.status_code}). Run migration 012_add_api_usage_tracking.sql")
+            print(f"âš ï¸ api_usage_logs table not found (status {resp.status_code}). Run migration 012_add_api_usage_tracking.sql")
             print(f"   Falling back to job-level estimates for historical data...")
             return _get_billing_fallback(start_date, end_date)
         
@@ -2554,7 +2584,7 @@ def get_summary(job_id: str):
         return json.load(f)
 
 
-# ── Export helpers ────────────────────────────────────────────────
+# â”€â”€ Export helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _ext_val(ext, field):
     """Safely extract a value from the extraction dict."""
@@ -2853,7 +2883,7 @@ def list_export_formats():
 
 
 @app.post("/api/jobs/{job_id}/retry-failed")
-def retry_failed(job_id: str, _auth=Depends(_verify_token)):
+def retry_failed(job_id: str, request: Request, _auth=Depends(_verify_token)):
     """Re-extract only checks that have null extraction (failed/incomplete)."""
     job = _job(job_id)
     if job is None:
@@ -2861,18 +2891,21 @@ def retry_failed(job_id: str, _auth=Depends(_verify_token)):
     if job["status"] in ("extracting", "ocr_running"):
         return {"job_id": job_id, "status": job["status"], "message": "Already processing"}
 
-    incomplete = [c for c in job.get("checks", []) if not c.get("extraction")]
+    incomplete = [c for c in job.get("checks", []) if not _has_values(c)]
     if not incomplete:
         return {"job_id": job_id, "message": "All checks already extracted", "incomplete": 0}
 
-    # Trigger extraction with force=False — the smart skip logic will only process
+    # Trigger extraction with force=False â€” the smart skip logic will only process
     # checks without existing results
     req = StartExtractionRequest(
         job_id=job_id,
         methods=job.get("selected_methods", ["gemini"]),
         force=False,
     )
-    return start_extraction(req, _auth=None)
+    # start_extraction resolves the caller's tenant from the request, so it must
+    # be passed through; without it every retry raised TypeError (a 500 the
+    # frontend proxy reported as "extraction service unavailable").
+    return start_extraction(req, request, _auth=None)
 
 
 @app.delete("/api/jobs/{job_id}")
@@ -2895,12 +2928,12 @@ def delete_job(job_id: str, _auth=Depends(_verify_token)):
     out_path = OUTPUT_DIR / job_id
     if out_path.exists():
         shutil.rmtree(out_path)
-        print(f"  ✓ Deleted local output directory")
+        print(f"  âœ“ Deleted local output directory")
     
     pdf_path = UPLOAD_DIR / f"{job_id}.pdf"
     if pdf_path.exists():
         pdf_path.unlink()
-        print(f"  ✓ Deleted local PDF")
+        print(f"  âœ“ Deleted local PDF")
 
     # Delete from Supabase Storage (cascade delete all job files)
     if _supabase_ok:
@@ -2918,22 +2951,22 @@ def delete_job(job_id: str, _auth=Depends(_verify_token)):
             if resp.status_code >= 400:
                 print(f"  Database delete error ({resp.status_code}): {resp.text[:200]}")
             else:
-                print(f"  ✓ Deleted from database")
+                print(f"  âœ“ Deleted from database")
         except Exception as e:
             print(f"  Database delete error: {e}")
 
     # Remove from in-memory cache
     if in_memory:
         del jobs[job_id]
-        print(f"  ✓ Removed from memory")
+        print(f"  âœ“ Removed from memory")
     
-    print(f"✓ Job {job_id} deleted successfully")
+    print(f"âœ“ Job {job_id} deleted successfully")
     return {"message": "Job and all associated data deleted successfully"}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # QuickBooks Data Management
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class QuickBooksEntry(BaseModel):
     """QuickBooks entry model for comparison"""
@@ -3079,9 +3112,9 @@ def clear_quickbooks_entries(_auth=Depends(_verify_token)):
         raise HTTPException(500, f"Failed to clear entries: {str(e)}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Settings & Integrations Management
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class IntegrationSettings(BaseModel):
     """Integration settings model"""
@@ -3089,7 +3122,7 @@ class IntegrationSettings(BaseModel):
 
 
 def _redact_settings(data: dict) -> dict:
-    """Field names and value lengths only — never the values.
+    """Field names and value lengths only â€” never the values.
 
     This used to print `update_data` straight out, which put the tenant's Gemini
     API key into the server log in plaintext on every save.
@@ -3156,9 +3189,9 @@ async def update_integration_settings(settings: IntegrationSettings, _auth=Depen
     
     try:
         # Check if settings record exists
-        print(f"🔍 Checking for existing app_settings record...")
+        print(f"ðŸ” Checking for existing app_settings record...")
         existing = _supabase_select("app_settings", limit=1)
-        print(f"✓ Existing records found: {len(existing) if existing else 0}")
+        print(f"âœ“ Existing records found: {len(existing) if existing else 0}")
         
         update_data = {}
         if settings.gemini_api_key:
@@ -3171,7 +3204,7 @@ async def update_integration_settings(settings: IntegrationSettings, _auth=Depen
         if existing and len(existing) > 0:
             # Update existing record
             setting_id = existing[0].get("id")
-            print(f"📝 Updating existing record with id={setting_id}")
+            print(f"ðŸ“ Updating existing record with id={setting_id}")
             print(f"   URL: {_sb_url}/rest/v1/app_settings?id=eq.{setting_id}")
             print(f"   Fields: {_redact_settings(update_data)}")
             resp = _requests.patch(
@@ -3184,7 +3217,7 @@ async def update_integration_settings(settings: IntegrationSettings, _auth=Depen
             # Create new record
             update_data["id"] = 1  # Single settings record
             update_data["created_at"] = datetime.utcnow().isoformat()
-            print(f"➕ Creating new record")
+            print(f"âž• Creating new record")
             print(f"   URL: {_sb_url}/rest/v1/app_settings")
             print(f"   Fields: {_redact_settings(update_data)}")
             resp = _requests.post(
@@ -3194,14 +3227,14 @@ async def update_integration_settings(settings: IntegrationSettings, _auth=Depen
                 timeout=10,
             )
         
-        print(f"📡 Response status: {resp.status_code}")
-        print(f"📡 Response body: {resp.text[:500]}")
+        print(f"ðŸ“¡ Response status: {resp.status_code}")
+        print(f"ðŸ“¡ Response body: {resp.text[:500]}")
         
         if resp.status_code >= 400:
-            print(f"❌ ERROR: {resp.text}")
+            print(f"âŒ ERROR: {resp.text}")
             raise HTTPException(500, f"Failed to save settings: {resp.text[:200]}")
         
-        print(f"✅ Settings saved successfully!")
+        print(f"âœ… Settings saved successfully!")
         return {
             "message": "Settings updated successfully",
             "geminiApiKey": bool(settings.gemini_api_key),
@@ -3209,7 +3242,7 @@ async def update_integration_settings(settings: IntegrationSettings, _auth=Depen
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ EXCEPTION: {type(e).__name__}: {str(e)}")
+        print(f"âŒ EXCEPTION: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"Failed to update settings: {str(e)}")
@@ -3227,11 +3260,11 @@ def get_api_keys_status(_auth=Depends(_verify_token)):
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # QuickBooks OAuth Integration
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # NOTE: QB OAuth is handled by frontend Next.js API routes (pages/api/qbo/*)
-# These backend endpoints are DISABLED — they were single-tenant (env vars only)
+# These backend endpoints are DISABLED â€” they were single-tenant (env vars only)
 # The frontend routes are multi-tenant and read from the integrations table per tenant
 
 # @app.get("/api/qbo/auth")
@@ -3282,7 +3315,7 @@ async def initiate_qbo_auth(request: Request, source: str = "web"):
     """
     import base64, json as _json, secrets as _secrets, time as _time, string as _string
 
-    # ── Decode user JWT to get user_id ──────────────────────────────
+    # â”€â”€ Decode user JWT to get user_id â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     auth_header = request.headers.get("Authorization", "")
     user_id = None
     tenant_id = None
@@ -3298,9 +3331,9 @@ async def initiate_qbo_auth(request: Request, source: str = "web"):
             )
             user_id = payload.get("sub")
         except Exception as e:
-            print(f"⚠️ /api/qbo/auth: JWT decode failed: {e}")
+            print(f"âš ï¸ /api/qbo/auth: JWT decode failed: {e}")
 
-    # ── Resolve tenant_id from user_profiles (or profiles fallback) ─
+    # â”€â”€ Resolve tenant_id from user_profiles (or profiles fallback) â”€
     if user_id and _supabase_ok:
         for profile_table in ("user_profiles", "profiles"):
             try:
@@ -3314,9 +3347,9 @@ async def initiate_qbo_auth(request: Request, source: str = "web"):
                         tenant_id = rows[0]["tenant_id"]
                         break
             except Exception as e:
-                print(f"⚠️ /api/qbo/auth: profile lookup failed ({profile_table}): {e}")
+                print(f"âš ï¸ /api/qbo/auth: profile lookup failed ({profile_table}): {e}")
 
-    # ── Get QB credentials from integrations table ──────────────────
+    # â”€â”€ Get QB credentials from integrations table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     qb_client_id = None
     qb_redirect_uri = None
 
@@ -3332,7 +3365,7 @@ async def initiate_qbo_auth(request: Request, source: str = "web"):
                     qb_client_id = rows[0].get("qb_client_id")
                     qb_redirect_uri = rows[0].get("qb_redirect_uri")
         except Exception as e:
-            print(f"⚠️ /api/qbo/auth: integrations lookup failed: {e}")
+            print(f"âš ï¸ /api/qbo/auth: integrations lookup failed: {e}")
 
         if not qb_client_id:
             # Fallback: any QB integration
@@ -3349,7 +3382,7 @@ async def initiate_qbo_auth(request: Request, source: str = "web"):
             except Exception:
                 pass
 
-    # ── Fallback to environment variables ───────────────────────────
+    # â”€â”€ Fallback to environment variables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if not qb_client_id:
         qb_client_id = (
             os.environ.get("QUICKBOOKS_CLIENT_ID") or
@@ -3362,11 +3395,11 @@ async def initiate_qbo_auth(request: Request, source: str = "web"):
         )
 
     if not qb_client_id:
-        raise HTTPException(400, "QuickBooks Client ID not configured. Save it in Settings → Integrations.")
+        raise HTTPException(400, "QuickBooks Client ID not configured. Save it in Settings â†’ Integrations.")
     if not qb_redirect_uri:
         raise HTTPException(400, "QuickBooks Redirect URI not configured. Set QUICKBOOKS_REDIRECT_URI env var.")
 
-    # ── Build state (encodes tenant_id for callback) ─────────────────
+    # â”€â”€ Build state (encodes tenant_id for callback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     state_data = {
         "random": ''.join(_secrets.choice(_string.ascii_lowercase + _string.digits) for _ in range(7)),
         "tenant_id": tenant_id or "",
@@ -3375,7 +3408,7 @@ async def initiate_qbo_auth(request: Request, source: str = "web"):
     }
     state = base64.b64encode(_json.dumps(state_data).encode()).decode()
 
-    # ── Build Intuit OAuth URL ────────────────────────────────────────
+    # â”€â”€ Build Intuit OAuth URL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     from urllib.parse import urlencode
     params = {
         "client_id": qb_client_id,
@@ -3386,7 +3419,7 @@ async def initiate_qbo_auth(request: Request, source: str = "web"):
     }
     auth_url = f"https://appcenter.intuit.com/connect/oauth2?{urlencode(params)}"
 
-    print(f"✅ /api/qbo/auth: auth URL built for tenant={tenant_id}, source={source}")
+    print(f"âœ… /api/qbo/auth: auth URL built for tenant={tenant_id}, source={source}")
     return {"authUrl": auth_url}
 
 
@@ -3560,7 +3593,7 @@ if __name__ == "__main__":
         from storage_sync import sync_storage_to_database
         sync_storage_to_database()
     except Exception as e:
-        print(f"⚠️ Storage sync failed: {e}")
+        print(f"âš ï¸ Storage sync failed: {e}")
     
     # Start periodic background task for storage sync
     def _periodic_storage_sync():
@@ -3570,10 +3603,10 @@ if __name__ == "__main__":
             time.sleep(300)  # 5 minutes
             try:
                 from storage_sync import sync_storage_to_database
-                print("🔄 Running periodic storage sync...")
+                print("ðŸ”„ Running periodic storage sync...")
                 sync_storage_to_database()
             except Exception as e:
-                print(f"⚠️ Periodic storage sync failed: {e}")
+                print(f"âš ï¸ Periodic storage sync failed: {e}")
     
     # Start periodic background task for auto-extraction
     def _periodic_auto_extract():
@@ -3582,12 +3615,12 @@ if __name__ == "__main__":
         while True:
             time.sleep(600)  # 10 minutes
             try:
-                print("🔄 Checking for incomplete extractions...")
+                print("ðŸ”„ Checking for incomplete extractions...")
                 # Find jobs with status 'analyzed' (uploaded but not extracted)
                 incomplete_jobs = [jid for jid, job in jobs.items() if job.get("status") == "analyzed"]
                 
                 if incomplete_jobs:
-                    print(f"⚙️ Found {len(incomplete_jobs)} incomplete jobs, auto-extracting...")
+                    print(f"âš™ï¸ Found {len(incomplete_jobs)} incomplete jobs, auto-extracting...")
                     extractable_count = 0
                     for job_id in incomplete_jobs:
                         job = jobs[job_id]
@@ -3595,17 +3628,17 @@ if __name__ == "__main__":
                         
                         # Check if job directory and PDF exist
                         if not job_dir.exists():
-                            print(f"  ⏭️  Skipping {job_id} - no local files (storage-only job)")
+                            print(f"  â­ï¸  Skipping {job_id} - no local files (storage-only job)")
                             continue
                         
                         # Check if there are page images to extract from
                         images_dir = job_dir / "images"
                         if not images_dir.exists() or not any(images_dir.glob("*.png")):
-                            print(f"  ⏭️  Skipping {job_id} - no page images found")
+                            print(f"  â­ï¸  Skipping {job_id} - no page images found")
                             continue
                         
                         extractable_count += 1
-                        print(f"  → Extracting {job_id} ({job.get('total_checks', 0)} checks)...")
+                        print(f"  â†’ Extracting {job_id} ({job.get('total_checks', 0)} checks)...")
                         
                         # Trigger extraction in background thread
                         def _extract_job(jid):
@@ -3628,7 +3661,7 @@ if __name__ == "__main__":
                                         manifest.append((check_id, str(img_file), page_num))
                                 
                                 if not manifest:
-                                    print(f"  ⚠️  No check images found in {images_dir}")
+                                    print(f"  âš ï¸  No check images found in {images_dir}")
                                     return
                                 
                                 print(f"  Found {len(manifest)} check images to extract")
@@ -3682,7 +3715,7 @@ if __name__ == "__main__":
                                     "completed_at": datetime.now().isoformat(),
                                 })
 
-                                # Billable event — same helper, same idempotency
+                                # Billable event â€” same helper, same idempotency
                                 # keys, so this recovery path cannot double-count
                                 # cheques the normal path already counted.
                                 _record_ledger_for_job(
@@ -3695,9 +3728,9 @@ if __name__ == "__main__":
                                 jobs[jid]["status"] = "complete"
                                 jobs[jid]["completed_at"] = datetime.now().isoformat()
                                 
-                                print(f"  ✅ Completed extraction for {jid}")
+                                print(f"  âœ… Completed extraction for {jid}")
                             except Exception as e:
-                                print(f"  ❌ Auto-extraction failed for {jid}: {e}")
+                                print(f"  âŒ Auto-extraction failed for {jid}: {e}")
                                 traceback.print_exc()
                                 jobs[jid]["status"] = "error"
                                 jobs[jid]["error"] = str(e)
@@ -3706,21 +3739,21 @@ if __name__ == "__main__":
                         extract_thread.start()
                     
                     if extractable_count == 0:
-                        print("✓ No extractable jobs found (all are storage-only)")
+                        print("âœ“ No extractable jobs found (all are storage-only)")
                 else:
-                    print("✓ No incomplete extractions found")
+                    print("âœ“ No incomplete extractions found")
             except Exception as e:
-                print(f"⚠️ Periodic auto-extraction check failed: {e}")
+                print(f"âš ï¸ Periodic auto-extraction check failed: {e}")
     
     # Start background threads
     import threading
     sync_thread = threading.Thread(target=_periodic_storage_sync, daemon=True)
     sync_thread.start()
-    print("✓ Periodic storage sync enabled (every 5 minutes)")
+    print("âœ“ Periodic storage sync enabled (every 5 minutes)")
     
     extract_thread = threading.Thread(target=_periodic_auto_extract, daemon=True)
     extract_thread.start()
-    print("✓ Periodic auto-extraction enabled (every 10 minutes)")
+    print("âœ“ Periodic auto-extraction enabled (every 10 minutes)")
     
     port = int(os.environ.get("PORT", 3090))
     print(f"\n{'='*60}")
@@ -3731,13 +3764,13 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 
-# ── OCR Lab (admin only) ─────────────────────────────────────────────────────
+# â”€â”€ OCR Lab (admin only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Compares extraction engines on one uploaded document. Nothing is persisted
 # and nothing counts toward a tenant's usage. Gated twice: the Next proxy
 # checks the super-admin allowlist, and this route re-checks the verified
 # token's email against LAB_ADMIN_EMAILS so a direct call cannot spend the
 # engines' credits.
-_LAB_ADMINS = {e.strip().lower() for e in os.getenv("LAB_ADMIN_EMAILS", "michael@itaxhub.com").split(",") if e.strip()}
+_LAB_ADMINS = {e.strip().lower() for e in os.getenv("LAB_ADMIN_EMAILS", "michael@kyriq.com,michael@itaxhub.com").split(",") if e.strip()}
 _LAB_MAX_BYTES = 25 * 1024 * 1024
 _LAB_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 

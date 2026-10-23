@@ -70,7 +70,7 @@ export default function PrivacyPolicyPage() {
         The cropped cheque images are not removed by that job: they, the extracted cheque data, the match and approval results, and the reconciliation history remain stored until you delete the job in the Service or close your account. Deleting a job removes its PDF, cheque images, and extracted data from our storage and database. Records we are required to keep for billing and security purposes are retained separately.
       </p>
       <p>
-        You may also request deletion of your data at any time by emailing <a href="mailto:privacy@itaxhub.com">privacy@itaxhub.com</a>.
+        You may also request deletion of your data at any time by emailing <a href="mailto:privacy@kyriq.com">privacy@kyriq.com</a>.
       </p>
 
       <h2>8. Your Rights</h2>
@@ -95,7 +95,7 @@ export default function PrivacyPolicyPage() {
       <h2>11. Contact Us</h2>
       <p>
         If you have questions about this Privacy Policy, please contact us at{' '}
-        <a href="mailto:privacy@itaxhub.com">privacy@itaxhub.com</a>.
+        <a href="mailto:privacy@kyriq.com">privacy@kyriq.com</a>.
       </p>
     
     </LegalShell>

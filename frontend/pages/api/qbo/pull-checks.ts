@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
 
 import { getQbToken } from '@/lib/qb-token';
+import { qbFetch } from '@/lib/qb-http';
 
 
 
@@ -66,7 +67,7 @@ async function qboQuery(accessToken: string, realmId: string, query: string, use
 
 
 
-  const response = await fetch(url, {
+  const response = await qbFetch(url, {
 
     headers: {
 

@@ -3,6 +3,7 @@ import { cronAuthorised, isMissingSchema, service } from '@/lib/billing/service'
 import { getValidToken } from '@/lib/match-helpers';
 import { markQbConnection, warrantsReconnectEmail, type QbConnectionStatus } from '@/lib/qb-health';
 import { adminRecipients, sendOnce } from '@/lib/email/send';
+import { qbFetch } from '@/lib/qb-http';
 
 /**
  * POST /api/qbo/health-check   (cron / operator)
@@ -78,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Refreshes and PERSISTS if needed, and writes its own status on failure.
       const token = await getValidToken(conn.tenant_id, conn.realm_id);
 
-      const probe = await fetch(
+      const probe = await qbFetch(
         `${QBO_BASE}/v3/company/${conn.realm_id}/companyinfo/${conn.realm_id}?minorversion=73`,
         { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
       );

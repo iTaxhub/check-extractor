@@ -74,6 +74,10 @@ except ImportError:
 # Gemini Flash API keys (from env, comma-separated, rotated round-robin)
 _env_gemini = os.environ.get("GEMINI_API_KEYS", "") or os.environ.get("GEMINI_API_KEY", "")
 GEMINI_KEYS = list(dict.fromkeys([k.strip() for k in _env_gemini.split(",") if k.strip()]))
+# Used when GEMINI_MODEL is unset. Must be a live model: gemini-2.0-flash was
+# shut down on 1 June 2026 and every call to it returns 404, which left every
+# cheque with empty fields while the job still reported "complete".
+GEMINI_DEFAULT_MODEL = "gemini-3.8-flash"
 if not GEMINI_KEYS:
     print("WARNING: No GEMINI_API_KEY(S) set in environment. Gemini OCR will be disabled.")
 _gemini_key_idx = 0
@@ -949,7 +953,7 @@ def gemini_text(prompt, png_bytes, max_tokens=16):
         ]}],
         "generationConfig": {"temperature": 0.0, "maxOutputTokens": max_tokens},
     }
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    model = os.environ.get("GEMINI_MODEL", GEMINI_DEFAULT_MODEL)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     for key in GEMINI_KEYS:
         try:
@@ -992,7 +996,7 @@ def extract_with_gemini(img_path, key=None):
     for attempt, key in enumerate(ordered_keys):
         # Key goes in a header, not the query string: requests puts the URL in
         # every HTTPError message, which was printing live keys into the logs.
-        model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+        model = os.environ.get("GEMINI_MODEL", GEMINI_DEFAULT_MODEL)
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         try:
             resp = requests.post(url, json=payload, timeout=30, headers={"x-goog-api-key": key})

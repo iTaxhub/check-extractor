@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient, createServiceClient } from '@/lib/supabase/api';
 import { getQbToken } from '@/lib/qb-token';
+import { qbFetch } from '@/lib/qb-http';
 
 const QBO_BASE = 'https://quickbooks.api.intuit.com';
 
@@ -100,7 +101,7 @@ async function syncFromQbo(
   const query = encodeURIComponent(`SELECT * FROM Account WHERE AccountType IN (${types})`);
   const url = `${QBO_BASE}/v3/company/${realmId}/query?query=${query}&minorversion=73`;
 
-  const response = await fetch(url, {
+  const response = await qbFetch(url, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
   });
 

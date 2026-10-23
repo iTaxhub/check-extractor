@@ -382,8 +382,8 @@ export default function EULAPage() {
           For questions about this EULA, please contact us:
         </p>
         <div>
-          <p><strong>Email:</strong> legal@chequeextractor.com</p>
-          <p><strong>Support:</strong> support@chequeextractor.com</p>
+          <p><strong>Email:</strong> legal@kyriq.com</p>
+          <p><strong>Support:</strong> support@kyriq.com</p>
         </div>
       </section>
 

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
 import { getQbToken } from '@/lib/qb-token';
+import { qbFetch } from '@/lib/qb-http';
 
 const QBO_BASE = 'https://quickbooks.api.intuit.com';
 
@@ -88,7 +89,7 @@ export default async function handler(
 
     // Step 3: Verify company info (confirm realmId)
     try {
-      const companyRes = await fetch(
+      const companyRes = await qbFetch(
         `${QBO_BASE}/v3/company/${realmId}/companyinfo/${realmId}?minorversion=73`,
         {
           headers: {
@@ -127,7 +128,7 @@ export default async function handler(
     async function runDiagQuery(label: string, query: string, entityKey: string) {
       try {
         const url = `${QBO_BASE}/v3/company/${realmId}/query?query=${encodeURIComponent(query)}&minorversion=73`;
-        const response = await fetch(url, {
+        const response = await qbFetch(url, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Accept': 'application/json',
@@ -191,7 +192,7 @@ export default async function handler(
     try {
       const bpQuery = `SELECT * FROM BillPayment MAXRESULTS 5`;
       const url = `${QBO_BASE}/v3/company/${realmId}/query?query=${encodeURIComponent(bpQuery)}&minorversion=73`;
-      const response = await fetch(url, {
+      const response = await qbFetch(url, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json',
@@ -335,7 +336,7 @@ export default async function handler(
         const countQuery = `SELECT COUNT(*) FROM ${entity.type}`;
         const countUrl = `${QBO_BASE}/v3/company/${realmId}/query?query=${encodeURIComponent(countQuery)}&minorversion=73`;
         
-        const countRes = await fetch(countUrl, {
+        const countRes = await qbFetch(countUrl, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Accept': 'application/json',
