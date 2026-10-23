@@ -60,5 +60,9 @@ bare = {"width": 612, "height": 792, "words": [], "image_rects": [(38, 343, 574,
 boxes, caps = pdf_pages.cheque_boxes({**bare, "text": "Paid check images"}, 612, 792)
 assert boxes == [(38, 128, 574, 310), (38, 343, 574, 525)] and caps == [None, None], (boxes, caps)
 assert pdf_pages.cheque_boxes({**bare, "text": "Spring offers"}, 612, 792) == ([], [])
+banner = {**bare, "text": "15 checks paid", "image_rects": bare["image_rects"][:1]}
+assert pdf_pages.cheque_boxes(banner, 612, 792) == ([], [])   # statement page-1 banner
+for f, want in (("3117 June.pdf", 339), ("9440 June.pdf", 227)):
+    assert sum(len(pdf_pages.cheque_boxes(p, 1000, 1000)[0]) for p in pdf_pages.read(str(root / f))) == want, f
 
 print("check_pdf_detection OK: Chase 49/51, BofA 339, BotW 227 captioned cheques")

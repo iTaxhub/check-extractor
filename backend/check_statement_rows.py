@@ -93,4 +93,16 @@ try:
 except ImportError:
     ocr_note = ", OCR skipped (pymupdf/PIL/pytesseract missing)"
 
+# Single full-width table (Kyriq demo statement): one row per line, ends at the first non-row line.
+def _words(lines):
+    return [(x * 60, y * 20, x * 60 + 50, y * 20 + 10, t) for y, line in enumerate(lines) for x, t in enumerate(line.split())]
+single, _ = sr.parse_page(_words([
+    "Date paid Check # Payee Amount",
+    "06/01/2026 700013 Patricia $108.87",
+    "06/05/2026 700001 James $160.18",
+    "Check images follow.",
+    "06/09/2026 700099 Stray $1.00",
+]), 612)
+assert [(r["check_number"], r["amount"]) for r in single] == [("700013", 108.87), ("700001", 160.18)], single
+
 print(f"check_statement_rows OK: BofA {printed_count} rows = -${printed_total:,.2f}{ocr_note}")
