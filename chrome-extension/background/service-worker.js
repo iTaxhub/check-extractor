@@ -1465,7 +1465,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           try {
             const { token, realmId } = await getValidQBToken();
             const qbRes = await fetch(
-              `https://quickbooks.api.intuit.com/v3/company/${realmId}/query?query=${encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Bank'")}&minorversion=73`,
+              `https://quickbooks.api.intuit.com/v3/company/${realmId}/query?query=${encodeURIComponent("SELECT * FROM Account WHERE AccountType IN ('Bank', 'Credit Card') MAXRESULTS 1000")}&minorversion=73`,
               { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
             );
             if (qbRes.ok) {
