@@ -121,7 +121,8 @@ export default function FieldEditor({ check }: Props) {
         .update({
           payee: fields.payee,
           amount: isNaN(parsedAmount) ? null : parsedAmount,
-          check_date: fields.check_date,
+          // An empty date input is "", which Postgres rejects for a date column.
+          check_date: fields.check_date || null,
           check_number: fields.check_number,
           bank_name: fields.bank_name,
           // Mark as manual edits

@@ -27,7 +27,10 @@ export default function ApprovalActions({ checkId, currentStatus }: Props) {
         body: JSON.stringify({ action }),
       });
 
-      if (!response.ok) throw new Error(`${action === 'approve' ? 'Approval' : 'Rejection'} failed`);
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(`${action === 'approve' ? 'Approval' : 'Rejection'} failed${body?.error ? `: ${body.error}` : ''}`);
+      }
 
       router.push(action === 'approve' ? '/export' : '/dashboard');
     } catch (e: any) {
