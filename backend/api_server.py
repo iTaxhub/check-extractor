@@ -2043,11 +2043,26 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
 
             app_ext.captions_by_id.update({c["check_id"]: c["caption"] for c in checks if c.get("caption")})
             app_ext.run_parallel_ocr(filtered_manifest, methods=req.methods, progress_callback=_on_progress)
-            app_ext.save_summary(filtered_manifest)
 
             # Load all engine results back into checks (for ALL checks, not just filtered)
             for check in checks:
                 _load_engine_results(results_dir, check)
+
+            # One automatic second pass for cheques that came back with no
+            # values (a timeout, a rate limit, a flaky response). Without it the
+            # user had to find and press Retry. One pass only: if the cause is
+            # permanent (billing, a dead model) a loop would just burn time.
+            empty_ids = {c["check_id"] for c in checks if not _has_values(c)}
+            retry_manifest = [m for m in filtered_manifest if m[0] in empty_ids]
+            if retry_manifest:
+                print(f"  Auto-retry: {len(retry_manifest)} cheque(s) came back empty, one more pass")
+                time.sleep(3)
+                app_ext.run_parallel_ocr(retry_manifest, methods=req.methods, progress_callback=_on_progress)
+                for check in checks:
+                    if check["check_id"] in empty_ids:
+                        _load_engine_results(results_dir, check)
+
+            app_ext.save_summary(filtered_manifest)
 
             # ── Background: upload page images + OCR JSONs (non-blocking) ──
             def _bg_uploads_reextract():
