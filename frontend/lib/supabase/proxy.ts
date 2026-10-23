@@ -44,6 +44,7 @@ export async function updateSession(request: NextRequest) {
     '/reset-password',
     '/privacy',
     '/terms',
+    '/support',
     '/legal/privacy',
     '/legal/terms',
     '/legal/eula',

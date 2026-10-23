@@ -78,7 +78,7 @@ https://kyriq.com
 
 **Support URL**
 ```
-https://kyriq.com
+https://kyriq.com/support
 ```
 
 **Mature content**: No.
