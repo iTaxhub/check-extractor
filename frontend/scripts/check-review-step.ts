@@ -86,7 +86,8 @@ const ROW_CAPABILITIES: Array<[string, string, RegExp]> = [
   ['Approve',                 ROW, /\['matched', 'pending'\]\.includes\(status\)/],
   ['Approve Anyway',          ROW, /Approve Anyway/],
   ['Find in QB',              ROW, /Find in QB/],
-  ['Create in QB',            ROW, /onClick=\{handleCreateInQB\}/],
+  // Asks first through ConfirmDialog, whose onConfirm runs the create.
+  ['Create in QB',            ROW, /onConfirm=\{handleCreateInQB\}/],
   ['Remap',                   ROW, /Repeat className="h-3 w-3" aria-hidden \/> Remap/],
   ['Resolve discrepancy',     ROW, /onResolve\(resolution, null, notes\)/],
   ['Undo approval',           ROW, /onClick=\{onUndoApproval\}/],

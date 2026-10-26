@@ -534,37 +534,60 @@ const VOICE_PROMPTS = [
 /** Kyriq IQ teaser. The working beta lives at /voice for signed-in firms, and is
  *  still called Voice there — Michael renamed the public-facing section only. */
 function VoiceSection() {
+  // One full-bleed navy band. The artwork (Kyriq and QuickBooks reconciling side
+  // by side) is the backdrop; a left-to-right scrim keeps the copy panel legible
+  // while the right half shows the scene, and the prompts float over it. It used
+  // to be two dark cards on a white page in a lopsided grid, with the artwork
+  // never used, so the headline wrapped one word per line.
   return (
-    <section id="voice" className="relative py-20 sm:py-28 lg:py-36 px-4 sm:px-6 bg-surface overflow-hidden">
-      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[0.72fr_1.28fr] gap-10 lg:gap-12 items-center">
-        <div className="rounded-modal bg-shell-solid p-6 sm:p-10 shadow-glass-modal">
-          <span className="inline-flex items-center gap-2 rounded-full border border-glass-hairline-dark bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald mb-6">
-            <KyriqIconWhite size={15} /> <Mic className="w-3.5 h-3.5" aria-hidden /> Kyriq IQ · Coming soon
+    <section id="voice" className="relative isolate overflow-hidden bg-[rgb(10,11,34)] px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
+      <Image
+        src="/landing/kyriq-iq-characters-user-v1.webp"
+        alt=""
+        fill
+        sizes="100vw"
+        className="-z-10 object-cover object-[68%_center] opacity-70 lg:opacity-95"
+        aria-hidden
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 bg-gradient-to-b from-[rgb(10,11,34)]/95 via-[rgb(10,11,34)]/80 to-[rgb(10,11,34)]/95 lg:bg-gradient-to-r lg:from-[rgb(10,11,34)] lg:via-[rgb(10,11,34)]/80 lg:to-[rgb(10,11,34)]/5"
+      />
+
+      <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div className="rounded-modal border border-white/10 bg-white/[0.05] p-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_30px_80px_-30px_rgba(0,0,0,0.6)] backdrop-blur-2xl backdrop-saturate-150 sm:p-10">
+          <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald">
+            <KyriqIconWhite size={15} /> <Mic className="h-3.5 w-3.5" aria-hidden /> Kyriq IQ · Coming soon
           </span>
-          <h2 className="text-[clamp(2.5rem,5vw,3.75rem)] font-extrabold tracking-[-0.035em] leading-[1.02] text-shell-text mb-6">
-            Ask. Review. Act&mdash;with your approval.
+          <h2 className="mb-5 text-[clamp(2.25rem,4vw,3.5rem)] font-bold leading-[1.05] tracking-[-0.03em] text-white">
+            Ask. Review. Act&mdash;
+            <span className="bg-gradient-to-r from-brand-light to-accentEmerald bg-clip-text text-transparent">with your approval.</span>
           </h2>
-          <p className="text-[clamp(1rem,1.35vw,1.2rem)] text-shell-muted leading-relaxed mb-4">Kyriq IQ brings conversational intelligence to reconciliation.</p>
-          <p className="text-[15px] text-shell-muted leading-relaxed mb-5">
+          <p className="mb-3 text-[clamp(1.05rem,1.3vw,1.2rem)] leading-relaxed text-white/85">
+            Kyriq IQ brings conversational intelligence to reconciliation.
+          </p>
+          <p className="mb-5 text-[15px] leading-relaxed text-shell-muted">
             Talk to Kyriq like a colleague. Ask what needs attention, have any check read back to you, or find every payment made to a vendor. Kyriq IQ works from your firm&apos;s own data, recognizes your companies and payees, and keeps you in control of every action.
           </p>
-          <p className="text-[13px] text-shell-muted/80 mb-8">Starting with checks. Full-book reconciliation is next.</p>
+          <p className="mb-7 text-[13px] text-shell-muted/80">Starting with checks. Full-book reconciliation is next.</p>
           <WaitlistForm />
         </div>
 
-        <div className="rounded-card bg-shell-solid p-4 sm:p-6 shadow-glass-modal">
-          <div className="flex items-end justify-center gap-1 h-14 mb-5" aria-hidden>
-            {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
-              <span key={i} className="w-1.5 rounded-full bg-gradient-to-t from-brand to-accentEmerald animate-pulse" style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
-            ))}
-          </div>
-          <div className="grid sm:grid-cols-2 gap-2">
-            {VOICE_PROMPTS.map((p) => (
-              <div key={p} className="flex items-start gap-3 rounded-input bg-white/[0.07] px-4 py-3 text-[13px] leading-relaxed text-shell-text">
-                <Mic className="w-3.5 h-3.5 mt-0.5 shrink-0 text-accentEmerald" aria-hidden />
-                &ldquo;{p}&rdquo;
-              </div>
-            ))}
+        <div className="lg:self-end lg:pb-4">
+          <div className="rounded-card border border-white/12 bg-[rgba(14,16,44,0.55)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_24px_60px_-24px_rgba(0,0,0,0.7)] backdrop-blur-xl backdrop-saturate-150 sm:p-5">
+            <div className="mb-4 flex h-12 items-end justify-center gap-1" aria-hidden>
+              {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
+                <span key={i} className="w-1.5 animate-pulse rounded-full bg-gradient-to-t from-brand to-accentEmerald" style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
+              ))}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {VOICE_PROMPTS.map((p) => (
+                <div key={p} className="flex items-start gap-3 rounded-input border border-white/[0.06] bg-white/[0.06] px-4 py-3 text-[13px] leading-relaxed text-white/90">
+                  <Mic className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accentEmerald" aria-hidden />
+                  &ldquo;{p}&rdquo;
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

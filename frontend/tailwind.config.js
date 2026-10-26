@@ -265,10 +265,12 @@ module.exports = {
         eyebrow: "0.16em",
       },
 
+      // The glass skin sets --h-* (36/32/36 on a mouse, 44 on touch); the
+      // landing page, outside the skin, keeps the larger defaults.
       minHeight: {
-        btn: "3rem",
-        tap: "2.75rem",
-        input: "2.75rem",
+        btn: "var(--h-btn, 3rem)",
+        tap: "var(--h-tap, 2.75rem)",
+        input: "var(--h-input, 2.75rem)",
       },
 
       keyframes: {
@@ -331,11 +333,11 @@ module.exports = {
           to: { opacity: "1" },
         },
         "dialog-pop": {
-          from: { opacity: "0", transform: "scale(0.86)" },
-          to: { opacity: "1", transform: "scale(1)" },
+          from: { opacity: "0", transform: "translateY(8px) scale(0.97)" },
+          to: { opacity: "1", transform: "none" },
         },
         "popover-in": {
-          from: { opacity: "0", transform: "translateY(-6px) scale(0.94)" },
+          from: { opacity: "0", transform: "translateY(-4px) scale(0.98)" },
           to: { opacity: "1", transform: "none" },
         },
         "sheet-up": {
@@ -377,8 +379,8 @@ module.exports = {
 
         "glass-rise": "glass-rise var(--dur-reveal) var(--ease-settle) both",
         "glass-fade": "glass-fade var(--dur-quick) var(--ease-settle) both",
-        "dialog-pop": "dialog-pop 460ms var(--ease-spring) both",
-        "popover-in": "popover-in 320ms var(--ease-spring) both",
+        "dialog-pop": "dialog-pop 220ms var(--ease-settle) both",
+        "popover-in": "popover-in 180ms var(--ease-settle) both",
         "sheet-up": "sheet-up var(--dur-reveal) var(--ease-settle) both",
         "toast-in": "toast-in var(--dur-settle) var(--ease-settle) both",
         "skeleton-sheen": "skeleton-sheen 1.6s var(--ease-settle) infinite",

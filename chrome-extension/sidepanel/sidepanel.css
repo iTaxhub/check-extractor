@@ -1318,29 +1318,38 @@ header {
    labels. Glass rules above stay authored (check-parity guards their order);
    the blur token is switched off here instead, so nothing is half-converted.
    ═══════════════════════════════════════════════════════════════════════════ */
+/* Liquid glass (matches the web app's data-skin="glass"): translucent
+   materials with a lit top edge over a soft indigo/emerald wash. */
 :root {
-  --glass-blur: none;
-  --glass-card-bg: var(--surface);
-  --glass-panel-bg: var(--paper);
-  --glass-chrome-bg: var(--paper);
-  --glass-toast-bg: var(--surface);
-  --glass-modal-bg: var(--surface);
-  --glass-border: var(--ledger-border);
-  --glass-hairline: var(--ledger-hair);
-  --shell-bg: var(--ledger-navy);
+  --glass-blur: blur(22px) saturate(180%);
+  --glass-card-bg: rgba(255, 255, 255, 0.66);
+  --glass-panel-bg: rgba(255, 255, 255, 0.5);
+  --glass-chrome-bg: rgba(255, 255, 255, 0.6);
+  --glass-toast-bg: rgba(255, 255, 255, 0.82);
+  --glass-modal-bg: rgba(255, 255, 255, 0.86);
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-hairline: rgba(30, 27, 75, 0.08);
+  --shell-bg: rgba(27, 24, 74, 0.9);
   --shell-bg-fallback: var(--ledger-navy);
-  --shadow-glass: 0 1px 0 var(--ledger-hair);
-  --shadow-glass-panel: none;
-  --shadow-glass-hover: 0 1px 0 var(--ledger-hair);
-  --shadow-brand-glow: none;
-  --radius-input: 6px;
-  --radius-btn: 6px;
-  --radius-pill: 6px;
-  --radius-tile: 8px;
-  --radius-card: 10px;
-  --radius-modal: 12px;
+  --shadow-glass: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 2px rgba(30, 27, 75, 0.05), 0 8px 22px -12px rgba(30, 27, 75, 0.18);
+  --shadow-glass-panel: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --shadow-glass-hover: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 12px 28px -12px rgba(30, 27, 75, 0.24);
+  --shadow-brand-glow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(49, 46, 129, 0.3), 0 6px 14px -6px rgba(79, 70, 229, 0.5);
+  --radius-input: 9px;
+  --radius-btn: 9px;
+  --radius-pill: 9999px;
+  --radius-tile: 12px;
+  --radius-card: 14px;
+  --radius-modal: 18px;
 }
-body { background: var(--paper); font-variant-numeric: tabular-nums; }
+body {
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(99, 102, 241, 0.16), transparent 60%),
+    radial-gradient(90% 50% at 100% 100%, rgba(16, 185, 129, 0.12), transparent 60%),
+    #f3f4fb;
+  background-attachment: fixed;
+  font-variant-numeric: tabular-nums;
+}
 header { box-shadow: none; border-bottom: 0; }
 
 /* Buttons: solid fills, no gradient, no glow. */
@@ -1655,3 +1664,38 @@ header {
 .company-bar-status .usage-meter { order: 3; flex: 1 0 100%; }
 .btn-qb-reconnect { align-self: start; }
 .approve-confirm-detail-val { word-break: normal; overflow-wrap: break-word; text-align: right; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Liquid glass pass — last, so it wins. The main containers become glass over
+   the panel's wash; rows inside them stay unblurred (one blur per surface).
+   ═══════════════════════════════════════════════════════════════════════════ */
+header {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 60%);
+  box-shadow: 0 10px 30px -18px rgba(30, 27, 75, 0.6);
+}
+.match-list, .checks-filter-bar, .empty-state, .upload-zone, .auth-card {
+  background-color: var(--glass-card-bg);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 46%);
+  border-color: var(--glass-border);
+  box-shadow: var(--shadow-glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.match-list { border-radius: var(--radius-card); }
+.checks-filter-bar, .empty-state { border-radius: var(--radius-tile); }
+.upload-zone { border-radius: var(--radius-card); border-style: dashed; border-color: rgba(99, 102, 241, 0.35); }
+.auth-card { border-radius: var(--radius-modal); }
+.match-row { border-color: var(--glass-hairline); }
+.match-row:hover { background-color: rgba(99, 102, 241, 0.05); }
+.btn-sm, .btn-xs { border-radius: var(--radius-btn); }
+.btn-primary, .btn-sync, .btn-qb {
+  background: linear-gradient(180deg, var(--brand) 0%, var(--brand-dark) 100%);
+  box-shadow: var(--shadow-brand-glow);
+}
+.btn-primary:hover, .btn-sync:hover, .btn-qb:hover { background: linear-gradient(180deg, var(--brand-dark) 0%, var(--brand-deep) 100%); }
+.attention-chip { border-radius: var(--radius-pill); padding: 0 10px; }
+.attention-chip .chip-n { border-radius: var(--radius-pill); }
+.form-group input, .form-group select { border-radius: var(--radius-input); background: rgba(255, 255, 255, 0.8); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .match-list, .checks-filter-bar, .empty-state, .upload-zone, .auth-card { background-color: rgba(255, 255, 255, 0.96); }
+}
