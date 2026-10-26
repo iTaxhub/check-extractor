@@ -1,9 +1,11 @@
 import { LegalShell } from '@/components/landing/LegalShell';
+import { pageMetadata } from '@/components/marketing/sectionRoute';
 
-export const metadata = {
-  title: 'Terms of Service | Kyriq',
-  description: 'Terms of Service for Kyriq',
-};
+export const metadata = pageMetadata({
+  title: 'Terms of Service',
+  description: 'The Terms of Service for Kyriq, the check reconciliation service for QuickBooks Online: accounts, billing, acceptable use and liability.',
+  path: '/terms',
+});
 
 export default function TermsOfServicePage() {
   return (

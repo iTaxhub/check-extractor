@@ -24,13 +24,28 @@ const serif = Instrument_Serif({
   display: 'swap',
 })
 
+// Search Console / Bing Webmaster ownership tokens. Set in Vercel; absent locally.
+const GOOGLE_VERIFICATION = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+const BING_VERIFICATION = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+
+// No `alternates.canonical` here on purpose: children inherit root metadata,
+// so a root canonical of '/' would point every page at the homepage. Each
+// public page sets its own.
 export const metadata: Metadata = {
   metadataBase: new URL('https://kyriq.com'),
-  title: 'Kyriq — Check Reconciliation for QuickBooks Online',
-  description: 'See every processed check, approve exact matches together, and review discrepancies before anything is cleared in QuickBooks Online.',
+  title: {
+    default: 'Kyriq — Check Reconciliation for QuickBooks Online',
+    template: '%s | Kyriq',
+  },
+  description: 'Check reconciliation software for QuickBooks Online. Upload a bank statement, match every check, approve exact matches in bulk and clear them in QBO.',
+  applicationName: 'Kyriq',
+  // app/apple-icon.png is the PNG iOS needs; an SVG apple-touch-icon is ignored.
   icons: {
     icon: '/brand/kyriq-app-icon.svg',
-    apple: '/brand/kyriq-app-icon.svg',
+  },
+  verification: {
+    ...(GOOGLE_VERIFICATION ? { google: GOOGLE_VERIFICATION } : {}),
+    ...(BING_VERIFICATION ? { other: { 'msvalidate.01': BING_VERIFICATION } } : {}),
   },
   openGraph: {
     title: 'Kyriq — Check Reconciliation for QuickBooks Online',

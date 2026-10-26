@@ -1,7 +1,15 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isMarketingPath } from '@/lib/marketing/routes';
 
 export async function updateSession(request: NextRequest) {
+  // Marketing and legal pages read no session. Skipping the Supabase auth
+  // round-trip here keeps them fast (TTFB is a ranking signal) and means a
+  // new public page can never be bounced to /login.
+  if (isMarketingPath(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });

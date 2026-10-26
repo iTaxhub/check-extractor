@@ -43,6 +43,8 @@ import { Reveal, useScrollReveals } from './Reveal';
 // numbers. They used to exist only here, which is why the admin console was
 // still quoting DepthMe's consumer prices.
 import { PLANS, INCLUDED_IN_EVERY_PLAN } from '@/lib/pricing';
+// The approved 15 FAQ pairs. Shared with the FAQPage JSON-LD in app/page.tsx.
+import { FAQS } from '@/lib/marketing/faqs';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { BorderBeam } from '@/components/ui/border-beam';
 import { ShimmerButton } from '@/components/ui/shimmer-button';
@@ -58,7 +60,10 @@ import { ShimmerButton } from '@/components/ui/shimmer-button';
 const CTA_LABEL = 'Start Free Trial';
 const CTA_HREF = '/signup';
 /** Chrome Web Store listing. Unset until the extension is published, so the button stays hidden. */
-const EXTENSION_URL = process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL;
+// The published store listing; the env var can still override it.
+const EXTENSION_URL =
+  process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL ||
+  'https://chromewebstore.google.com/detail/apnglhjejjghgmcinkoeganejmkjmkpk';
 const TRIAL_TERMS = '14-day trial or 250 processed checks, whichever comes first · No credit card required';
 const HERO_ASSURANCES = ['No credit card required', 'Setup in minutes', 'Human approval always required'];
 
@@ -81,15 +86,17 @@ function CtaLink({ className, size = 'lg' }: { className?: string; size?: 'md' |
   );
 }
 
+// Root-relative so the same nav works on the SEO pages (app/(marketing)),
+// and real URLs where a page exists, so crawlers can follow them.
 const NAV_LINKS = [
-  { label: 'How It Works', href: '#how' },
-  { label: 'Extension', href: '#extension' },
-  { label: 'Voice', href: '#voice' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'FAQs', href: '#faq' },
+  { label: 'How It Works', href: '/#how' },
+  { label: 'Features', href: '/features' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'Guides', href: '/guides' },
+  { label: 'FAQs', href: '/#faq' },
 ];
 
-function Nav() {
+export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const reduced = useReducedMotion();
@@ -603,7 +610,7 @@ function VoiceSection() {
 
 
 
-function Pricing() {
+export function Pricing() {
   const [annual, setAnnual] = useState(false);
 
   return (
@@ -724,73 +731,6 @@ function Pricing() {
   );
 }
 
-/* =========================================================================
-   FAQ. The 15 pairs are verbatim from the client's approved redesign site
-   (kyriq-website-redesign, Sep 2026). This is customer-facing copy about
-   billing and data handling: change it only with the client's sign-off.
-   ========================================================================= */
-const FAQS: { q: string; a: string }[] = [
-  {
-    q: 'What does Kyriq do?',
-    a: 'Upload the bank statement you already download and Kyriq extracts the checks from it. Kyriq then reads each check, compares every processed check with the corresponding QuickBooks Online transaction, and lets your team approve 100% matches together, review lower-confidence results individually, identify duplicates and discrepancies, and clear approved matches in the QBO reconciliation.',
-  },
-  {
-    q: 'Do I need another program to extract checks from my bank statement?',
-    a: 'No. Upload your downloaded bank statement directly to Kyriq and Kyriq extracts the checks for you. This removes the separate extraction and re-upload steps. You may also upload individual check images when needed.',
-  },
-  {
-    q: 'Does Kyriq display every processed check?',
-    a: 'Yes. Every processed check remains visible. Use the 100% Matches view for exact matches, Needs Attention for results requiring a decision, and All Checks for the complete batch.',
-  },
-  {
-    q: 'How does bulk approval work?',
-    a: 'Kyriq groups checks that match their QuickBooks transactions with 100% confidence. An authorized user can review those checks individually or approve the entire 100% match group at once. Lower-confidence matches and discrepancies remain available for individual review.',
-  },
-  {
-    q: 'Does Kyriq automatically clear checks in QuickBooks?',
-    a: 'Nothing is cleared without user approval. After an authorized user approves a match, Kyriq clears the corresponding transaction in the QuickBooks reconciliation.',
-  },
-  {
-    q: 'Can Kyriq process multiple checks on one page?',
-    a: 'Yes. Kyriq supports PDF, JPG, and PNG files and can identify and process multiple checks appearing on the same uploaded page.',
-  },
-  {
-    q: 'Can Kyriq read handwritten checks?',
-    a: 'Yes. Kyriq can extract information from both typed and handwritten checks. Each result includes a confidence score, and lower-confidence information remains available for your team to review and approve before anything is cleared in QuickBooks.',
-  },
-  {
-    q: 'Is the Kyriq Chrome extension included?',
-    a: 'Yes. The Kyriq Chrome extension and web app are included with every paid plan and during the free trial. No separate extension purchase is required.',
-  },
-  {
-    q: 'What counts toward my monthly check allowance?',
-    a: 'A check counts when it is successfully processed from an upload. If the same check is uploaded and processed again, it counts again. System retries should not create duplicate usage.',
-  },
-  {
-    q: 'What is included in the free trial?',
-    a: 'The trial lasts 14 days or until 250 checks have been processed, whichever comes first. No credit card is required, and you can use the complete reconciliation workflow during the trial.',
-  },
-  {
-    q: 'Are companies and team members limited?',
-    a: 'No. Kyriq plans include unlimited QuickBooks companies and unlimited users. Pricing is based on the number of checks processed.',
-  },
-  {
-    q: 'What happens when I exceed my plan allowance?',
-    a: 'You can continue processing checks. Additional checks are billed automatically at your plan’s stated overage rate, and the included allowance resets at the beginning of each monthly usage cycle.',
-  },
-  {
-    q: 'How do annual plans and cancellations work?',
-    a: 'Annual plans are prepaid 12-month commitments and include the equivalent of one month free. You may cancel automatic renewal at any time, and service continues through the paid-through date. Monthly plans may be canceled at any time.',
-  },
-  {
-    q: 'Which accounting platform does Kyriq support?',
-    a: 'Kyriq currently connects with QuickBooks Online for transaction comparison and reconciliation clearing.',
-  },
-  {
-    q: 'Where can I get help?',
-    a: 'Email Kyriq Support at support@kyriq.com for help with your account, QuickBooks connection, uploads, reconciliation, or billing.',
-  },
-];
 
 function Faq() {
   return (
@@ -864,30 +804,49 @@ function CTASection() {
   );
 }
 
-function Footer() {
+export function Footer() {
+  // Every SEO page is reachable from here, so no page is an orphan.
   const footerCols: Record<string, { label: string; href: string }[]> = {
     Product: [
-      { label: 'How it works', href: '#how' },
-      { label: 'Chrome extension', href: '#extension' },
-      { label: 'Kyriq IQ', href: '#voice' },
-      { label: 'Pricing', href: '#pricing' },
-      { label: 'FAQs', href: '#faq' },
+      { label: 'How it works', href: '/#how' },
+      { label: 'Check reconciliation for QBO', href: '/features/check-reconciliation-quickbooks-online' },
+      { label: 'Handwritten check OCR', href: '/features/handwritten-check-ocr' },
+      { label: 'Bulk check processing', href: '/features/bulk-check-processing' },
+      { label: 'Chrome extension', href: '/features/quickbooks-chrome-extension' },
+      { label: 'Kyriq IQ', href: '/#voice' },
+      { label: 'Pricing', href: '/pricing' },
+    ],
+    'Who it’s for': [
+      { label: 'Accounting firms', href: '/for/accounting-firms' },
+      { label: 'Bookkeepers', href: '/for/bookkeepers' },
+      { label: 'Property management', href: '/for/property-management' },
+      { label: 'Churches and nonprofits', href: '/for/churches-and-nonprofits' },
+      { label: 'Construction', href: '/for/construction' },
+      { label: 'Canada (cheques)', href: '/ca/cheque-reconciliation-quickbooks' },
+      { label: 'United Kingdom (cheques)', href: '/uk/cheque-reconciliation-quickbooks' },
+    ],
+    Resources: [
+      { label: 'QuickBooks guides', href: '/guides' },
+      { label: 'Compare Kyriq', href: '/compare' },
+      { label: 'MICR line decoder', href: '/tools/micr-line-decoder' },
+      { label: 'Outstanding checks template', href: '/tools/outstanding-checks-template' },
+      { label: 'FAQs', href: '/#faq' },
+      { label: 'Support', href: '/support' },
     ],
     Account: [
       { label: CTA_LABEL, href: CTA_HREF },
       { label: 'Sign in', href: '/login' },
       { label: 'support@kyriq.com', href: 'mailto:support@kyriq.com' },
-    ],
-    Legal: [
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
+      { label: 'EULA', href: '/legal/eula' },
     ],
   };
   return (
     <footer className="bg-shell-solid px-6 sm:px-12">
       <div className="max-w-7xl mx-auto pt-16 pb-10">
-        <div className="grid grid-cols-2 md:grid-cols-[260px_1fr_1fr_1fr] gap-8 sm:gap-12 pb-12 border-b border-glass-hairline-dark">
-          <div className="col-span-2 md:col-span-1">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-[240px_1fr_1fr_1fr_1fr] gap-8 sm:gap-10 pb-12 border-b border-glass-hairline-dark">
+          <div className="col-span-2 md:col-span-3 lg:col-span-1">
             <div className="flex items-center gap-2.5 mb-4">
               <KyriqLogo height={36} variant="white" />
             </div>
@@ -897,7 +856,7 @@ function Footer() {
           </div>
           {Object.entries(footerCols).map(([title, links]) => (
             <div key={title}>
-              <h4 className="text-eyebrow text-shell-muted mb-4">{title}</h4>
+              <p className="text-eyebrow text-shell-muted mb-4">{title}</p>
               <div className="space-y-2.5">
                 {links.map((l) => (
                   <a key={l.label} href={l.href} className="block text-[13px] text-shell-muted hover:text-shell-text transition-colors duration-quick">

@@ -16,7 +16,7 @@ import { ArrowLeft } from 'lucide-react';
 import { KyriqLogo } from './KyriqMark';
 
 /** One prose recipe for all three documents. Body text at full strength. */
-const PROSE = [
+export const PROSE = [
   'max-w-none text-[15px] leading-relaxed text-ink-body',
   '[&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-ink-strong [&_h2]:mt-8 [&_h2]:mb-3',
   '[&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-ink-strong [&_h3]:mt-6 [&_h3]:mb-2',

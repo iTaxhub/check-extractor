@@ -1,0 +1,4 @@
+Date,Check number,Payee,Description,Payment (debit),Deposit (credit),Balance,Cleared (C) / Reconciled (R)
+2026-09-01,,Opening balance,,,,10000.00,R
+2026-09-02,1001,Example Supply Co,Invoice 4471,1250.00,,8750.00,
+2026-09-03,,Customer deposit,Check deposit,,2200.00,10950.00,C
