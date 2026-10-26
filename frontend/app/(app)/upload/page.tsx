@@ -401,8 +401,6 @@ function UploadPageInner() {
     const formData = new FormData();
     formData.append('file', file);
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090';
-
     let data: any;
     let isDuplicate = false;
 
@@ -450,33 +448,18 @@ function UploadPageInner() {
           pollJobProgress(data.job_id, entryId);
         }
       } else {
-        throw new Error('analyze endpoint unavailable');
+        const err = await response.json().catch(() => ({} as any));
+        throw new Error(err.error || err.detail || `the server answered ${response.status}`);
       }
     } catch (analyzeErr) {
       if (analyzeErr instanceof ProcessingBlocked || analyzeErr instanceof DuplicateSkipped) {
         throw analyzeErr;
       }
-      setProgressMessages(prev => ({ ...prev, [entryId]: ['Converting PDF to images...'] }));
-
-      const formData2 = new FormData();
-      formData2.append('file', file);
-      const { data: { session: uploadSession } } = await createClient().auth.getSession();
-      const response = await fetch(`${backendUrl}/api/upload-pdf`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${uploadSession?.access_token || ''}` },
-        body: formData2,
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || 'Upload failed');
-      }
-      data = await response.json();
-      isDuplicate = data.duplicate === true;
-
-      // Start polling for progress
-      if (data.job_id || data.id) {
-        pollJobProgress(data.job_id || data.id, entryId);
-      }
+      // There used to be a fallback to /api/upload-pdf here. It created a job with
+      // no firm attached and started OCR before Configure, so the preview polled a
+      // job it could never read and fell back to "1 page" with blank thumbnails.
+      const why = analyzeErr instanceof Error ? analyzeErr.message : 'unknown error';
+      throw new Error(`Couldn't analyse ${file.name} (${why}). Please try again.`);
     }
 
     const jobId = data.job_id || data.id;
@@ -509,8 +492,9 @@ function UploadPageInner() {
         attempts++;
       }
 
-      if (attempts >= maxAttempts) {
-        console.warn('Timeout waiting for Phase 1 completion');
+      if (attempts >= maxAttempts && !(data.total_pages > 0)) {
+        // Never show an invented "1 page" preview: the job is still running server-side.
+        throw new Error(`${file.name} is still being analysed. It will appear in History when ready.`);
       }
     }
 

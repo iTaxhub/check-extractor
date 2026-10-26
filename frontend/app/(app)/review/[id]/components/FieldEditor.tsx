@@ -116,31 +116,25 @@ export default function FieldEditor({ check }: Props) {
       if (fields.check_number !== original.check_number) changed.check_number = fields.check_number;
       if (fields.bank_name !== original.bank_name)       changed.bank_name = fields.bank_name;
 
-      const { error } = await supabase
-        .from('checks')
-        .update({
+      // The update route marks fields manual, writes the audit rows and keeps the
+      // job's checks_data in step, so the dashboard and extension see this edit too.
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/checks/${check.id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({
           payee: fields.payee,
           amount: isNaN(parsedAmount) ? null : parsedAmount,
           // An empty date input is "", which Postgres rejects for a date column.
-          check_date: fields.check_date || null,
-          check_number: fields.check_number,
-          bank_name: fields.bank_name,
-          // Mark as manual edits
-          payee_source: 'manual',
-          amount_source: 'manual',
-          check_date_source: 'manual',
-          check_number_source: 'manual',
-        })
-        .eq('id', check.id);
-
-      if (error) throw error;
-
-      // Create audit log
-      await fetch(`/api/checks/${check.id}/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields }),
+          date: fields.check_date || null,
+          checkNumber: fields.check_number,
+          bankAccount: fields.bank_name,
+        }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || body.details || `Save failed (${res.status})`);
+      }
 
       // Push the diff to QuickBooks (non-blocking — we still show local save success on QB failure)
       if (Object.keys(changed).length > 0) {

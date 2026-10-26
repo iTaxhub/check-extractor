@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, RefreshCw, Eye, Edit2, Save, XCircle } from 'lucide-react';
 import {
   Badge, Button, Dialog, GlassPanel, IconButton, Input, Tabs,
@@ -89,13 +90,25 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
     setIsSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/api/checks/${selectedCheck.check_id}/update`, {
+      // check_0001-style ids live inside the job, so save through the per-job route
+      // (it updates checks_data and the checks table together).
+      const { data: { session } } = await createClient().auth.getSession();
+      const res = await fetch(`/api/jobs/${job.job_id}/checks/${selectedCheck.check_id}/fields`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editedData),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({
+          check_number: editedData.checkNumber,
+          check_date: editedData.checkDate,
+          amount: editedData.amount,
+          payee: editedData.payee,
+          memo: editedData.memo,
+        }),
       });
 
-      if (!res.ok) throw new Error('Failed to save');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to save');
+      }
 
       // Update local check data
       selectedCheck.extraction = { ...selectedCheck.extraction, ...editedData };

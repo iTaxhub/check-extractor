@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { summarizeKinds } from '@/lib/document-kind';
 import StatementPanel from './StatementPanel';
+import { hasExtractedValues } from '@/lib/cheque-values';
 
 type ViewMode = 'card' | 'table';
 
@@ -95,16 +96,18 @@ export default function ProcessingPage() {
   const { currentStage, isComplete, error, jobData, methodsProgress } =
     useCheckProcessing(jobId, selectedMethods);
 
-  // Auto-redirect to review page when extraction completes
+  // Auto-redirect to review page when extraction completes. A bank statement stays
+  // here: the statement check (StatementPanel) only lives on this page.
+  const isStatement = (jobData as any)?.doc_kind === 'bank-statement';
   useEffect(() => {
-    if (isComplete && jobData?.checks && jobData.checks.length > 0) {
+    if (isComplete && !isStatement && jobData?.checks && jobData.checks.length > 0) {
       // Brief flash of completion state, then redirect (500ms - was 2000ms)
       const timer = setTimeout(() => {
         router.push(`/review/${jobId}`);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isComplete, jobData?.checks, jobId, router]);
+  }, [isComplete, isStatement, jobData?.checks, jobId, router]);
 
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -156,13 +159,20 @@ export default function ProcessingPage() {
     setReExtracting(true);
     setReExtractError(null);
     try {
-      const res = await fetch('/api/start-extraction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId, methods: ['ai'], force }),
-      });
-      if (!res.ok) throw new Error('Failed to start re-extraction');
-      window.location.href = `/process/${jobId}?methods=ai`;
+      // Only the empty cheques: the backend's retry-failed decides what "empty" means.
+      // Everything: re-run with the methods this job was started with.
+      const res = force
+        ? await fetch('/api/start-extraction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_id: jobId, methods: selectedMethods, force: true }),
+          })
+        : await fetch(`/api/jobs/${jobId}/retry-failed`, { method: 'POST' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || body.detail || 'Failed to start re-extraction');
+      }
+      window.location.href = `/process/${jobId}?methods=${selectedMethods.join(',')}`;
     } catch (e: any) {
       console.error('Re-extract error:', e);
       setReExtractError(e);
@@ -175,7 +185,7 @@ export default function ProcessingPage() {
   const shownIdx = previewIdx ?? (firstDoneIdx >= 0 ? firstDoneIdx : 0);
   const shown = checks[shownIdx] ?? null;
   const shownExt = shown ? previewExtraction(shown) : null;
-  const missingCount = checks.filter((c: any) => !c.extraction).length;
+  const missingCount = checks.filter((c: any) => !hasExtractedValues(c)).length;
 
   const resetView = () => {
     setImageZoom(1);
