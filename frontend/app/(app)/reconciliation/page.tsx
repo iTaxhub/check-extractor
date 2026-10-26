@@ -163,10 +163,10 @@ function ReconciliationContent() {
       return {
         idx,
         check,
-        checkNumber: extVal(ext, 'checkNumber') || '—',
-        payee: extVal(ext, 'payee') || '—',
-        amount: extVal(ext, 'amount') || '—',
-        date: extVal(ext, 'checkDate') || '—',
+        checkNumber: extVal(ext, 'checkNumber') || '-',
+        payee: extVal(ext, 'payee') || '-',
+        amount: extVal(ext, 'amount') || '-',
+        date: extVal(ext, 'checkDate') || '-',
         status,
         confidence: Math.round(avgConf * 100),
         actionState,
@@ -430,7 +430,7 @@ function ReconciliationContent() {
                           <div key={field}>
                             <p className="text-eyebrow text-ink-faint">{label}</p>
                             <div className="flex items-center justify-between gap-2">
-                              <p className="truncate text-xs font-medium text-ink-strong">{extVal(selectedCheck.extraction, field) || '—'}</p>
+                              <p className="truncate text-xs font-medium text-ink-strong">{extVal(selectedCheck.extraction, field) || '-'}</p>
                               {extConf(selectedCheck.extraction, field) > 0 && (
                                 <span className={`nums shrink-0 text-xs font-semibold ${confColor(extConf(selectedCheck.extraction, field))}`}>
                                   {Math.round(extConf(selectedCheck.extraction, field) * 100)}%
@@ -449,12 +449,12 @@ function ReconciliationContent() {
                       </div>
                       <div className="space-y-2 p-3">
                         {[
-                          { label: 'TxnNumber', value: extVal(selectedCheck.extraction, 'checkNumber') || '—' },
-                          { label: 'TxnDesc', value: extVal(selectedCheck.extraction, 'payee') || '—' },
-                          { label: 'TxnDate', value: extVal(selectedCheck.extraction, 'checkDate') || '—' },
-                          { label: 'Amount', value: extVal(selectedCheck.extraction, 'amount') || '—' },
+                          { label: 'TxnNumber', value: extVal(selectedCheck.extraction, 'checkNumber') || '-' },
+                          { label: 'TxnDesc', value: extVal(selectedCheck.extraction, 'payee') || '-' },
+                          { label: 'TxnDate', value: extVal(selectedCheck.extraction, 'checkDate') || '-' },
+                          { label: 'Amount', value: extVal(selectedCheck.extraction, 'amount') || '-' },
                           { label: 'Account', value: 'Checking' },
-                          { label: 'Memo', value: extVal(selectedCheck.extraction, 'memo') || '—' },
+                          { label: 'Memo', value: extVal(selectedCheck.extraction, 'memo') || '-' },
                         ].map(({ label, value }) => (
                           <div key={label}>
                             <p className="text-eyebrow text-ink-faint">{label}</p>

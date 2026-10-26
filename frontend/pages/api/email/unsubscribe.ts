@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (error) {
     if (isMissingSchema(error)) {
-      console.error('[unsubscribe] email_preferences absent — apply migration 034');
+      console.error('[unsubscribe] email_preferences absent, apply migration 034');
       return respond(
         req,
         res,
@@ -84,8 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res,
     200,
     'You will no longer receive usage and trial updates from Kyriq. ' +
-      'Messages about your account that we have to send — invitations, access changes, ' +
-      'and notices that processing has stopped — will still reach you.'
+      'Messages about your account that we have to send, invitations, access changes, ' +
+      'and notices that processing has stopped, will still reach you.'
   );
 }
 

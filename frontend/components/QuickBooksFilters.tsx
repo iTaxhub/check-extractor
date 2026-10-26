@@ -260,7 +260,7 @@ export default function QuickBooksFilters({ onApplyFilters, isLoading, qbConnect
             </h3>
             <Field
               htmlFor="qbf-vendor"
-              hint={'Partial matches work — "ABC" matches "ABC Company".'}
+              hint={'Partial matches work, "ABC" matches "ABC Company".'}
             >
               <Input
                 id="qbf-vendor"
@@ -289,7 +289,7 @@ export default function QuickBooksFilters({ onApplyFilters, isLoading, qbConnect
                   <option value="">All bank accounts</option>
                   {qbAccounts.map((acc) => (
                     <option key={acc.id} value={acc.name}>
-                      {acc.fullName} ({acc.accountSubType}) — ${acc.currentBalance?.toLocaleString('en-US') ?? '0'}
+                      {acc.fullName} ({acc.accountSubType}), ${acc.currentBalance?.toLocaleString('en-US') ?? '0'}
                     </option>
                   ))}
                 </Select>

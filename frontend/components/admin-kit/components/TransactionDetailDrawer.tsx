@@ -36,7 +36,7 @@ export function failureReason(c: ChargeLike): string | null {
 
 function emailOf(c: ChargeLike): string {
   const exp = typeof c.customer === "object" && c.customer !== null ? c.customer.email : null;
-  return exp || c.receipt_email || c.billing_details?.email || "—";
+  return exp || c.receipt_email || c.billing_details?.email || "-";
 }
 
 const statusStyle: Record<string, string> = {

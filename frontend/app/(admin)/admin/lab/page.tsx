@@ -166,7 +166,7 @@ export default function OcrLabPage() {
                   <dt className="text-ink-faint">Time</dt>
                   <dd className="text-right nums text-ink-strong">{(r.latency_ms / 1000).toFixed(1)}s</dd>
                   <dt className="text-ink-faint">Cost</dt>
-                  <dd className="text-right nums text-ink-strong">{r.cost_usd == null ? '—' : `$${r.cost_usd.toFixed(3)}`}</dd>
+                  <dd className="text-right nums text-ink-strong">{r.cost_usd == null ? '-' : `$${r.cost_usd.toFixed(3)}`}</dd>
                   {r.summary &&
                     Object.entries(r.summary).map(([k, v]) => (
                       <SummaryRow key={k} label={k.replace(/_/g, ' ')} value={v} />
@@ -240,7 +240,7 @@ function CheckTable({ data, name }: { data: LabResponse; name: (id: string) => s
                 const differs = r.engine !== 'gemini' && norm(v) !== norm(base[f]);
                 return (
                   <td key={r.engine} className={cn('py-2 pr-4 text-ink-strong', differs && 'bg-warning-bg')}>
-                    {v == null || v === '' ? <span className="text-ink-faint">—</span> : String(v)}
+                    {v == null || v === '' ? <span className="text-ink-faint">-</span> : String(v)}
                   </td>
                 );
               })}
@@ -273,7 +273,7 @@ function StatementTables({ data, name }: { data: LabResponse; name: (id: string)
               <tbody>
                 {(r.fields!.transactions as any[]).slice(0, 300).map((t, i) => (
                   <tr key={i} className="border-t border-glass-hairline">
-                    <td className="py-1.5 pr-3 whitespace-nowrap">{t.date ?? '—'}</td>
+                    <td className="py-1.5 pr-3 whitespace-nowrap">{t.date ?? '-'}</td>
                     <td className="py-1.5 pr-3">{t.description ?? ''}</td>
                     <td className="py-1.5 pr-3 nums">{t.check_number ?? ''}</td>
                     <td className="py-1.5 pr-3 text-right nums">{t.amount ?? ''}</td>

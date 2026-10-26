@@ -37,6 +37,7 @@
  * from the database rather than from whether anyone kept the server logs.
  */
 import { createServiceClient } from '@/lib/supabase/api';
+import { spellingFor, type Spelling } from '@/lib/spelling';
 import {
   REPLY_TO,
   SENDER,
@@ -235,6 +236,21 @@ async function logAttempt(row: {
   }
 }
 
+/** "cheque" for firms whose active QuickBooks company is Canadian or UK. Any failure (no row, migration 051 not applied) reads as "check". */
+async function tenantSpelling(tenantId: string, db?: any): Promise<Spelling> {
+  try {
+    const { data } = await (db ?? createServiceClient())
+      .from('qb_connections')
+      .select('country')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .maybeSingle();
+    return spellingFor(data?.country);
+  } catch {
+    return 'check';
+  }
+}
+
 /* ───────────────────────────── the transport ───────────────────────────── */
 
 /**
@@ -308,7 +324,8 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendResult> {
 
   let rendered;
   try {
-    rendered = renderTemplate(template, vars, { unsubscribeUrl: unsubUrl });
+    const spelling = tenantId ? await tenantSpelling(tenantId, args.db) : 'check';
+    rendered = renderTemplate(template, vars, { unsubscribeUrl: unsubUrl, spelling });
   } catch (err: any) {
     const reason = err?.message || 'Render failed';
     await logAttempt({

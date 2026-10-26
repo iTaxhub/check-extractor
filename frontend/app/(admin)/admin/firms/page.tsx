@@ -83,10 +83,10 @@ interface Sources {
 }
 
 const dash = (v: unknown) =>
-  v === null || v === undefined || v === '' ? <span className="text-ink-faint">&mdash;</span> : String(v);
+  v === null || v === undefined || v === '' ? <span className="text-ink-faint">-</span> : String(v);
 
 const date = (v: string | null) =>
-  v ? new Date(v).toLocaleDateString() : <span className="text-ink-faint">&mdash;</span>;
+  v ? new Date(v).toLocaleDateString() : <span className="text-ink-faint">-</span>;
 
 function tone(status: string | null) {
   const s = (status || '').toLowerCase();
@@ -253,9 +253,9 @@ export default function AdminFirmsPage() {
               <p className="text-ink-body">
                 Those columns read blank. Trial, usage and comp data come from migrations
                 026&ndash;029 (<code className="text-xs">tenant_usage_state()</code>,{' '}
-                <code className="text-xs">comp_grants</code>). The Stripe fields &mdash; billing
+                <code className="text-xs">comp_grants</code>). The Stripe fields, billing
                 frequency, payment status, paid-through date, cancellation and the Stripe ids
-                &mdash; have no column anywhere yet. Fill in{' '}
+                have no column anywhere yet. Fill in{' '}
                 <code className="text-xs">STRIPE_FIELDS</code> in{' '}
                 <code className="text-xs">lib/admin/billing-data.ts</code> when the Stripe parcel
                 adds them; that is the only place to change.
@@ -553,7 +553,7 @@ export default function AdminFirmsPage() {
               id="comp-reason"
               value={compReason}
               onChange={(e) => setCompReason(e.target.value)}
-              placeholder="Pilot firm — agreed with Michael"
+              placeholder="Pilot firm, agreed with Michael"
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">

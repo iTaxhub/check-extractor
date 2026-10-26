@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
           Forgot password?
         </h1>
         <p className="mt-1.5 text-sm text-ink-body">
-          No problem — we&apos;ll send you reset instructions.
+          No problem, we&apos;ll send you reset instructions.
         </p>
       </div>
 

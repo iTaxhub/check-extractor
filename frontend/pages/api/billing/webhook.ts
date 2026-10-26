@@ -84,7 +84,7 @@ async function applySubscription(tenantId: string, subscription: any, envName: '
   if (!resolved || resolved.kind === 'overage') {
     throw new Error(
       `Subscription ${subscription?.id}: base price ${idOf(base?.price) || '(none)'} does not match any ` +
-        `${envName} plan price id. Refusing to guess a plan — check the STRIPE_PRICE_${envName.toUpperCase()}_* variables.`
+        `${envName} plan price id. Refusing to guess a plan, check the STRIPE_PRICE_${envName.toUpperCase()}_* variables.`
     );
   }
 

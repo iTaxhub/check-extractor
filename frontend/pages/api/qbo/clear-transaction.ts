@@ -67,21 +67,21 @@ function buildKyriqNote(entity: any, entry: any, checkData: CheckData | null): s
   const amount  = entity.TotalAmt           ?? entry.amount       ?? checkData?.amount;
   const acct    = entity.AccountRef?.name   || entry.account;
 
-  if (docNum)        noteFields.push(['Check #',  String(docNum)]);
-  if (txnDate)       noteFields.push(['Date',     txnDate]);
-  if (payee)         noteFields.push(['Payee',    payee]);
-  if (amount != null) noteFields.push(['Amount',  `$${parseFloat(String(amount)).toFixed(2)}`]);
-  if (acct)          noteFields.push(['Account',  acct]);
+  if (docNum)        noteFields.push(['Check #', String(docNum)]);
+  if (txnDate)       noteFields.push(['Date',    txnDate]);
+  if (payee)         noteFields.push(['Payee',   payee]);
+  if (amount != null) noteFields.push(['Amount', `$${parseFloat(String(amount)).toFixed(2)}`]);
+  if (acct)          noteFields.push(['Account', acct]);
 
   const bankName = safeField(checkData?.bank_name);
   const routingNum = safeField(checkData?.routing_number);
   const acctNum = safeField(checkData?.account_number);
   const memo = safeField(checkData?.memo);
 
-  if (bankName)    noteFields.push(['Bank',    bankName]);
+  if (bankName)    noteFields.push(['Bank',   bankName]);
   if (routingNum)  noteFields.push(['Routing', routingNum]);
-  if (acctNum)     noteFields.push(['Acct #',  acctNum.length > 4 ? `****${acctNum.slice(-4)}` : acctNum]);
-  if (memo)        noteFields.push(['Memo',    memo]);
+  if (acctNum)     noteFields.push(['Acct #', acctNum.length > 4 ? `****${acctNum.slice(-4)}` : acctNum]);
+  if (memo)        noteFields.push(['Memo',   memo]);
 
   const kyriqBlock = [
     `[Kyriq] Verified & Cleared: ${today}`,
@@ -178,7 +178,7 @@ export async function clearQBTransactionServer(
   }
 
   if (entry.qb_type === 'FileImport') {
-    return { cleared: false, status: 'skipped', warning: 'File import entry — approval saved in Kyriq. No QB Online record to update.' };
+    return { cleared: false, status: 'skipped', warning: 'File import entry, approval saved in Kyriq. No QB Online record to update.' };
   }
 
   // One resolver (lib/qb-token.ts). Deliberate difference kept: a failed

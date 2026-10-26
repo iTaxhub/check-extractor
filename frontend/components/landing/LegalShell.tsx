@@ -11,8 +11,11 @@
  * Long documents, so the page itself scrolls — nothing here is a scroll
  * container, which keeps one scrollbar per page.
  */
+import { cloneElement, isValidElement } from 'react';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { spell, spellingFor, type Spelling } from '@/lib/spelling';
 import { KyriqLogo } from './KyriqMark';
 
 /** One prose recipe for all three documents. Body text at full strength. */
@@ -30,7 +33,17 @@ export const PROSE = [
   '[&_section]:mb-2',
 ].join(' ');
 
-export function LegalShell({
+/** Rewrites every text node in a static JSX tree to one spelling. */
+function respell(node: React.ReactNode, to: Spelling): React.ReactNode {
+  if (typeof node === 'string') return spell(node, to);
+  if (Array.isArray(node)) return node.map((n) => respell(n, to));
+  if (isValidElement<{ children?: React.ReactNode }>(node) && node.props.children !== undefined) {
+    return cloneElement(node, undefined, respell(node.props.children, to));
+  }
+  return node;
+}
+
+export async function LegalShell({
   title,
   updated,
   children,
@@ -39,6 +52,10 @@ export function LegalShell({
   updated: string;
   children: React.ReactNode;
 }) {
+  // Vercel's geo header: "cheque" for Canada, the UK and other Commonwealth
+  // visitors, "check" for everyone else (and for crawlers, which arrive from the US).
+  const spelling = spellingFor((await headers()).get('x-vercel-ip-country'));
+  children = respell(children, spelling);
   return (
     <div className="min-h-screen">
       <nav className="glass-chrome border-b px-6 py-4">

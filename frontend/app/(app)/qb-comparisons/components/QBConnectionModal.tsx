@@ -140,7 +140,7 @@ export const QBConnectionModal: React.FC<QBConnectionModalProps> = ({
         }
       } catch (error) {
         console.error('Upload failed:', error);
-        setUploadResult({ success: false, message: 'Upload failed — check console for details' });
+        setUploadResult({ success: false, message: 'Upload failed, check console for details' });
       }
     } else if (source === 'api') {
       onConnect({ source, columnMapping, apiEndpoint, apiKey });
@@ -168,7 +168,7 @@ export const QBConnectionModal: React.FC<QBConnectionModalProps> = ({
             loading={uploading}
             disabled={source === 'file' && !file}
           >
-            {uploading ? 'Importing…' : uploadResult?.success ? 'Done — Close' : 'Connect & Import'}
+            {uploading ? 'Importing…' : uploadResult?.success ? 'Done, Close' : 'Connect & Import'}
           </Button>
         </>
       }
@@ -217,13 +217,13 @@ export const QBConnectionModal: React.FC<QBConnectionModalProps> = ({
                 {file ? file.name : 'Drop a file here or click to browse'}
               </p>
               <p className="mt-1 text-xs text-ink-faint">
-                Supports <strong>.qbo</strong>, <strong>.ofx</strong>, <strong>.qfx</strong>, .csv, .xlsx
+                Supports <strong>.qbo</strong>-<strong>.ofx</strong>-<strong>.qfx</strong>, .csv, .xlsx
               </p>
             </div>
 
             {file && isQBOFile(file.name) && (
               <GlassPanel tone="plain" radius="input" padding="sm" className="mt-3 text-xs text-ink-body">
-                <strong className="text-ink-strong">QBO/OFX file detected</strong> — it will be
+                <strong className="text-ink-strong">QBO/OFX file detected</strong>, it will be
                 parsed automatically for cheque transactions. No column mapping needed.
               </GlassPanel>
             )}
@@ -247,7 +247,7 @@ export const QBConnectionModal: React.FC<QBConnectionModalProps> = ({
                     <Table className="text-xs [&_td]:py-1.5">
                       {/* Plain <thead>, not the `Thead` primitive: `Thead`
                           carries .glass-chrome and this table is already
-                          inside the blurred modal (rule 2 — never nest two
+                          inside the blurred modal (rule 2, never nest two
                           blurred surfaces). The <th> cells stay the one
                           shared `Th` recipe. */}
                       <thead className="sticky top-0 z-10 bg-surface/95">
@@ -262,13 +262,13 @@ export const QBConnectionModal: React.FC<QBConnectionModalProps> = ({
                       <Tbody>
                         {previewData.map((entry, idx) => (
                           <Tr key={idx}>
-                            <Td className="nums font-medium">{entry.checkNumber || '—'}</Td>
-                            <Td muted className="nums">{entry.date || '—'}</Td>
+                            <Td className="nums font-medium">{entry.checkNumber || '-'}</Td>
+                            <Td muted className="nums">{entry.date || '-'}</Td>
                             <Td className="nums-money font-semibold text-success-text">
                               ${Math.abs(parseFloat(entry.amount) || 0).toFixed(2)}
                             </Td>
-                            <Td>{entry.payee || '—'}</Td>
-                            <Td muted className="max-w-[150px] truncate">{entry.memo || '—'}</Td>
+                            <Td>{entry.payee || '-'}</Td>
+                            <Td muted className="max-w-[150px] truncate">{entry.memo || '-'}</Td>
                           </Tr>
                         ))}
                       </Tbody>

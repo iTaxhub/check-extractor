@@ -170,14 +170,14 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
     if (!row) return;
     setFixMessage(null);
     if (correctionCount === 0) {
-      setFixMessage({ type: 'info', text: 'Nothing to fix — extraction and QuickBooks values already match.' });
+      setFixMessage({ type: 'info', text: 'Nothing to fix, extraction and QuickBooks values already match.' });
       return;
     }
     setIsFixing(true);
     try {
       const result = await applyFixToQB(row);
       if (result.skipped) {
-        setFixMessage({ type: 'info', text: result.reason || 'Skipped — no changes' });
+        setFixMessage({ type: 'info', text: result.reason || 'Skipped, no changes' });
       } else if (result.ok) {
         const parts = Object.entries(result.fields || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
         setFixMessage({ type: 'success', text: `Fixed in QuickBooks ✓ ${parts ? `(${parts})` : ''}` });
@@ -248,7 +248,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
       onClose={onClose}
       size="full"
       title={`Check #${row.checkNumber || 'N/A'}`}
-      description={isEditing ? 'Edit mode — correct the extraction data' : 'Detailed comparison view'}
+      description={isEditing ? 'Edit mode, correct the extraction data' : 'Detailed comparison view'}
       className="max-h-[92vh] overflow-hidden"
       footer={
         row.extractionData && (onApprove || onReject) ? (
@@ -299,7 +299,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                   loading={isApproving}
                   icon={<CheckCircle2 size={16} />}
                   disabled={isRejecting || approveSuccess}
-                  title={row.qbData ? 'Approve and stamp Cleared note in QuickBooks' : 'Approve in Kyriq only — no QB transaction linked'}
+                  title={row.qbData ? 'Approve and stamp Cleared note in QuickBooks' : 'Approve in Kyriq only, no QB transaction linked'}
                 >
                   {isApproving
                     ? 'Approving…'
@@ -438,8 +438,8 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                 <Tbody>
                   <Tr>
                     <Td className="font-semibold text-ink-body">Check Number</Td>
-                    <Td className="nums">{ext?.checkNumber || row.checkNumber || '—'}</Td>
-                    <Td className="nums">{row.qbData?.checkNumber || '—'}</Td>
+                    <Td className="nums">{ext?.checkNumber || row.checkNumber || '-'}</Td>
+                    <Td className="nums">{row.qbData?.checkNumber || '-'}</Td>
                     <Td className="text-center">
                       {ext && row.qbData &&
                       (normalizeCheckNum(row.checkNumber) || row.checkNumber?.trim()) ===
@@ -450,8 +450,8 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                   </Tr>
                   <Tr>
                     <Td className="font-semibold text-ink-body">Date</Td>
-                    <Td muted className="nums">{ext && row.date ? formatDate(row.date) : '—'}</Td>
-                    <Td muted className="nums">{row.qbData?.date ? formatDate(row.qbData.date) : '—'}</Td>
+                    <Td muted className="nums">{ext && row.date ? formatDate(row.date) : '-'}</Td>
+                    <Td muted className="nums">{row.qbData?.date ? formatDate(row.qbData.date) : '-'}</Td>
                     <Td className="text-center">
                       {ext && row.qbData && areDatesSameCalendarDay(row.date, row.qbData.date)
                         ? <Match />
@@ -461,10 +461,10 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                   <Tr>
                     <Td className="font-semibold text-ink-body">Amount</Td>
                     <Td className="nums-money font-semibold text-success-text">
-                      {ext && row.amount ? formatCurrency(row.amount) : '—'}
+                      {ext && row.amount ? formatCurrency(row.amount) : '-'}
                     </Td>
                     <Td className="nums-money font-semibold text-success-text">
-                      {row.qbData?.amount ? formatCurrency(row.qbData.amount) : '—'}
+                      {row.qbData?.amount ? formatCurrency(row.qbData.amount) : '-'}
                     </Td>
                     <Td className="text-center">
                       {ext && row.qbData ? (
@@ -475,13 +475,13 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                             Δ {formatCurrency(Math.abs(parseAmount(row.amount) - parseAmount(row.qbData.amount)))}
                           </span>
                         )
-                      ) : '—'}
+                      ) : '-'}
                     </Td>
                   </Tr>
                   <Tr>
                     <Td className="font-semibold text-ink-body">Payee</Td>
-                    <Td>{ext ? row.payee || '—' : '—'}</Td>
-                    <Td>{row.qbData?.payee || '—'}</Td>
+                    <Td>{ext ? row.payee || '-' : '-'}</Td>
+                    <Td>{row.qbData?.payee || '-'}</Td>
                     <Td className="text-center">
                       {ext && row.qbData && row.payee?.toLowerCase() === row.qbData.payee?.toLowerCase()
                         ? <Match />
@@ -490,22 +490,22 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                   </Tr>
                   <Tr>
                     <Td className="font-semibold text-ink-body">Bank/Account</Td>
-                    <Td muted>{ext ? row.bankAccount || '—' : '—'}</Td>
-                    <Td muted>{row.qbData?.account || '—'}</Td>
-                    <Td className="text-center">—</Td>
+                    <Td muted>{ext ? row.bankAccount || '-' : '-'}</Td>
+                    <Td muted>{row.qbData?.account || '-'}</Td>
+                    <Td className="text-center">-</Td>
                   </Tr>
                   <Tr>
                     <Td className="font-semibold text-ink-body">Memo</Td>
-                    <Td muted>{ext ? row.memo || '—' : '—'}</Td>
-                    <Td muted>{row.qbData?.memo || '—'}</Td>
-                    <Td className="text-center">—</Td>
+                    <Td muted>{ext ? row.memo || '-' : '-'}</Td>
+                    <Td muted>{row.qbData?.memo || '-'}</Td>
+                    <Td className="text-center">-</Td>
                   </Tr>
                   {row.qbData?.qbSource && (
                     <Tr state="none">
                       <Td className="font-semibold text-ink-body">QB Source</Td>
-                      <Td muted>—</Td>
+                      <Td muted>-</Td>
                       <Td className="font-semibold text-brand-deep">{row.qbData.qbSource}</Td>
-                      <Td className="text-center">—</Td>
+                      <Td className="text-center">-</Td>
                     </Tr>
                   )}
                 </Tbody>
@@ -532,45 +532,45 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                   <Tbody>
                     <Tr>
                       <Td className="font-semibold text-ink-body">Check Number</Td>
-                      <Td className="nums">{extField('checkNumber') || '—'}</Td>
-                      <Td className="nums">{ext.checkNumber || '—'}</Td>
-                      <Td muted>—</Td>
+                      <Td className="nums">{extField('checkNumber') || '-'}</Td>
+                      <Td className="nums">{ext.checkNumber || '-'}</Td>
+                      <Td muted>-</Td>
                     </Tr>
                     <Tr>
                       <Td className="font-semibold text-ink-body">Date</Td>
                       <Td muted className="nums">
-                        {extField('checkDate') ? formatDate(extField('checkDate')) : '—'}
+                        {extField('checkDate') ? formatDate(extField('checkDate')) : '-'}
                       </Td>
-                      <Td muted className="nums">{row.date ? formatDate(row.date) : '—'}</Td>
-                      <Td muted>—</Td>
+                      <Td muted className="nums">{row.date ? formatDate(row.date) : '-'}</Td>
+                      <Td muted>-</Td>
                     </Tr>
                     <Tr>
                       <Td className="font-semibold text-ink-body">Amount</Td>
                       <Td className="nums-money font-semibold text-success-text">
-                        {extField('amount') ? formatCurrency(extField('amount')) : '—'}
+                        {extField('amount') ? formatCurrency(extField('amount')) : '-'}
                       </Td>
                       <Td className="nums-money font-semibold text-success-text">
-                        {row.amount ? formatCurrency(row.amount) : '—'}
+                        {row.amount ? formatCurrency(row.amount) : '-'}
                       </Td>
-                      <Td muted>—</Td>
+                      <Td muted>-</Td>
                     </Tr>
                     <Tr>
                       <Td className="font-semibold text-ink-body">Payee</Td>
-                      <Td>{extField('payee') || '—'}</Td>
-                      <Td>{row.payee || '—'}</Td>
-                      <Td muted>—</Td>
+                      <Td>{extField('payee') || '-'}</Td>
+                      <Td>{row.payee || '-'}</Td>
+                      <Td muted>-</Td>
                     </Tr>
                     <Tr>
                       <Td className="font-semibold text-ink-body">Bank</Td>
-                      <Td muted>{extField('bankName') || '—'}</Td>
-                      <Td muted>{row.bankAccount || '—'}</Td>
-                      <Td muted>—</Td>
+                      <Td muted>{extField('bankName') || '-'}</Td>
+                      <Td muted>{row.bankAccount || '-'}</Td>
+                      <Td muted>-</Td>
                     </Tr>
                     <Tr>
                       <Td className="font-semibold text-ink-body">Memo</Td>
-                      <Td muted>{extField('memo') || '—'}</Td>
-                      <Td muted>{row.memo || '—'}</Td>
-                      <Td muted>—</Td>
+                      <Td muted>{extField('memo') || '-'}</Td>
+                      <Td muted>{row.memo || '-'}</Td>
+                      <Td muted>-</Td>
                     </Tr>
                   </Tbody>
                 </Table>
@@ -593,7 +593,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                 <FieldRow
                   editing={isEditing}
                   label="Check Number:"
-                  value={row.checkNumber || '—'}
+                  value={row.checkNumber || '-'}
                   editor={
                     <Input
                       inputSize="sm"
@@ -607,7 +607,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                 <FieldRow
                   editing={isEditing}
                   label="Date:"
-                  value={row.date ? formatDate(row.date) : '—'}
+                  value={row.date ? formatDate(row.date) : '-'}
                   editor={
                     <Input
                       inputSize="sm"
@@ -624,7 +624,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                   label="Amount:"
                   value={
                     <span className="nums text-success-text">
-                      {row.amount ? formatCurrency(row.amount) : '—'}
+                      {row.amount ? formatCurrency(row.amount) : '-'}
                     </span>
                   }
                   editor={
@@ -642,7 +642,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                 <FieldRow
                   editing={isEditing}
                   label="Payee:"
-                  value={row.payee || '—'}
+                  value={row.payee || '-'}
                   editor={
                     <Input
                       inputSize="sm"
@@ -656,7 +656,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                 <FieldRow
                   editing={isEditing}
                   label="Bank:"
-                  value={row.bankAccount || '—'}
+                  value={row.bankAccount || '-'}
                   editor={
                     <Input
                       inputSize="sm"
@@ -670,7 +670,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
                 <FieldRow
                   editing={isEditing}
                   label="Memo:"
-                  value={row.memo || '—'}
+                  value={row.memo || '-'}
                   editor={
                     <Textarea
                       inputSize="sm"
@@ -698,20 +698,20 @@ export const DetailModal: React.FC<DetailModalProps> = ({ row, onClose, onSave, 
             {row.qbData ? (
               <GlassPanel radius="card" className="space-y-3">
                 <FieldRow editing={isEditing} label="QB Source:" value={row.qbData.qbSource || 'Default'} />
-                <FieldRow editing={isEditing} label="Check Number:" value={row.qbData.checkNumber || '—'} />
-                <FieldRow editing={isEditing} label="Date:" value={row.qbData.date ? formatDate(row.qbData.date) : '—'} />
+                <FieldRow editing={isEditing} label="Check Number:" value={row.qbData.checkNumber || '-'} />
+                <FieldRow editing={isEditing} label="Date:" value={row.qbData.date ? formatDate(row.qbData.date) : '-'} />
                 <FieldRow
                   editing={isEditing}
                   label="Amount:"
                   value={
                     <span className="nums text-success-text">
-                      {row.qbData.amount ? formatCurrency(row.qbData.amount) : '—'}
+                      {row.qbData.amount ? formatCurrency(row.qbData.amount) : '-'}
                     </span>
                   }
                 />
-                <FieldRow editing={isEditing} label="Payee:" value={row.qbData.payee || '—'} />
-                <FieldRow editing={isEditing} label="Account:" value={row.qbData.account || '—'} />
-                <FieldRow editing={isEditing} label="Memo:" value={row.qbData.memo || '—'} />
+                <FieldRow editing={isEditing} label="Payee:" value={row.qbData.payee || '-'} />
+                <FieldRow editing={isEditing} label="Account:" value={row.qbData.account || '-'} />
+                <FieldRow editing={isEditing} label="Memo:" value={row.qbData.memo || '-'} />
               </GlassPanel>
             ) : (
               <GlassPanel tone="plain" radius="card" className="text-sm text-ink-faint">

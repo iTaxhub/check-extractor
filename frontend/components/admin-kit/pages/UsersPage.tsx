@@ -99,10 +99,10 @@ const GRANT_OPTIONS: { value: GrantDuration; label: string }[] = [
 ];
 
 const GOAL_LABEL: Record<string, { label: string; color: string }> = {
-  manage_emotions:   { label: 'Emotions',  color: 'border-error-border bg-error-bg text-error-text' },
-  connect_to_source: { label: 'Source',    color: 'border-brand/30 bg-brand/10 text-brand' },
+  manage_emotions:   { label: 'Emotions', color: 'border-error-border bg-error-bg text-error-text' },
+  connect_to_source: { label: 'Source',   color: 'border-brand/30 bg-brand/10 text-brand' },
   attract_abundance: { label: 'Abundance', color: 'border-warning-border bg-warning-bg text-warning-text' },
-  all_of_the_above:  { label: 'All',       color: 'border-success-border bg-success-bg text-success-text' },
+  all_of_the_above:  { label: 'All',      color: 'border-success-border bg-success-bg text-success-text' },
 };
 
 // Best-effort country code → flag emoji conversion (ISO-2 → regional indicator pair)
@@ -183,7 +183,7 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
       enableSorting: true,
       cell: ({ row }) => {
         const meta = row.original.goal_id ? GOAL_LABEL[row.original.goal_id] : null;
-        if (!meta) return <span className="text-ink-faint text-xs">—</span>;
+        if (!meta) return <span className="text-ink-faint text-xs">-</span>;
         return (
           <Badge variant="outline" className={cn("text-[11px]", meta.color)}>
             {meta.label}
@@ -210,7 +210,7 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
         if (s === 'failed') {
           return <span className="inline-flex items-center gap-1 text-error-text text-xs"><Mic size={11} /> Failed</span>;
         }
-        return <span className="text-ink-faint text-xs">—</span>;
+        return <span className="text-ink-faint text-xs">-</span>;
       },
     },
     {
@@ -219,7 +219,7 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
       enableSorting: true,
       cell: ({ row }) => {
         const cc = row.original.country_code;
-        if (!cc) return <span className="text-ink-faint text-xs">—</span>;
+        if (!cc) return <span className="text-ink-faint text-xs">-</span>;
         return (
           <span className="text-xs text-ink-body tabular-nums">
             <span className="mr-1">{flagEmoji(cc)}</span>{cc.toUpperCase()}
@@ -263,7 +263,7 @@ function buildColumns(opts: ColumnOpts): ColumnDef<User, unknown>[] {
       enableSorting: true,
       cell: ({ row }) => (
         <span className="text-xs text-ink-soft">
-          {row.original.last_active_at ? formatRelative(row.original.last_active_at) : "—"}
+          {row.original.last_active_at ? formatRelative(row.original.last_active_at) : "-"}
         </span>
       ),
     },
@@ -535,7 +535,7 @@ export default function UsersPage() {
       });
 
       if (selected.length === 0) {
-        toast.error("No users match that selection — nothing to export");
+        toast.error("No users match that selection, nothing to export");
         return;
       }
 
@@ -597,22 +597,22 @@ export default function UsersPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiTile
           label="Total Users"
-          value={metrics ? formatNumber(metrics.totalUsers) : "—"}
+          value={metrics ? formatNumber(metrics.totalUsers) : "-"}
           loading={metricsLoading}
         />
         <KpiTile
           label="Paying firms"
-          value={metrics ? formatNumber(metrics.paidCustomers ?? 0) : "—"}
+          value={metrics ? formatNumber(metrics.paidCustomers ?? 0) : "-"}
           loading={metricsLoading}
         />
         <KpiTile
           label="Comped firms"
-          value={metrics ? formatNumber(metrics.grantedUsers ?? 0) : "—"}
+          value={metrics ? formatNumber(metrics.grantedUsers ?? 0) : "-"}
           loading={metricsLoading}
         />
         <KpiTile
           label="Active in Period"
-          value={metrics ? formatNumber(metrics.activeUsers) : "—"}
+          value={metrics ? formatNumber(metrics.activeUsers) : "-"}
           loading={metricsLoading}
         />
       </div>

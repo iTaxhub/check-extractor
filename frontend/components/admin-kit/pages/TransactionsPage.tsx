@@ -44,11 +44,11 @@ interface StripeChargesResponse {
 /* ─── Helpers ─── */
 function getEmail(c: StripeCharge): string {
   const expanded = typeof c.customer === "object" && c.customer !== null ? c.customer.email : null;
-  return expanded ?? c.receipt_email ?? c.billing_details?.email ?? "—";
+  return expanded ?? c.receipt_email ?? c.billing_details?.email ?? "-";
 }
 
 function getInitials(email: string) {
-  if (email === "—") return "?";
+  if (email === "-") return "?";
   return email.slice(0, 2).toUpperCase();
 }
 
@@ -124,7 +124,7 @@ export default function TransactionsPage() {
       <div className="flex items-start justify-between gap-4">
         <PageHeader
           title="Transactions"
-          description="All Stripe charges — search, filter, and export"
+          description="All Stripe charges, search, filter, and export"
         />
         <button
           onClick={() => exportCsv(filtered)}
@@ -139,10 +139,10 @@ export default function TransactionsPage() {
       {/* Summary strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Charges", value: query.data ? String(charges.length) : "—" },
-          { label: "Succeeded", value: query.data ? String(charges.filter((c) => c.status === "succeeded" && !c.refunded).length) : "—" },
-          { label: "Total Collected", value: query.data ? formatCurrency(succeededTotal) : "—" },
-          { label: "Refunded / Failed", value: query.data ? String(charges.filter((c) => c.refunded || c.status === "failed").length) : "—" },
+          { label: "Total Charges", value: query.data ? String(charges.length) : "-" },
+          { label: "Succeeded", value: query.data ? String(charges.filter((c) => c.status === "succeeded" && !c.refunded).length) : "-" },
+          { label: "Total Collected", value: query.data ? formatCurrency(succeededTotal) : "-" },
+          { label: "Refunded / Failed", value: query.data ? String(charges.filter((c) => c.refunded || c.status === "failed").length) : "-" },
         ].map(({ label, value }) => (
           <div key={label} className="rounded-2xl border border-glass-hairline bg-surface p-4">
             <p className="text-xs text-ink-soft uppercase tracking-wider mb-1">{label}</p>
@@ -290,7 +290,7 @@ export default function TransactionsPage() {
               Showing {filtered.length} of {charges.length} charges
             </p>
             {query.data?.has_more && (
-              <p className="text-xs text-warning-text/70">More charges exist in Stripe — increase the limit to see all</p>
+              <p className="text-xs text-warning-text/70">More charges exist in Stripe, increase the limit to see all</p>
             )}
           </div>
         )}

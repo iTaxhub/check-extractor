@@ -36,16 +36,16 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ row, dateFormat, o
   const off = p.difference !== null && Math.abs(p.difference) >= 0.005;
   const ext = row.extractionData;
   const qb = row.qbData;
-  const fmtDate = (d?: string) => (d ? formatDate(d, dateFormat) : '—');
+  const fmtDate = (d?: string) => (d ? formatDate(d, dateFormat) : '-');
 
   const pairs: { label: string; cheque: string; qb: string; money?: boolean; bad?: boolean }[] = [
-    { label: 'Cheque no.', cheque: ext ? row.checkNumber || '—' : '—', qb: qb?.checkNumber || '—' },
-    { label: 'Date', cheque: ext ? fmtDate(row.date) : '—', qb: fmtDate(qb?.date) },
-    { label: 'Payee', cheque: ext ? row.payee || '—' : '—', qb: qb?.payee || '—' },
+    { label: 'Cheque no.', cheque: ext ? row.checkNumber || '-' : '-', qb: qb?.checkNumber || '-' },
+    { label: 'Date', cheque: ext ? fmtDate(row.date) : '-', qb: fmtDate(qb?.date) },
+    { label: 'Payee', cheque: ext ? row.payee || '-' : '-', qb: qb?.payee || '-' },
     {
       label: 'Amount',
-      cheque: p.extAmount ? formatCurrency(p.extAmount) : '—',
-      qb: p.qbAmount ? formatCurrency(p.qbAmount) : '—',
+      cheque: p.extAmount ? formatCurrency(p.extAmount) : '-',
+      qb: p.qbAmount ? formatCurrency(p.qbAmount) : '-',
       money: true,
       bad: off,
     },
@@ -59,7 +59,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ row, dateFormat, o
       <div className="flex items-start justify-between gap-2 border-b border-glass-hairline px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-ink-strong">
-            Cheque {row.checkNumber || qb?.checkNumber || '—'}
+            Cheque {row.checkNumber || qb?.checkNumber || '-'}
           </p>
           <div className="mt-1">
             <StatusPill size="sm" status={MATCH_STATUS[row.matchStatus].status} label={MATCH_STATUS[row.matchStatus].label} />
@@ -107,7 +107,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ row, dateFormat, o
           <tr className="border-t border-glass-hairline">
             <th scope="row" className="px-4 py-1.5 text-left font-medium text-ink-soft">Difference</th>
             <td colSpan={2} className={`nums-money px-2 py-1.5 ${off ? 'font-semibold text-error-text' : 'text-ink-body'}`}>
-              {p.difference === null ? '—' : formatCurrency(p.difference)}
+              {p.difference === null ? '-' : formatCurrency(p.difference)}
             </td>
           </tr>
         </tbody>

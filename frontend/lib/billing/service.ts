@@ -137,7 +137,7 @@ export function priceIdsFor(
   const overage = priceId(cfg.env, plan, 'overage');
   if (!base || !overage) {
     throw new Error(
-      `Missing ${cfg.env} price id for ${plan}/${interval}. Price ids come from the environment only — never hardcode one.`
+      `Missing ${cfg.env} price id for ${plan}/${interval}. Price ids come from the environment only, never hardcode one.`
     );
   }
   return { base, overage };

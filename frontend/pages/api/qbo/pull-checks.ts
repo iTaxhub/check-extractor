@@ -508,7 +508,7 @@ export default async function handler(
 
       formattedStartDate = new Date(Date.now() - 365 * 86400000).toISOString().split('T')[0];
 
-      console.log('📅 No date filter supplied — defaulting to last 365 days from', formattedStartDate);
+      console.log('📅 No date filter supplied, defaulting to last 365 days from', formattedStartDate);
 
     }
 
@@ -572,7 +572,7 @@ export default async function handler(
 
     if (!dateFilter && !accountFilter && !vendorFilter && !typeFilter) {
 
-      console.log('🔎 No filters applied — running diagnostic wide-open queries');
+      console.log('🔎 No filters applied, running diagnostic wide-open queries');
 
     }
 

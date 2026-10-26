@@ -19,9 +19,9 @@ export default function GrowthPage() {
       <PageHeader title="Growth" description="Signups, trials and conversion across firms" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiTile label="New signups" value={data ? formatNumber(data.newSignups) : "—"} loading={isLoading} />
-        <KpiTile label="Total users" value={data ? formatNumber(data.totalUsers) : "—"} loading={isLoading} />
-        <KpiTile label="Trial → paid" value={conv == null ? "—" : `${Math.round(conv * 100)}%`} loading={isLoading} />
+        <KpiTile label="New signups" value={data ? formatNumber(data.newSignups) : "-"} loading={isLoading} />
+        <KpiTile label="Total users" value={data ? formatNumber(data.totalUsers) : "-"} loading={isLoading} />
+        <KpiTile label="Trial → paid" value={conv == null ? "-" : `${Math.round(conv * 100)}%`} loading={isLoading} />
       </div>
 
       <ChartCard title="Acquisition channels" description="Where new firms come from">

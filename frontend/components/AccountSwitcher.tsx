@@ -59,7 +59,7 @@ export function getActiveAccount(): string {
 
 /** Money, with the sign kept: a negative card balance is the normal case. */
 export function formatBalance(balance: number | null): string {
-  if (balance === null || Number.isNaN(balance)) return '—';
+  if (balance === null || Number.isNaN(balance)) return '-';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',

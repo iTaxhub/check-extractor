@@ -74,7 +74,7 @@ function formatGrantExpiry(profile: { premium_grant_expires_at: string | null })
   // Lifetime sentinel
   if (exp.getFullYear() >= 9000) return 'Lifetime grant';
   const days = Math.max(0, Math.ceil((exp.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
-  return `Granted — expires in ${days} day${days === 1 ? '' : 's'}`;
+  return `Granted, expires in ${days} day${days === 1 ? '' : 's'}`;
 }
 
 interface JobEntry {
@@ -381,7 +381,7 @@ export function UserDetailDrawer({ userId, open, onClose, onActionComplete }: Us
                     <p className="text-xs text-ink-soft mt-0.5">
                       {isGrantActive(user)
                         ? formatGrantExpiry(user)
-                        : "Grant this firm a free paid-plan window — auto-expires."}
+                        : "Grant this firm a free paid-plan window, auto-expires."}
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2">

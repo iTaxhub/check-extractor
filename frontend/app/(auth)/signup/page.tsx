@@ -118,11 +118,11 @@ export default function SignupPage() {
         <h1 className="font-heading text-2xl font-semibold text-ink-strong">Confirm your email</h1>
         <p className="mt-2 text-sm text-ink-body">
           We sent a confirmation link to <strong className="text-ink-strong">{sentTo}</strong>.
-          Click it to verify your address — your 14-day trial starts then.
+          Click it to verify your address, your 14-day trial starts then.
         </p>
         <GlassPanel tone="sunken" radius="input" padding="sm" className="mt-5 text-left">
           <p className="text-xs text-ink-body">
-            No email after a few minutes? Check your spam folder, then try signing in — we will
+            No email after a few minutes? Check your spam folder, then try signing in, we will
             send a fresh link.
           </p>
         </GlassPanel>

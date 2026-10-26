@@ -87,14 +87,14 @@ function bestExtraction(c: { extraction?: any; engine_extractions?: Record<strin
 }
 
 function fmtSize(bytes?: number): string {
-  if (!bytes) return '—';
+  if (!bytes) return '-';
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 function fmtDate(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   try {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   } catch { return iso; }
@@ -645,11 +645,11 @@ export default function DashboardPage() {
                           {!selectedDocFilter && (
                             <Td muted className={`${DENSE_CELL} max-w-[100px] truncate`}>{c.pdf_name}</Td>
                           )}
-                          <Td className={`${DENSE_CELL} font-medium`}>{extVal(ext, 'payee') || '—'}</Td>
-                          <Td numeric className={`${DENSE_CELL} nums-money font-semibold text-ink-strong`}>{extVal(ext, 'amount') || '—'}</Td>
-                          <Td className={`${DENSE_CELL} nums text-ink-body`}>{extVal(ext, 'checkDate') || '—'}</Td>
-                          <Td numeric className={`${DENSE_CELL} text-ink-body`}>{extVal(ext, 'checkNumber') || '—'}</Td>
-                          <Td muted className={DENSE_CELL}>{extVal(ext, 'bankName') || '—'}</Td>
+                          <Td className={`${DENSE_CELL} font-medium`}>{extVal(ext, 'payee') || '-'}</Td>
+                          <Td numeric className={`${DENSE_CELL} nums-money font-semibold text-ink-strong`}>{extVal(ext, 'amount') || '-'}</Td>
+                          <Td className={`${DENSE_CELL} nums text-ink-body`}>{extVal(ext, 'checkDate') || '-'}</Td>
+                          <Td numeric className={`${DENSE_CELL} text-ink-body`}>{extVal(ext, 'checkNumber') || '-'}</Td>
+                          <Td muted className={DENSE_CELL}>{extVal(ext, 'bankName') || '-'}</Td>
                           <Td numeric muted className={DENSE_CELL}>{c.page}</Td>
                           <Td className={`${DENSE_CELL} text-center`}>
                             <span className="inline-flex text-brand hover:text-brand-deep" aria-hidden>

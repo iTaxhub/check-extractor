@@ -118,7 +118,7 @@ export default function ExportPage() {
     (job.checks || []).filter((c: any) => c.extraction && Object.keys(c.extraction).length > 0).length;
 
   const fmtDate = (d: string) => {
-    if (!d) return '—';
+    if (!d) return '-';
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 

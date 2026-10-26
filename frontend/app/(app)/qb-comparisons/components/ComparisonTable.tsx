@@ -250,40 +250,40 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                     <Td muted numeric className="nums">{(currentPage - 1) * itemsPerPage + i + 1}</Td>
                     {v.checkNumber && (
                       <Td className="nums font-semibold">
-                        {row.checkNumber || row.qbData?.checkNumber || '—'}
+                        {row.checkNumber || row.qbData?.checkNumber || '-'}
                       </Td>
                     )}
                     {v.date && (
                       <Td muted className="nums">
-                        {row.date || row.qbData?.date ? formatDate(row.date || row.qbData!.date, dateFormat) : '—'}
+                        {row.date || row.qbData?.date ? formatDate(row.date || row.qbData!.date, dateFormat) : '-'}
                       </Td>
                     )}
                     {v.payee && (
                       <Td className="max-w-[200px] truncate" title={payeeOff ? `QuickBooks: ${qbPayee}` : undefined}>
-                        {row.payee || qbPayee || '—'}
+                        {row.payee || qbPayee || '-'}
                         {payeeOff && <span className="ml-1 text-error-text" aria-label="Payee differs in QuickBooks">≠</span>}
                       </Td>
                     )}
                     {v.bankAccount && (
                       <Td muted className="max-w-[140px] truncate">
-                        {row.qbData?.account || row.bankAccount || '—'}
+                        {row.qbData?.account || row.bankAccount || '-'}
                       </Td>
                     )}
                     {v.memo && (
                       <Td muted className="max-w-[160px] truncate" title={row.memo || undefined}>
-                        {row.memo || '—'}
+                        {row.memo || '-'}
                       </Td>
                     )}
                     {v.amount && (
                       <>
                         <Td className="nums-money text-right font-semibold text-ink-strong">
-                          {p.extAmount ? formatCurrency(p.extAmount) : <span className="text-ink-faint">—</span>}
+                          {p.extAmount ? formatCurrency(p.extAmount) : <span className="text-ink-faint">-</span>}
                         </Td>
                         <Td className={`nums-money text-right font-semibold ${off ? 'text-error-text' : 'text-ink-strong'}`}>
-                          {p.qbAmount ? formatCurrency(p.qbAmount) : <span className="text-ink-faint">—</span>}
+                          {p.qbAmount ? formatCurrency(p.qbAmount) : <span className="text-ink-faint">-</span>}
                         </Td>
                         <Td className={`nums-money text-right ${off ? 'font-semibold text-error-text' : 'text-ink-faint'}`}>
-                          {p.difference === null ? '—' : formatCurrency(p.difference)}
+                          {p.difference === null ? '-' : formatCurrency(p.difference)}
                         </Td>
                       </>
                     )}
@@ -301,7 +301,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                           <span className={row.confidence < 60 ? 'font-semibold text-error-text' : 'text-ink-body'}>
                             {row.confidence}%
                           </span>
-                        ) : '—'}
+                        ) : '-'}
                       </Td>
                     )}
                     {v.issues && (
@@ -314,7 +314,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                             )}
                           </span>
                         ) : (
-                          <span className="text-ink-faint">—</span>
+                          <span className="text-ink-faint">-</span>
                         )}
                       </Td>
                     )}
@@ -345,13 +345,13 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                               </button>
                             )}
                           </span>
-                        ) : '—'}
+                        ) : '-'}
                       </Td>
                     )}
-                    {v.qbType && <Td muted>{row.qbData?.qb_type || '—'}</Td>}
+                    {v.qbType && <Td muted>{row.qbData?.qb_type || '-'}</Td>}
                     {v.currency && <Td muted>USD</Td>}
                     {v.pdfName && (
-                      <Td muted className="max-w-[160px] truncate">{row.extractionData?.pdf_name || '—'}</Td>
+                      <Td muted className="max-w-[160px] truncate">{row.extractionData?.pdf_name || '-'}</Td>
                     )}
                     {v.source && (
                       <Td muted>

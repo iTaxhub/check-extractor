@@ -44,7 +44,7 @@ export default function AppLayout({
     <QBProviderWrapper>
       {/* No background of its own: the shell and the pages sit over the
           ambient mesh mounted in app/layout.tsx. Glass needs something to
-          refract — painting a flat hex here is what made it read as grey. */}
+          refract, painting a flat hex here is what made it read as grey. */}
       <div data-skin="glass" className="min-h-screen flex">
         {/* Shell chrome: dark true glass, heaviest blur tier. Nothing inside
             it may carry a backdrop-filter of its own (rule 2). */}

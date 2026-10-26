@@ -405,7 +405,7 @@ export default function ProcessingPage() {
                     {PREVIEW_FIELDS.map((f) => (
                       <div key={f} className="flex justify-between gap-3">
                         <dt className="text-ink-faint">{PREVIEW_LABELS[f]}</dt>
-                        <dd className="nums truncate text-right text-ink-body">{extVal(shownExt, f) || '—'}</dd>
+                        <dd className="nums truncate text-right text-ink-body">{extVal(shownExt, f) || '-'}</dd>
                       </div>
                     ))}
                   </dl>
@@ -483,7 +483,7 @@ export default function ProcessingPage() {
                             {extVal(ext, 'payee') || 'Unknown payee'}
                           </p>
                           <p className="nums whitespace-nowrap font-semibold text-success-text">
-                            {extVal(ext, 'amount') ? `$${extVal(ext, 'amount')}` : '—'}
+                            {extVal(ext, 'amount') ? `$${extVal(ext, 'amount')}` : '-'}
                           </p>
                         </div>
                         <div className="nums flex items-center gap-4 text-xs text-ink-faint">
@@ -541,13 +541,13 @@ export default function ProcessingPage() {
                           </Td>
                           <Td numeric muted>{idx + 1}</Td>
                           <Td numeric>{check.page}</Td>
-                          <Td className="font-medium">{extVal(ext, 'payee') || '—'}</Td>
+                          <Td className="font-medium">{extVal(ext, 'payee') || '-'}</Td>
                           <Td numeric className="nums-money font-semibold text-ink-strong">
-                            {extVal(ext, 'amount') ? `$${extVal(ext, 'amount')}` : '—'}
+                            {extVal(ext, 'amount') ? `$${extVal(ext, 'amount')}` : '-'}
                           </Td>
-                          <Td className="nums">{extVal(ext, 'checkDate') || '—'}</Td>
-                          <Td numeric>{extVal(ext, 'checkNumber') || '—'}</Td>
-                          <Td muted>{extVal(ext, 'bankName') || '—'}</Td>
+                          <Td className="nums">{extVal(ext, 'checkDate') || '-'}</Td>
+                          <Td numeric>{extVal(ext, 'checkNumber') || '-'}</Td>
+                          <Td muted>{extVal(ext, 'bankName') || '-'}</Td>
                           <Td className="text-center">
                             <span className="inline-flex text-brand" aria-hidden>
                               <Eye size={16} />
@@ -712,7 +712,7 @@ export default function ProcessingPage() {
             {/* Body: image left, data right */}
             <div className="flex min-h-0 flex-col gap-3 md:flex-row">
               {/* Pan + zoom. The transform and the grab cursor are the only
-                  inline styles — both are dynamic maths. */}
+                  inline styles, both are dynamic maths. */}
               <GlassPanel
                 tone="sunken"
                 radius="card"

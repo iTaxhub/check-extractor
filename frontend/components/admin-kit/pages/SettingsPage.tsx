@@ -20,7 +20,7 @@ interface AdminUser {
 }
 
 const SUPABASE_HOST = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/^https?:\/\//, "");
-const PROJECT_REF = SUPABASE_HOST.split(".")[0] || "—";
+const PROJECT_REF = SUPABASE_HOST.split(".")[0] || "-";
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -150,7 +150,7 @@ export default function SettingsPage() {
         <div className="space-y-2 text-sm">
           {[
             { icon: <Server size={12} className="text-ink-soft" />, label: "Project ref", value: PROJECT_REF, mono: true },
-            { icon: null, label: "URL", value: SUPABASE_HOST || "—", mono: true, accent: true },
+            { icon: null, label: "URL", value: SUPABASE_HOST || "-", mono: true, accent: true },
           ].map((row) => (
             <div key={row.label} className="flex items-center justify-between py-1.5">
               <span className="text-ink-soft inline-flex items-center gap-1.5">{row.icon}{row.label}</span>

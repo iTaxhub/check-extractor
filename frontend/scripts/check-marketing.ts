@@ -26,3 +26,17 @@ for (const p of PAGES) {
   for (const alt of Object.values(p.alternates ?? {})) assert.ok(known.has(alt!), `${at}: hreflang ${alt} goes nowhere`);
 }
 console.log(`ok  ${PAGES.length} content pages: unique URLs, public, titles, descriptions, links and hreflang resolve`);
+
+// check/cheque by location (legal pages, emails).
+import { spell, spellingFor } from '../lib/spelling';
+assert.equal(spellingFor('CA'), 'cheque');
+assert.equal(spellingFor('gb'), 'cheque');
+assert.equal(spellingFor('Canada'), 'cheque');
+assert.equal(spellingFor('US'), 'check');
+assert.equal(spellingFor(null), 'check');
+assert.equal(spell('Cheque images and check data; 3 checks.', 'cheque'), 'Cheque images and cheque data; 3 cheques.');
+assert.equal(spell('Cheques and cheque images', 'check'), 'Checks and check images');
+assert.equal(spell('Cheque Extractor grants you', 'check'), 'Cheque Extractor grants you');
+assert.equal(spell('Check the connection', 'cheque'), 'Check the connection');
+assert.equal(spell('checksum, checkout, checked', 'cheque'), 'checksum, checkout, checked');
+console.log('ok  check/cheque spelling by country');

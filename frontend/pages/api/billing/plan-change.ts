@@ -156,7 +156,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(409).json({
         error: 'disclosure_stale',
         message:
-          'The amount due has changed since it was shown. Nothing was charged — review the new figures and confirm again.',
+          'The amount due has changed since it was shown. Nothing was charged, review the new figures and confirm again.',
         acknowledged: body.acknowledgedTotalMinor,
         preview: disclosure,
       });

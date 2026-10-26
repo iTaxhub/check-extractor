@@ -82,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (error) throw error;
     // A 200 from the driver is not proof: assert on the parsed row.
     if (!invitation?.id || !invitation?.token) {
-      throw new Error('Invitation insert returned no row — suspect RLS on team_invitations');
+      throw new Error('Invitation insert returned no row, suspect RLS on team_invitations');
     }
 
     await auditLog({

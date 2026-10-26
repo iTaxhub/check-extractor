@@ -45,7 +45,7 @@ type ReportCard = Extract<Action, { kind: 'report' }> & { state: 'ready' | 'work
 
 const SUGGESTIONS = ['Where are we?', 'What needs attention?', 'Read me check 1042', 'Approve all the exact matches', 'Email me the discrepancy report'];
 
-const money = (v: unknown) => (v == null || v === '' ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(v)));
+const money = (v: unknown) => (v == null || v === '' ? '-' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(v)));
 const pct = (v: unknown) => (v == null ? null : Math.round(Number(v) > 1 ? Number(v) : Number(v) * 100));
 const firstMatch = (m: CheckCard['matches']): MatchLite | null => (Array.isArray(m) ? m[0] ?? null : m ?? null);
 
@@ -433,11 +433,11 @@ function FocusPanel({ focus, list, index, onPrev, onNext, onAsk, reduced }: {
   const score = match ? pct(match.confidence_score) : null;
   const imgSrc = focus?.file_url || null;
   const fields = useMemo(() => focus ? [
-    { k: 'Payee', v: focus.payee || '—', c: pct(focus.payee_confidence) },
+    { k: 'Payee', v: focus.payee || '-', c: pct(focus.payee_confidence) },
     { k: 'Amount', v: money(focus.amount), c: pct(focus.amount_confidence) },
-    { k: 'Date', v: focus.check_date ? new Date(`${focus.check_date}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—', c: pct(focus.check_date_confidence) },
-    { k: 'Check #', v: focus.check_number || '—', c: pct(focus.check_number_confidence) },
-    { k: 'Memo', v: focus.memo || '—', c: null },
+    { k: 'Date', v: focus.check_date ? new Date(`${focus.check_date}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '-', c: pct(focus.check_date_confidence) },
+    { k: 'Check #', v: focus.check_number || '-', c: pct(focus.check_number_confidence) },
+    { k: 'Memo', v: focus.memo || '-', c: null },
   ] : [], [focus]);
 
   if (!focus) {
@@ -455,7 +455,7 @@ function FocusPanel({ focus, list, index, onPrev, onNext, onAsk, reduced }: {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand">{list ? list.title : 'Check'}</p>
-          <p className="text-xl font-bold">#{focus.check_number || '—'} · {focus.payee || 'Unknown payee'}</p>
+          <p className="text-xl font-bold">#{focus.check_number || '-'} · {focus.payee || 'Unknown payee'}</p>
         </div>
         {list && (
           <div className="flex items-center gap-2">
@@ -522,7 +522,7 @@ function ScoreRing({ score, status, reduced }: { score: number | null; status: s
         <circle cx="48" cy="48" r={r} stroke="rgba(99,102,241,0.12)" strokeWidth="8" fill="none" />
         <motion.circle cx="48" cy="48" r={r} stroke={color} strokeWidth="8" fill="none" strokeLinecap="round" transform="rotate(-90 48 48)"
           strokeDasharray={c} initial={reduced ? false : { strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - v / 100) }} transition={{ duration: 0.8 }} />
-        <text x="48" y="53" textAnchor="middle" className="fill-current text-[18px] font-bold text-ink-strong">{score == null ? '—' : `${score}%`}</text>
+        <text x="48" y="53" textAnchor="middle" className="fill-current text-[18px] font-bold text-ink-strong">{score == null ? '-' : `${score}%`}</text>
       </svg>
       <span className="mt-1 text-[11px] uppercase tracking-wider text-ink-faint">{status ?? 'no match'}</span>
     </div>

@@ -67,7 +67,7 @@ async function listBatches(req: NextApiRequest, res: NextApiResponse, ctx: any) 
       throw new BatchError(
         503,
         'migration_not_applied',
-        'The batches table is missing — apply supabase/migrations/032_batches.sql.'
+        'The batches table is missing, apply supabase/migrations/032_batches.sql.'
       );
     }
     throw new BatchError(500, 'read_failed', error.message);
@@ -86,7 +86,7 @@ async function listBatches(req: NextApiRequest, res: NextApiResponse, ctx: any) 
         throw new BatchError(
           503,
           'migration_not_applied',
-          'public.batch_counts_many() is missing — apply supabase/migrations/032_batches.sql.'
+          'public.batch_counts_many() is missing, apply supabase/migrations/032_batches.sql.'
         );
       }
       throw new BatchError(500, 'counts_failed', manyErr.message);
@@ -199,7 +199,7 @@ async function createBatch(req: NextApiRequest, res: NextApiResponse, ctx: any) 
       throw new BatchError(
         503,
         'migration_not_applied',
-        'The batches table is missing — apply supabase/migrations/032_batches.sql.'
+        'The batches table is missing, apply supabase/migrations/032_batches.sql.'
       );
     }
     throw new BatchError(500, 'read_failed', existingErr.message);
@@ -235,7 +235,7 @@ async function createBatch(req: NextApiRequest, res: NextApiResponse, ctx: any) 
       throw new BatchError(
         503,
         'migration_not_applied',
-        'The batches table is missing — apply supabase/migrations/032_batches.sql.'
+        'The batches table is missing, apply supabase/migrations/032_batches.sql.'
       );
     }
     // The partial unique index: another request opened the same run first.

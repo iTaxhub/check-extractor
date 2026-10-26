@@ -133,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(503).json({
         error: 'migration_not_applied',
         message:
-          'public.report_summary() is missing — apply ' +
+          'public.report_summary() is missing, apply ' +
           'supabase/migrations/035_history_reports_and_retention.sql.',
       });
     }

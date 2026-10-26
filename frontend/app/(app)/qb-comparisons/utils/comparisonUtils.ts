@@ -377,7 +377,7 @@ export function detectIssues(rows: ComparisonRow[]): void {
       if (sigDate && sigAmt !== '0.00' && sigPayee) {
         const sig = `${sigDate}|${sigAmt}|${sigPayee}`;
         if (txnSigCounts[sig] > 1) {
-          issues.push(`Possible duplicate transaction — same amount, date & payee (${txnSigCounts[sig]} occurrences)`);
+          issues.push(`Possible duplicate transaction, same amount, date & payee (${txnSigCounts[sig]} occurrences)`);
           row.isDuplicate = true;
         }
       }
@@ -494,7 +494,7 @@ export function filterByDateRange(
     if (!raw) return true; // keep rows with no date (don't hide data)
 
     const rowYMD = toYMD(raw);
-    if (!rowYMD) return true; // unparseable — keep it visible
+    if (!rowYMD) return true; // unparseable, keep it visible
 
     if (startYMD && rowYMD < startYMD) return false;
     if (endYMD && rowYMD > endYMD) return false;

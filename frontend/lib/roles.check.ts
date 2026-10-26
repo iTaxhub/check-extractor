@@ -156,7 +156,7 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!url || !anonKey) {
   console.log(
-    'roles: SKIPPING the RLS half — set NEXT_PUBLIC_SUPABASE_URL and ' +
+    'roles: SKIPPING the RLS half, set NEXT_PUBLIC_SUPABASE_URL and ' +
       'NEXT_PUBLIC_SUPABASE_ANON_KEY (e.g. `npx dotenv -e .env -- npx tsx lib/roles.check.ts`) ' +
       'to assert that an anon-key request returns zero rows.'
   );
@@ -193,7 +193,7 @@ if (!url || !anonKey) {
 
       if (MISSING.test(code)) {
         skipped.push(table);
-        console.log(`roles: SKIP ${table} — table not present in this database (${code})`);
+        console.log(`roles: SKIP ${table}, table not present in this database (${code})`);
       } else if (rows > 0) {
         failures++;
         console.error(`roles: FAIL ${table} returned ${rows} row(s) to the anon key`);
@@ -209,7 +209,7 @@ if (!url || !anonKey) {
       role: 'admin',
     });
     if (MISSING.test(String(writeErr?.code || ''))) {
-      console.log('roles: SKIP anon insert probe — team_invitations not present');
+      console.log('roles: SKIP anon insert probe, team_invitations not present');
     } else if (!writeErr) {
       failures++;
       console.error('roles: FAIL anon key was able to insert a team_invitation');
@@ -226,7 +226,7 @@ if (!url || !anonKey) {
     if (skipped.length > 0) {
       console.log(
         `roles: RLS checks passed for the tables that exist; ${skipped.length} skipped ` +
-          `(${skipped.join(', ')}) — apply supabase/migrations/030_roles_team_rls_and_mfa.sql ` +
+          `(${skipped.join(', ')}), apply supabase/migrations/030_roles_team_rls_and_mfa.sql ` +
           'and re-run to cover them.'
       );
     } else {

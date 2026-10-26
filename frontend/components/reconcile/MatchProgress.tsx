@@ -110,7 +110,7 @@ export default function MatchProgress({
             Matching against QuickBooks
           </h2>
           <p className="mt-0.5 text-sm text-ink-body">
-            Nothing to do here — this moves on by itself when matching finishes.
+            Nothing to do here, this moves on by itself when matching finishes.
           </p>
         </div>
         <p className="nums shrink-0 font-heading text-2xl font-semibold text-ink-strong">
@@ -146,7 +146,7 @@ export default function MatchProgress({
         >
           <AlertTriangle className="h-4 w-4 shrink-0 text-warning-text" aria-hidden />
           <p className="min-w-0 flex-1 text-sm text-ink-body">
-            Matching has not progressed for a while. It may have stopped — Kyriq cannot start it
+            Matching has not progressed for a while. It may have stopped, Kyriq cannot start it
             from this screen.
           </p>
           <div className="flex shrink-0 items-center gap-2">

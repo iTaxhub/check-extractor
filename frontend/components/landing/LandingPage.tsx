@@ -565,7 +565,7 @@ function VoiceSection() {
             <KyriqIconWhite size={15} /> <Mic className="h-3.5 w-3.5" aria-hidden /> Kyriq IQ · Coming soon
           </span>
           <h2 className="mb-5 text-[clamp(2.25rem,4vw,3.5rem)] font-bold leading-[1.05] tracking-[-0.03em] text-white">
-            Ask. Review. Act&mdash;
+            Ask. Review. Act, 
             <span className="bg-gradient-to-r from-brand-light to-accentEmerald bg-clip-text text-transparent">with your approval.</span>
           </h2>
           <p className="mb-3 text-[clamp(1.05rem,1.3vw,1.2rem)] leading-relaxed text-white/85">
@@ -667,7 +667,7 @@ export function Pricing() {
                 {annual ? p.annual.toLocaleString('en-US') : p.monthly}
               </div>
               <div className={cn('text-[13px] mb-2', p.popular ? 'text-shell-muted' : 'text-ink-faint')}>
-                {annual ? 'per year — one month free' : 'per month'}
+                {annual ? 'per year, one month free' : 'per month'}
               </div>
 
               <div className={cn('text-xs font-semibold mb-6 pb-6 border-b', p.popular ? 'text-accentEmerald border-glass-hairline-dark' : 'text-success-text border-glass-hairline')}>

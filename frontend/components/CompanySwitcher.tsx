@@ -311,7 +311,7 @@ export default function CompanySwitcher() {
           if (target) disconnect(target.realmId);
         }}
         title="Disconnect client?"
-        message={`${pendingDisconnect?.companyName || 'This company'} will be removed from Kyriq. You can reconnect at any time — the data in QuickBooks is not affected.`}
+        message={`${pendingDisconnect?.companyName || 'This company'} will be removed from Kyriq. You can reconnect at any time, the data in QuickBooks is not affected.`}
         confirmText="Disconnect"
       />
     </div>
