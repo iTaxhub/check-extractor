@@ -951,6 +951,56 @@ function isCleanMatch(m) {
   return !!m && ['matched', 'pending'].includes(m.status) && !!m.qbTxn && !(m.amtDiff > 0.01);
 }
 
+// ── Auto-approve rules ─────────────────────────────────────
+// Same defaults as AUTO_APPROVE_DEFAULTS in the service worker, which applies them.
+const AUTO_RULE_DEFAULTS = {
+  enabled: true, fields: { checkNumber: true, date: true, payee: false },
+  match: 'any', exactAmount: false, minScore: 40,
+};
+const AUTO_RULE_NAMES = { checkNumber: 'cheque #', date: 'date', payee: 'payee' };
+
+function describeAutoRules(r) {
+  if (!r.enabled) return '· off';
+  const f = Object.keys(r.fields).filter(k => r.fields[k]).map(k => AUTO_RULE_NAMES[k]);
+  const need = f.length ? `${f.join(r.match === 'all' ? ' + ' : ' or ')}` : 'any match';
+  return `· ${need}${r.exactAmount ? ', exact amount' : ''}, score ≥ ${r.minScore}`;
+}
+
+function fillAutoRules(r) {
+  $('#ar-enabled').checked = r.enabled;
+  for (const k of Object.keys(AUTO_RULE_NAMES)) $(`#ar-${k}`).checked = !!r.fields[k];
+  $('#ar-match').value = r.match;
+  $('#ar-exactAmount').checked = r.exactAmount;
+  $('#ar-minScore').value = r.minScore;
+  $('#auto-rules-summary').textContent = describeAutoRules(r);
+}
+
+async function initAutoApproveRules() {
+  if (!$('#auto-approve-rules')) return;
+  const { kyriqAutoApprove } = await chrome.storage.sync.get('kyriqAutoApprove').catch(() => ({}));
+  fillAutoRules({ ...AUTO_RULE_DEFAULTS, ...(kyriqAutoApprove || {}),
+    fields: { ...AUTO_RULE_DEFAULTS.fields, ...(kyriqAutoApprove?.fields || {}) } });
+
+  const save = async (rules) => {
+    await chrome.storage.sync.set({ kyriqAutoApprove: rules });
+    fillAutoRules(rules);
+    dbg(`Auto-approve rules saved ${describeAutoRules(rules)}`, 'success');
+    // Only affects rows matched from now on; already-approved rows are left alone.
+    loadChecksIntoMatches();
+  };
+  $('#ar-save').addEventListener('click', () => {
+    const score = Math.min(100, Math.max(0, parseInt($('#ar-minScore').value, 10) || 0));
+    save({
+      enabled: $('#ar-enabled').checked,
+      fields: Object.fromEntries(Object.keys(AUTO_RULE_NAMES).map(k => [k, $(`#ar-${k}`).checked])),
+      match: $('#ar-match').value === 'all' ? 'all' : 'any',
+      exactAmount: $('#ar-exactAmount').checked,
+      minScore: score,
+    });
+  });
+  $('#ar-reset').addEventListener('click', () => save(AUTO_RULE_DEFAULTS));
+}
+
 // Everything except the status pill, so the user lands on the view they picked.
 function clearMatchFilters() {
   _attentionFilter = _docFilter = _accountFilter = _matchSourceFilter = _matchSearch = '';
@@ -2454,6 +2504,7 @@ function bindEvents() {
   });
 
   $('#btn-bulk-approve')?.addEventListener('click', showBulkApproveConfirm);
+  initAutoApproveRules();
 
   // ── Filter pills ──
   $$('.pill').forEach(pill => {
