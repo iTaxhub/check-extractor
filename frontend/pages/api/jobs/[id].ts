@@ -83,6 +83,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
             const supabase = getServiceClient()
             if (!supabase) return res.status(503).json({ error: 'Service unavailable' })
+            // jobAccessHeaders above already confirmed this job is the caller's firm's.
+            // Flattened rows carry job_id with no foreign key, so remove them too.
+            const { data: checkRows } = await supabase.from('checks').select('id').eq('job_id', id)
+            const checkIds = (checkRows || []).map((r: any) => r.id)
+            if (checkIds.length) await supabase.from('matches').delete().in('check_id', checkIds)
+            await supabase.from('checks').delete().eq('job_id', id)
+            await supabase.from('statement_rows').delete().eq('job_id', id)
             const { error } = await supabase
                 .from('check_jobs')
                 .delete()

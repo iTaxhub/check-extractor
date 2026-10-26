@@ -471,6 +471,25 @@ def _has_values(check: dict) -> bool:
     return False
 
 
+def _carry_review_state(job_id: str, checks_data: list) -> list:
+    """Copy each cheque's review status from the stored checks_data onto a
+    freshly built one. Approvals and rejections are written by the app and the
+    extension straight to the DB, so the in-memory job never sees them, and a
+    re-extract used to overwrite them with nothing."""
+    try:
+        rows = _supabase_select("check_jobs", columns="checks_data", filters={"job_id": job_id}, limit=1)
+        stored = rows[0].get("checks_data") if rows else []
+        if isinstance(stored, str):
+            stored = json.loads(stored or "[]")
+        status = {c.get("check_id"): c.get("status") for c in (stored or []) if c.get("status")}
+        for c in checks_data:
+            if c.get("check_id") in status:
+                c["status"] = status[c["check_id"]]
+    except Exception as e:
+        print(f"  carry review state skipped: {type(e).__name__}: {e}")
+    return checks_data
+
+
 def _job_from_row(row: dict) -> dict:
     """The one way a check_jobs row becomes an in-memory job. Used at startup
     and whenever a request names a job this process has never seen (restart,
@@ -496,6 +515,10 @@ def _job_from_row(row: dict) -> dict:
             "engine_results": cd.get("engine_results", {}),  # Raw fields per engine
             "engine_extractions": cd.get("engine_extractions", {}),  # Full extraction per engine
             "engine_times_ms": cd.get("engine_times_ms", {}),
+            # Review state set by the app/extension; dropping it here made a
+            # re-extract or export forget approvals and rejections.
+            **({"status": cd["status"]} if cd.get("status") else {}),
+            **({"updated_at": cd["updated_at"]} if cd.get("updated_at") else {}),
         })
     return {
         "job_id": row.get("job_id"),
@@ -1311,7 +1334,7 @@ def _process_pdf(job_id: str, pdf_path: str, pdf_name: str):
         print(f"  Updating database with {len(checks_data)} checks...")
         _supabase_update("check_jobs", {"job_id": job_id}, {
             "status": "complete",
-            "checks_data": json.dumps(checks_data),
+            "checks_data": json.dumps(_carry_review_state(job_id, checks_data)),
             "pdf_url": pdf_storage_url,
             "completed_at": datetime.now().isoformat(),
         })
@@ -1580,6 +1603,21 @@ async def upload_analyze(
         os.makedirs(pages_dir, exist_ok=True)
         for idx, page_img in enumerate(app_ext.pages):
             page_img.save(os.path.join(pages_dir, f"page_{idx+1}.png"))
+
+        # The preview's page thumbnails are served from Storage when this instance
+        # doesn't hold the files (restart, another replica). Uploading them only at
+        # extraction left the preview blank, so push them now, off the request path.
+        def _bg_upload_pages(jid=job_id, pdir=pages_dir):
+            def _one(name):
+                try:
+                    with open(os.path.join(pdir, name), "rb") as fh:
+                        _supabase_upload_file("checks", f"jobs/{jid}/pages/{name}", fh.read(), "image/png")
+                except Exception as ue:
+                    print(f"  Page upload failed {name}: {ue}")
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                list(pool.map(_one, [n for n in os.listdir(pdir) if n.startswith("page_")]))
+        if _supabase_ok:
+            threading.Thread(target=_bg_upload_pages, daemon=True).start()
 
         # Also extract check images now so they're ready for preview
         manifest = app_ext.extract_all_images()
@@ -2209,7 +2247,7 @@ def start_extraction(req: StartExtractionRequest, request: Request, _auth=Depend
 
             _supabase_update("check_jobs", {"job_id": req.job_id}, {
                 "status": "complete",
-                "checks_data": json.dumps(checks_data),
+                "checks_data": json.dumps(_carry_review_state(req.job_id, checks_data)),
                 "completed_at": datetime.now().isoformat(),
             })
 
@@ -2664,7 +2702,15 @@ def _get_job_checks(job_id: str):
         raise HTTPException(404, "Job not found")
     if job["status"] != "complete":
         raise HTTPException(400, "Job not complete yet")
-    return job, job.get("checks", [])
+    # Export what the user reviewed, not this process's cached copy: edits and
+    # approvals from the app/extension are written straight to the DB.
+    checks = job.get("checks", [])
+    rows = _supabase_select("check_jobs", filters={"job_id": job_id}, limit=1)
+    if rows:
+        fresh = _job_from_row(rows[0]).get("checks") or []
+        if fresh:
+            checks = fresh
+    return job, [c for c in checks if c.get("status") != "rejected"]
 
 
 def _build_generic_csv(job, checks_list):
@@ -2966,6 +3012,21 @@ def delete_job(job_id: str, _auth=Depends(_verify_token)):
         print(f"  Deleting files from Supabase Storage...")
         _supabase_delete_folder("checks", f"jobs/{job_id}")
     
+    # Delete the job's flattened rows first: checks, matches and statement_rows
+    # carry job_id but no foreign key to check_jobs, so they outlived the job and
+    # kept showing in reconcile, reports and the extension.
+    if _supabase_ok:
+        try:
+            q = _urlquote(job_id, safe="")
+            ids = [r["id"] for r in _supabase_select("checks", columns="id", filters={"job_id": job_id}, limit=5000)]
+            for i in range(0, len(ids), 200):
+                _requests.delete(f"{_sb_url}/rest/v1/matches?check_id=in.({','.join(ids[i:i + 200])})",
+                                 headers=_sb_headers(), timeout=10)
+            for table in ("checks", "statement_rows"):
+                _requests.delete(f"{_sb_url}/rest/v1/{table}?job_id=eq.{q}", headers=_sb_headers(), timeout=10)
+        except Exception as e:
+            print(f"  Flattened rows delete error: {e}")
+
     # Delete from Supabase DB (this removes the job row with all checks_data)
     if _supabase_ok:
         try:
@@ -3737,7 +3798,7 @@ if __name__ == "__main__":
                                 
                                 _supabase_update("check_jobs", {"job_id": jid}, {
                                     "status": "complete",
-                                    "checks_data": json.dumps(checks_data),
+                                    "checks_data": json.dumps(_carry_review_state(jid, checks_data)),
                                     "completed_at": datetime.now().isoformat(),
                                 })
 

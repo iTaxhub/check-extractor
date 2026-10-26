@@ -1055,7 +1055,10 @@ async function runFullMatch(extractedChecks) {
       // No score gate — if a QB txn has already been cleared and a Kyriq cheque
       // best-matches it (any score >=40), treat it as cleared. The user does
       // not want these surfacing in pending/matched/discrepancy tabs.
-      const alreadyCleared = !!matchedIntuitId && clearedIntuitIds.has(matchedIntuitId);
+      // An exact amount alone scores 40, and many cheques share an amount: only
+      // auto-approve when the cheque number or the date backs the match up.
+      const corroborated = (bestResult.reasons?.checkNumber || 0) > 0 || (bestResult.reasons?.date || 0) > 0;
+      const alreadyCleared = !!matchedIntuitId && clearedIntuitIds.has(matchedIntuitId) && corroborated;
 
       // Pre-flip status to 'approved' for any cleared row so it lands in the
       // Done tab on the first render — no flicker through pending/matched/disc.
@@ -1699,11 +1702,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 body: JSON.stringify(msg.fields),
               });
               if (res.ok) return { success: true };
+              const body = await res.json().catch(() => ({}));
+              return { error: body.error || `Save failed (${res.status})` };
             }
             // check_0182-style IDs live in jobs.checks_data JSON, NOT in checks table (UUID PK)
-            // No valid fallback exists — log and succeed silently
             logErr('UPDATE_CHECK_FIELDS: jobId missing, cannot update job check', { checkId: msg.checkId });
-            return { success: true, warning: 'Fields not persisted: jobId required' };
+            return { error: 'This cheque has no job id, so it could not be saved. Refresh and try again.' };
           } catch (e) {
             logErr('UPDATE_CHECK_FIELDS failed', e);
             return { error: e.message };
@@ -1738,11 +1742,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 body: JSON.stringify({ status: msg.status }),
               });
               if (res.ok) return { success: true };
+              const body = await res.json().catch(() => ({}));
+              return { error: body.error || `Status change failed (${res.status})` };
             }
             // check_0182-style IDs live in jobs.checks_data JSON, NOT in checks table (UUID PK)
-            // No valid fallback exists — log and succeed silently
             logErr('UPDATE_CHECK_STATUS: jobId missing, cannot update job check', { checkId: msg.checkId, status: msg.status });
-            return { success: true, warning: 'Status not persisted: jobId required' };
+            return { error: 'This cheque has no job id, so its status could not be saved. Refresh and try again.' };
           } catch (e) {
             logErr('UPDATE_CHECK_STATUS failed', e);
             return { error: e.message };

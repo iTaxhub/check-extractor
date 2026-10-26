@@ -8,6 +8,7 @@ import {
   ImageIcon, ExternalLink, RotateCcw,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { hasExtractedValues } from '@/lib/cheque-values';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import {
   Button, IconButton, Dialog, GlassCard, KpiTile, EmptyState, ErrorState,
@@ -159,6 +160,22 @@ export default function DashboardPage() {
     if (job) {
       setConfigureJob(job);
       setConfigureDialogOpen(true);
+    }
+  };
+
+  // Re-runs only the cheques whose extraction came back empty (backend decides).
+  const handleRetryFailed = async (jobId: string) => {
+    setReExtracting(true);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/retry-failed`, { method: 'POST' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || body.detail || 'Could not retry the failed cheques');
+      }
+      window.location.href = `/process/${jobId}`;
+    } catch (e: any) {
+      setError(e.message);
+      setReExtracting(false);
     }
   };
 
@@ -532,6 +549,22 @@ export default function DashboardPage() {
                       >
                         Re-extract
                       </Button>
+                      {(() => {
+                        const failed = (job.checks || []).filter((c: any) => !hasExtractedValues(c)).length;
+                        return failed > 0 ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="min-h-0 px-2.5 py-1 text-xs"
+                            icon={<RefreshCw size={12} />}
+                            title={`Run extraction again for the ${failed} cheque${failed === 1 ? '' : 's'} that came back empty`}
+                            disabled={reExtracting}
+                            onClick={() => handleRetryFailed(job.job_id)}
+                          >
+                            Retry failed ({failed})
+                          </Button>
+                        ) : null;
+                      })()}
                       <Button
                         variant="ghost"
                         size="sm"
