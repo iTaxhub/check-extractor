@@ -60,7 +60,10 @@ import { ShimmerButton } from '@/components/ui/shimmer-button';
 const CTA_LABEL = 'Start Free Trial';
 const CTA_HREF = '/signup';
 /** Chrome Web Store listing. Unset until the extension is published, so the button stays hidden. */
-const EXTENSION_URL = process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL;
+// The published store listing; the env var can still override it.
+const EXTENSION_URL =
+  process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL ||
+  'https://chromewebstore.google.com/detail/apnglhjejjghgmcinkoeganejmkjmkpk';
 const TRIAL_TERMS = '14-day trial or 250 processed checks, whichever comes first · No credit card required';
 const HERO_ASSURANCES = ['No credit card required', 'Setup in minutes', 'Human approval always required'];
 

@@ -10,7 +10,10 @@ import { pagePath } from './types';
 export const SITE_URL = 'https://kyriq.com';
 export const abs = (path: string) => new URL(path, SITE_URL).toString();
 
-const CHROME_STORE_URL = process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL;
+// The published store listing; the env var can still override it.
+const CHROME_STORE_URL =
+  process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL ||
+  'https://chromewebstore.google.com/detail/apnglhjejjghgmcinkoeganejmkjmkpk';
 
 export const organization = () => ({
   '@context': 'https://schema.org',
