@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAuthContext, audit } from '@/lib/match-helpers';
 import { createServiceClient } from '@/lib/supabase/api';
+import { patchJobCheck } from '@/lib/check-sync';
 
 /**
  * POST /api/matches/[id]/approve
@@ -41,11 +42,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Sync the parent check so the matching algorithm won't re-process it.
     if (match.check_id) {
-      await db
+      const { data: checkRow } = await db
         .from('checks')
         .update({ status: 'approved' })
         .eq('id', match.check_id)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantId)
+        .select('job_id, check_id')
+        .maybeSingle();
+      // ...and in checks_data, so the dashboard and the extension agree.
+      if (checkRow) {
+        await patchJobCheck(db, tenantId, checkRow.job_id, checkRow.check_id, (c) => ({ ...c, status: 'approved' }))
+          .catch(() => false);
+      }
     }
 
     await audit(db, id as string, userId, 'approved', match.status, 'approved', { notes });

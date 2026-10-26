@@ -7,6 +7,10 @@ const CONFIG_CACHE_TTL = 3600000; // 1 hour in ms
 
 // In-memory checks cache — avoids round-tripping 1000+ check objects through sendMessage
 let _swChecksCache = null;
+// check_id restarts at check_0001 in every job, so match on the job too when we know it.
+function findCachedCheck(checkId, jobId) {
+  return (_swChecksCache || []).find(c => (c.id === checkId || c.check_id === checkId) && (!jobId || c.job_id === jobId));
+}
 chrome.storage.local.get('kyriqChecksCache')
   .then(({ kyriqChecksCache }) => { if (kyriqChecksCache) _swChecksCache = kyriqChecksCache; })
   .catch(() => {});
@@ -1414,15 +1418,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               try {
                 const checkIdList = checks.map(c => c.id).filter(Boolean).join(',');
                 const terminalRows = await supabaseRequest(
-                  `checks?select=check_id,status&check_id=in.(${checkIdList})&status=in.(approved,rejected,exported)`
+                  `checks?select=job_id,check_id,status&check_id=in.(${checkIdList})&status=in.(approved,rejected,exported)`
                 );
                 if (terminalRows?.length) {
+                  // check_id restarts at check_0001 in every job: key on job + cheque.
                   const overrideMap = {};
                   for (const row of terminalRows) {
-                    if (row.check_id && row.status) overrideMap[row.check_id] = row.status;
+                    if (row.check_id && row.status) overrideMap[`${row.job_id}|${row.check_id}`] = row.status;
                   }
                   for (const c of checks) {
-                    if (overrideMap[c.id]) c.status = overrideMap[c.id];
+                    const s = overrideMap[`${c.job_id}|${c.id}`];
+                    if (s) c.status = s;
                   }
                 }
               } catch (_) {
@@ -1713,7 +1719,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           // Patch in-memory cache AND persist to chrome.storage so subsequent RUN_MATCHING
           // calls survive SW idle eviction (MV3 reloads _swChecksCache from kyriqChecksCache).
           if (_swChecksCache && msg.checkId && msg.status) {
-            const cached = _swChecksCache.find(c => c.id === msg.checkId || c.check_id === msg.checkId);
+            const cached = findCachedCheck(msg.checkId, msg.jobId);
             if (cached) {
               cached.status = msg.status;
               chrome.storage.local.set({ kyriqChecksCache: _swChecksCache }).catch(() => {});
@@ -1920,7 +1926,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             // then reloads _swChecksCache from kyriqChecksCache — if we don't write
             // back, we lose the approval and the row reappears as pending).
             if (_swChecksCache) {
-              const cached = _swChecksCache.find(c => c.id === checkId || c.check_id === checkId);
+              const cached = findCachedCheck(checkId, msg.jobId);
               if (cached) {
                 cached.status = 'approved';
                 chrome.storage.local.set({ kyriqChecksCache: _swChecksCache }).catch(() => {});
@@ -2188,7 +2194,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           } catch (e) { logErr('UNDO_QB_TICK: kyriqApproved cleanup failed', e); }
 
           if (_swChecksCache && msg.checkId) {
-            const cached = _swChecksCache.find(c => c.id === msg.checkId || c.check_id === msg.checkId);
+            const cached = findCachedCheck(msg.checkId, msg.jobId);
             if (cached) {
               cached.status = 'pending_review';
               chrome.storage.local.set({ kyriqChecksCache: _swChecksCache }).catch(() => {});

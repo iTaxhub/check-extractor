@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { createAuthenticatedClient, createServiceClient } from '@/lib/supabase/api';
+import { patchJobCheck } from '@/lib/check-sync';
 
 /**
  * Approve or reject one cheque from the review page.
@@ -32,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('checks')
       .update({ status, updated_at: now, ...(status === 'approved' ? { approved_at: now } : {}) })
       .eq('id', id)
-      .select('id, status')
+      .select('id, status, tenant_id, job_id, check_id')
       .maybeSingle();
 
     if (error) {
@@ -44,13 +45,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'Cheque not found' });
     }
 
+    // Same status in checks_data, so the dashboard and the extension agree.
+    await patchJobCheck(createServiceClient(), data.tenant_id, data.job_id, data.check_id, (c) => ({ ...c, status }))
+      .catch(() => false);
+
     try {
-      await supabase.from('audit_logs').insert({ check_id: id, action: status, field: 'status', new_value: status });
+      await supabase.from('audit_logs').insert({ tenant_id: data.tenant_id, check_id: id, action: status, field: 'status', new_value: status });
     } catch {
       // The audit row is best effort; the status change already succeeded.
     }
 
-    return res.status(200).json({ success: true, check: data });
+    return res.status(200).json({ success: true, check: { id: data.id, status: data.status } });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Failed to update cheque' });
   }

@@ -106,13 +106,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await db
           .from('matches')
           .update({ status: 'approved', approved_by: userId, approved_at: now })
-          .in('id', ids);
+          .in('id', ids)
+          .eq('tenant_id', tenantId);
 
         if (checkIds.length) {
           await db
             .from('checks')
             .update({ status: 'approved' })
-            .in('id', checkIds);
+            .in('id', checkIds)
+            .eq('tenant_id', tenantId);
         }
 
         await db.from('match_audit_log').insert(
