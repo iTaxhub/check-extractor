@@ -1699,3 +1699,15 @@ header {
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .match-list, .checks-filter-bar, .empty-state, .upload-zone, .auth-card { background-color: rgba(255, 255, 255, 0.96); }
 }
+
+/* Auto-approve rules panel (Match tab). */
+.auto-rules { gap: 6px; font-size: 12px; }
+.auto-rules summary { cursor: pointer; font-weight: 600; color: var(--ink-strong); list-style: none; }
+.auto-rules summary::-webkit-details-marker { display: none; }
+.auto-rules-summary { font-weight: 400; color: var(--ink-faint); margin-left: 4px; }
+.auto-rule-group { display: grid; gap: 4px; padding: 6px 8px; border-radius: var(--radius-input); background: rgba(255, 255, 255, 0.55); }
+.auto-rule-label { font-size: 11px; color: var(--ink-faint); }
+.auto-rule-row { display: flex; align-items: center; gap: 6px; color: var(--ink-body); }
+.auto-rule-row input[type='number'] { width: 56px; height: 26px; margin-left: auto; border: 1px solid var(--neutral-border); border-radius: var(--radius-input); padding: 0 6px; }
+.auto-rule-row select { height: 26px; border: 1px solid var(--neutral-border); border-radius: var(--radius-input); padding: 0 6px; background: #fff; }
+.auto-rule-actions { display: flex; justify-content: flex-end; gap: 6px; }

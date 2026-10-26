@@ -534,28 +534,26 @@ const VOICE_PROMPTS = [
 /** Kyriq IQ teaser. The working beta lives at /voice for signed-in firms, and is
  *  still called Voice there — Michael renamed the public-facing section only. */
 function VoiceSection() {
-  // One full-bleed navy band. The artwork (Kyriq and QuickBooks reconciling side
-  // by side) is the backdrop; a left-to-right scrim keeps the copy panel legible
-  // while the right half shows the scene, and the prompts float over it. It used
-  // to be two dark cards on a white page in a lopsided grid, with the artwork
-  // never used, so the headline wrapped one word per line.
+  // White section. Left: two navy cards stacked (pitch + waitlist, then the
+  // voice prompts). Right: the artwork (Kyriq and QuickBooks reconciling side
+  // by side) as a framed image card the height of the stack.
+  const NAVY_CARD =
+    'rounded-modal border border-white/10 bg-[rgb(14,15,44)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_30px_70px_-30px_rgba(30,27,75,0.55)]';
   return (
-    <section id="voice" className="relative isolate overflow-hidden bg-[rgb(10,11,34)] px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
-      <Image
-        src="/landing/kyriq-iq-characters-user-v1.webp"
-        alt=""
-        fill
-        sizes="100vw"
-        className="-z-10 object-cover object-[68%_center] opacity-70 lg:opacity-95"
-        aria-hidden
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10 bg-gradient-to-b from-[rgb(10,11,34)]/95 via-[rgb(10,11,34)]/80 to-[rgb(10,11,34)]/95 lg:bg-gradient-to-r lg:from-[rgb(10,11,34)] lg:via-[rgb(10,11,34)]/80 lg:to-[rgb(10,11,34)]/5"
-      />
+    <section id="voice" className="relative overflow-hidden bg-white px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
+      <div className="relative mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+        <div className="relative order-first min-h-[280px] overflow-hidden rounded-modal shadow-[0_30px_70px_-30px_rgba(30,27,75,0.55)] ring-1 ring-ink-strong/5 sm:min-h-[380px] lg:order-last lg:min-h-0">
+          <Image
+            src="/landing/kyriq-iq-characters-user-v1.webp"
+            alt="Kyriq and QuickBooks reconciling cheques side by side"
+            fill
+            sizes="(min-width: 1024px) 45vw, 100vw"
+            className="object-cover object-center"
+          />
+        </div>
 
-      <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
-        <div className="rounded-modal border border-white/10 bg-white/[0.05] p-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_30px_80px_-30px_rgba(0,0,0,0.6)] backdrop-blur-2xl backdrop-saturate-150 sm:p-10">
+        <div className="flex flex-col gap-6">
+        <div className={cn(NAVY_CARD, 'p-7 sm:p-10')}>
           <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald">
             <KyriqIconWhite size={15} /> <Mic className="h-3.5 w-3.5" aria-hidden /> Kyriq IQ · Coming soon
           </span>
@@ -573,8 +571,8 @@ function VoiceSection() {
           <WaitlistForm />
         </div>
 
-        <div className="lg:self-end lg:pb-4">
-          <div className="rounded-card border border-white/12 bg-[rgba(14,16,44,0.55)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_24px_60px_-24px_rgba(0,0,0,0.7)] backdrop-blur-xl backdrop-saturate-150 sm:p-5">
+        <div>
+          <div className={cn(NAVY_CARD, 'p-4 sm:p-5')}>
             <div className="mb-4 flex h-12 items-end justify-center gap-1" aria-hidden>
               {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
                 <span key={i} className="w-1.5 animate-pulse rounded-full bg-gradient-to-t from-brand to-accentEmerald" style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
@@ -589,6 +587,7 @@ function VoiceSection() {
               ))}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </section>

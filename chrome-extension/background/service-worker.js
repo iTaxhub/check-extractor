@@ -946,9 +946,35 @@ async function pullQBTransactions() {
 }
 
 // ── Run full matching ────────────────────────────────────────
+// Auto-approve rules, set by the user in the side panel (Match tab → Auto-approve
+// rules). Defaults reproduce the built-in rule: cheque # or date must agree.
+const AUTO_APPROVE_DEFAULTS = {
+  enabled: true,
+  fields: { checkNumber: true, date: true, payee: false },
+  match: 'any',          // 'any' | 'all' of the ticked fields
+  exactAmount: false,    // also require amount within $0.01
+  minScore: 40,
+};
+async function getAutoApproveRules() {
+  const { kyriqAutoApprove } = await chrome.storage.sync.get('kyriqAutoApprove').catch(() => ({}));
+  const r = { ...AUTO_APPROVE_DEFAULTS, ...(kyriqAutoApprove || {}) };
+  r.fields = { ...AUTO_APPROVE_DEFAULTS.fields, ...(kyriqAutoApprove?.fields || {}) };
+  return r;
+}
+// Does this best match satisfy the user's rules for auto-approving an already-cleared QB txn?
+function passesAutoApprove(rules, score, result) {
+  if (!rules.enabled || score < rules.minScore) return false;
+  if (rules.exactAmount && !(result.amtDiff <= 0.01)) return false;
+  const ticked = Object.keys(rules.fields).filter(k => rules.fields[k]);
+  if (!ticked.length) return true;
+  const agrees = k => (result.reasons?.[k] || 0) > 0;
+  return rules.match === 'all' ? ticked.every(agrees) : ticked.some(agrees);
+}
+
 async function runFullMatch(extractedChecks) {
   const { tenantId, realmId } = await getActiveConnection();
   const session = await getSession();
+  const autoRules = await getAutoApproveRules();
 
   // qb_entries is the canonical source (561+ records). qb_transactions is empty (extension-only legacy store).
   const entries = await supabaseRequest(
@@ -1055,10 +1081,10 @@ async function runFullMatch(extractedChecks) {
       // No score gate — if a QB txn has already been cleared and a Kyriq cheque
       // best-matches it (any score >=40), treat it as cleared. The user does
       // not want these surfacing in pending/matched/discrepancy tabs.
-      // An exact amount alone scores 40, and many cheques share an amount: only
-      // auto-approve when the cheque number or the date backs the match up.
-      const corroborated = (bestResult.reasons?.checkNumber || 0) > 0 || (bestResult.reasons?.date || 0) > 0;
-      const alreadyCleared = !!matchedIntuitId && clearedIntuitIds.has(matchedIntuitId) && corroborated;
+      // An exact amount alone scores 40, and many cheques share an amount: the
+      // user's rules decide what must back the match up (default: cheque # or date).
+      const alreadyCleared = !!matchedIntuitId && clearedIntuitIds.has(matchedIntuitId)
+        && passesAutoApprove(autoRules, bestScore, bestResult);
 
       // Pre-flip status to 'approved' for any cleared row so it lands in the
       // Done tab on the first render — no flicker through pending/matched/disc.

@@ -38,6 +38,9 @@ const DENSE_GRID = [
   '[&_tbody_tr]:h-[30px]',
   '[&_td]:whitespace-nowrap [&_td]:px-2.5 [&_td]:py-1',
   '[&_th]:whitespace-nowrap [&_th]:px-2.5 [&_th]:py-2',
+  // Full cell grid and light alternating rows, so a long register reads across.
+  'border-collapse [&_td]:border [&_th]:border [&_td]:border-ink-strong/10 [&_th]:border-ink-strong/10',
+  '[&_tbody_tr:nth-child(even)]:bg-ink-strong/[0.025]',
 ].join(' ');
 
 interface ComparisonTableProps {
@@ -142,7 +145,8 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   }, [data]);
 
   // Columns before the money block, used for the totals label colspan.
-  const lead = [v.checkNumber, v.date, v.payee, v.bankAccount, v.memo].filter(Boolean).length;
+  // +1: the row-number column always shows.
+  const lead = 1 + [v.checkNumber, v.date, v.payee, v.bankAccount, v.memo].filter(Boolean).length;
   const trail = [v.matchStatus, v.confidence, v.issues, v.qbSource, v.qbType, v.currency, v.pdfName, v.source, v.actions].filter(Boolean).length;
   const colCount = lead + (v.amount ? 3 : 0) + trail || 1;
 
@@ -154,6 +158,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
         <Table className={DENSE_GRID}>
           <Thead>
             <tr>
+              <Th numeric className="w-10">#</Th>
               {v.checkNumber && (
                 <Th sortable onClick={() => onSort('checkNumber')}>
                   Cheque no.
@@ -217,7 +222,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                 description="Adjust the filters, or sync QuickBooks data to compare against."
               />
             ) : (
-              paginatedData.map((row) => {
+              paginatedData.map((row, i) => {
                 const match = MATCH_STATUS[row.matchStatus];
                 const p = pairedValues(row);
                 const off = isOff(p.difference);
@@ -242,6 +247,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                     }}
                     className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                   >
+                    <Td muted numeric className="nums">{(currentPage - 1) * itemsPerPage + i + 1}</Td>
                     {v.checkNumber && (
                       <Td className="nums font-semibold">
                         {row.checkNumber || row.qbData?.checkNumber || '—'}
