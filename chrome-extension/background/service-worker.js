@@ -1574,52 +1574,87 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             const tenantId = await getTenantId(s.user.id).catch(() => null);
             if (!tenantId) return { error: 'No tenant_id' };
 
-            // 1. Update local Supabase cache (qb_entries is the canonical table)
             const cacheId = msg.txnId || msg.qbTxn?.id;
+            const txnType = msg.txnType || msg.qbTxn?.txn_type;
+            // intuit_id from the full qbTxn object; txn_id is "{type}-{intuitId}" as a last resort.
+            let qbIntuitId = msg.qbTxn?.intuit_id || msg.qbIntuitId || null;
+            const txnIdStr = msg.qbTxn?.txn_id ? String(msg.qbTxn.txn_id) : '';
+            if (!qbIntuitId && txnIdStr.includes('-')) qbIntuitId = txnIdStr.split('-').slice(1).join('-') || null;
+            if (!txnType || !qbIntuitId) {
+              return { error: 'This match has no QuickBooks transaction id. Run Sync, then edit again.' };
+            }
+
+            // 1. QuickBooks first. Nothing is saved in Kyriq unless QuickBooks accepts the change.
+            try {
+              const readData = await qbApiRequest(`${txnType.toLowerCase()}/${qbIntuitId}?minorversion=73`);
+              const entity = readData[txnType] || readData[Object.keys(readData)[0]];
+              if (!entity) return { error: `QuickBooks ${txnType} ${qbIntuitId} not found` };
+              const updates = {};
+              if (msg.fields.txn_date) updates.TxnDate = msg.fields.txn_date;
+              if (msg.fields.doc_number) updates.DocNumber = msg.fields.doc_number;
+
+              const amount = msg.fields.amount != null ? Number(msg.fields.amount) : null;
+              if (amount != null && Math.abs(amount - Number(entity.TotalAmt || 0)) >= 0.005) {
+                if (txnType === 'BillPayment') {
+                  return { error: 'QuickBooks does not allow changing a bill payment amount. Adjust the bill, then re-pay it.' };
+                }
+                // QuickBooks derives TotalAmt from the lines: scale each line, then fix rounding on the last
+                // (same rule as frontend/pages/api/qbo/update-transaction.ts).
+                const lines = Array.isArray(entity.Line) ? entity.Line : [];
+                const current = Number(entity.TotalAmt) || lines.reduce((s, l) => s + (Number(l.Amount) || 0), 0);
+                if (!lines.length || current <= 0) return { error: 'This QuickBooks transaction has no line amounts to change.' };
+                const ratio = amount / current;
+                updates.Line = lines.map(l => (l.Amount != null && !isNaN(Number(l.Amount)))
+                  ? { ...l, Amount: Number((Number(l.Amount) * ratio).toFixed(2)) } : { ...l });
+                const drift = +(amount - updates.Line.reduce((s, l) => s + (Number(l.Amount) || 0), 0)).toFixed(2);
+                if (Math.abs(drift) >= 0.01) {
+                  const last = updates.Line[updates.Line.length - 1];
+                  last.Amount = Number(((Number(last.Amount) || 0) + drift).toFixed(2));
+                }
+                updates.TotalAmt = amount;
+              }
+
+              const payee = (msg.fields.payee || '').trim();
+              const currentPayee = (entity.EntityRef || entity.VendorRef || {}).name || '';
+              if (payee && payee.toLowerCase() !== currentPayee.toLowerCase()) {
+                if (txnType === 'BillPayment') {
+                  return { error: 'QuickBooks does not allow changing the vendor on a bill payment.' };
+                }
+                const q = `SELECT Id, DisplayName FROM Vendor WHERE DisplayName = '${payee.replace(/'/g, "\\'")}'`;
+                const found = await qbApiRequest(`query?query=${encodeURIComponent(q)}&minorversion=73`);
+                const vendor = found?.QueryResponse?.Vendor?.[0];
+                if (!vendor) return { error: `No QuickBooks vendor named "${payee}". Add the vendor in QuickBooks or pick the exact name.` };
+                updates.EntityRef = { value: vendor.Id, name: vendor.DisplayName };
+              }
+
+              if (Object.keys(updates).length > 0) {
+                updates.PrivateNote = `[Kyriq edit] ${new Date().toISOString().slice(0, 10)}\n${entity.PrivateNote || ''}`.trim().slice(0, 4000);
+                // Sparse update: only send Id + SyncToken + changed fields.
+                // Sending the full entity ({ ...entity, ...updates }) triggers QB error 6070
+                // ("Operation fileimport not supported") when the entity has AttachableRef,
+                // RecurDataRef, or Line[].LinkedTxn — fields QB won't accept in write ops.
+                await qbApiRequest(`${txnType.toLowerCase()}?minorversion=73`, 'POST', {
+                  Id: entity.Id,
+                  SyncToken: entity.SyncToken,
+                  sparse: true,
+                  ...qbRequiredExtras(txnType, entity),
+                  ...updates,
+                });
+                log('SAVE_QB_TXN: QB entity updated', { txnType, qbIntuitId, fields: Object.keys(updates) });
+              }
+            } catch (qbErr) {
+              logErr('SAVE_QB_TXN: QB update failed, nothing saved', qbErr);
+              return { error: `QuickBooks rejected the change: ${qbErr.message}`, qbRaw: qbErr.qbRaw || null, qbStatus: qbErr.qbStatus || null };
+            }
+
+            // 2. Kyriq caches, only after QuickBooks accepted (qb_entries is the canonical table)
             if (cacheId) {
               await supabaseRequest(
                 `qb_entries?id=eq.${encodeURIComponent(cacheId)}&tenant_id=eq.${tenantId}`,
                 { method: 'PATCH', body: JSON.stringify({ ...msg.fields, synced_at: new Date().toISOString() }) }
               ).catch(e => logErr('SAVE_QB_TXN: local cache update skipped', e));
             }
-
-            // 2. Also push edits to QuickBooks if we have type + Intuit ID
-            const txnType = msg.txnType || msg.qbTxn?.txn_type;
-            // Prefer intuit_id from the full qbTxn object; fall back to explicit msg.qbIntuitId or parsing txnId
-            let qbIntuitId = msg.qbTxn?.intuit_id || msg.qbIntuitId || null;
-            if (!qbIntuitId && cacheId) {
-              const parts = String(cacheId).split('-');
-              qbIntuitId = parts.slice(1).join('-') || null;
-            }
-            if (txnType && qbIntuitId) {
-              try {
-                const readData = await qbApiRequest(`${txnType.toLowerCase()}/${qbIntuitId}?minorversion=73`);
-                const entity = readData[txnType] || readData[Object.keys(readData)[0]];
-                if (entity) {
-                  const updates = {};
-                  if (msg.fields.txn_date) updates.TxnDate = msg.fields.txn_date;
-                  if (msg.fields.amount != null) updates.TotalAmt = msg.fields.amount;
-                  if (msg.fields.payee) updates.PrivateNote = `[Kyriq edit] Payee: ${msg.fields.payee}\n${entity.PrivateNote || ''}`.trim();
-                  if (msg.fields.doc_number) updates.DocNumber = msg.fields.doc_number;
-                  if (Object.keys(updates).length > 0) {
-                    // Sparse update: only send Id + SyncToken + changed fields.
-                    // Sending the full entity ({ ...entity, ...updates }) triggers QB error 6070
-                    // ("Operation fileimport not supported") when the entity has AttachableRef,
-                    // RecurDataRef, or Line[].LinkedTxn — fields QB won't accept in write ops.
-                    await qbApiRequest(`${txnType.toLowerCase()}?minorversion=73`, 'POST', {
-                      Id: entity.Id,
-                      SyncToken: entity.SyncToken,
-                      sparse: true,
-                      ...qbRequiredExtras(txnType, entity),
-                      ...updates,
-                    });
-                    log('SAVE_QB_TXN: QB entity updated', { txnType, qbIntuitId });
-                  }
-                }
-              } catch (qbErr) {
-                logErr('SAVE_QB_TXN: QB update failed (Supabase still saved)', qbErr);
-                return { success: true, qbWarning: qbErr.message, qbRaw: qbErr.qbRaw || null, qbStatus: qbErr.qbStatus || null };
-              }
+            {
 
               // 3. Mirror edits to qb_transactions so the web app MatchRow reflects changes
               //    without needing a full QB re-sync. txn_id format: "{type}-{intuitId}"

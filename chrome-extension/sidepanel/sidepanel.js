@@ -519,8 +519,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('#approve-confirm-ok')?.addEventListener('click', async () => {
     const idx = _pendingApproveIdx;
+    const bulk = _pendingBulkIdx;
     hideApproveConfirm();
-    if (idx !== null) await approveAndClear(idx);
+    if (bulk) await runBulkApprove(bulk);
+    else if (idx !== null) await approveAndClear(idx);
   });
 
   // NOTE: CHECK_UPDATED handling moved to the single top-level
@@ -914,6 +916,12 @@ function renderMatches() {
     const el = $(`#cnt-${k}`);
     if (el) el.textContent = counts[k] || 0;
   });
+  const bulkBtn = $('#btn-bulk-approve');
+  if (bulkBtn) {
+    const n = matches.filter(isCleanMatch).length;
+    bulkBtn.textContent = `Approve clean matches (${n})`;
+    bulkBtn.disabled = n === 0;
+  }
 
   if (filtered.length === 0) {
     const hasData = matches.length > 0;
@@ -921,10 +929,12 @@ function renderMatches() {
       <div class="empty-state">
         <div class="empty-icon"></div>
         <p>${hasData ? 'No matches for this filter' : 'No matches yet'}</p>
-        <p class="sub">${hasData ? 'Try clearing the search or date range' : 'Checks are loaded automatically on login.<br>Use Sync to match against QuickBooks.'}</p>
+        <p class="sub">${hasData ? 'Other filters (attention chip, account, document, search or dates) are hiding them.' : 'Checks are loaded automatically on login.<br>Use Sync to match against QuickBooks.'}</p>
+        ${hasData ? `<button id="btn-clear-match-filters" class="btn-sm btn-outline" style="margin-top:12px;">Clear filters</button>` : ''}
         ${!hasData ? `<button id="btn-load-match" class="btn-primary" style="margin-top:14px;padding:8px 20px;font-size:12px;">Load &amp; Match Cheques</button>` : ''}
       </div>`;
     if (!hasData) $('#btn-load-match')?.addEventListener('click', () => loadChecksIntoMatches());
+    $('#btn-clear-match-filters')?.addEventListener('click', clearMatchFilters);
     return;
   }
   // Map filtered back to original indices in `matches`
@@ -933,6 +943,22 @@ function renderMatches() {
     return renderMatchRow(m, origIdx);
   }).join('');
   bindMatchEvents();
+}
+
+// A match that may be approved: linked QB transaction, no amount difference.
+// The row Approve button, the confirm dialogs and "Approve clean matches" all use this.
+function isCleanMatch(m) {
+  return !!m && ['matched', 'pending'].includes(m.status) && !!m.qbTxn && !(m.amtDiff > 0.01);
+}
+
+// Everything except the status pill, so the user lands on the view they picked.
+function clearMatchFilters() {
+  _attentionFilter = _docFilter = _accountFilter = _matchSourceFilter = _matchSearch = '';
+  _matchDateFrom = _matchDateTo = null;
+  ['#doc-filter', '#account-select', '#match-source-filter', '#match-search', '#match-date-from', '#match-date-to']
+    .forEach(sel => { const el = $(sel); if (el) el.value = ''; });
+  const clr = $('#match-search-clear'); if (clr) clr.style.display = 'none';
+  renderMatches();
 }
 
 function renderMatchRow(m, index) {
@@ -966,7 +992,7 @@ function renderMatchRow(m, index) {
       <div class="match-actions">
         <button class="btn-sm btn-ghost" data-action="review" data-idx="${index}">Review</button>
         ${m.status === 'unmatched' ? `<button class="btn-sm btn-ghost" data-action="search" data-idx="${index}">Find</button>` : ''}
-        ${['matched', 'pending'].includes(m.status) && m.qbTxn && !(m.amtDiff > 0.01) ? `<button class="btn-sm btn-primary row-primary" data-action="approve" data-idx="${index}">Approve</button>` : ''}
+        ${isCleanMatch(m) ? `<button class="btn-sm btn-primary row-primary" data-action="approve" data-idx="${index}">Approve</button>` : ''}
         ${m.status === 'discrepancy' && m.qbTxn ? `<button class="btn-sm btn-ghost row-warn" data-action="fix" data-idx="${index}" title="Push the cheque amount to QuickBooks to resolve the difference">Fix in QuickBooks</button>` : ''}
         ${m.status === 'approved' ? `<button class="btn-sm btn-ghost" data-action="undo" data-idx="${index}">Undo</button>` : ''}
         ${m.status !== 'approved' ? `<button class="btn-sm btn-ghost" data-action="flag" data-idx="${index}">Flag</button>` : ''}
@@ -1033,7 +1059,7 @@ let _pendingApproveIdx = null;
 
 function showApproveConfirm(idx) {
   const match = matches[idx];
-  if (!match || !match.qbTxn || match.status === 'discrepancy' || match.amtDiff > 0.01) return;
+  if (!isCleanMatch(match)) return;
   _pendingApproveIdx = idx;
   const c = match.check || {};
   const q = match.qbTxn || {};
@@ -1062,6 +1088,7 @@ function hideApproveConfirm() {
   const overlay = $('#approve-confirm-overlay');
   if (overlay) overlay.style.display = 'none';
   _pendingApproveIdx = null;
+  _pendingBulkIdx = null;
   // Restore single-approve defaults so next per-row use gets the right text
   const titleEl = document.querySelector('#approve-confirm-overlay .approve-confirm-title');
   const descEl  = document.querySelector('#approve-confirm-overlay .approve-confirm-desc');
@@ -1071,9 +1098,44 @@ function hideApproveConfirm() {
   if (okBtn)   okBtn.textContent = 'Approve';
 }
 
+// "Approve clean matches": the user sees every row in the confirm dialog before
+// anything is ticked, and each row still goes through approveAndClear's guard.
+let _pendingBulkIdx = null;
+
+function showBulkApproveConfirm() {
+  const idxs = matches.map((m, i) => isCleanMatch(m) ? i : -1).filter(i => i >= 0);
+  if (!idxs.length) return;
+  const money = v => v != null ? `$${parseFloat(v).toFixed(2)}` : '—';
+  const titleEl = document.querySelector('#approve-confirm-overlay .approve-confirm-title');
+  const descEl  = document.querySelector('#approve-confirm-overlay .approve-confirm-desc');
+  const okBtn   = $('#approve-confirm-ok');
+  if (titleEl) titleEl.textContent = `Approve ${idxs.length} clean match${idxs.length === 1 ? '' : 'es'}?`;
+  if (descEl)  descEl.innerHTML = `Each cheque below matches its QuickBooks transaction with no amount difference. They will be marked <strong>Cleared</strong> in QuickBooks.`;
+  if (okBtn)   okBtn.textContent = `Approve ${idxs.length}`;
+  const detailsEl = $('#approve-confirm-details');
+  if (detailsEl) {
+    detailsEl.innerHTML = idxs.map(i => {
+      const c = matches[i].check || {};
+      return `<div class="approve-confirm-detail-row"><span class="approve-confirm-detail-label">#${escHtml(String(c.check_number || '—'))} ${escHtml(c.payee || '')}</span><span class="approve-confirm-detail-val">${money(c.amount)}</span></div>`;
+    }).join('');
+  }
+  _pendingApproveIdx = null;
+  _pendingBulkIdx = idxs;
+  const overlay = $('#approve-confirm-overlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+async function runBulkApprove(idxs) {
+  let ok = 0, fail = 0;
+  await runWithLimit(idxs, 3, async i => { (await approveAndClear(i)) ? ok++ : fail++; });
+  renderMatches();
+  if (fail) showWarningBanner(`Approved ${ok}; ${fail} could not be approved — see the console.`);
+  else showSuccessBanner(`Approved ${ok} clean match${ok === 1 ? '' : 'es'}.`);
+}
+
 async function approveAndClear(idx) {
   const match = matches[idx];
-  if (!match || !match.qbTxn || match.status === 'discrepancy' || match.amtDiff > 0.01) {
+  if (!isCleanMatch(match)) {
     showWarningBanner('Review this cheque and its QuickBooks match before approving.');
     return false;
   }
@@ -2047,7 +2109,13 @@ function openReviewModal(check, match = null) {
   const approveBtn = m.querySelector('#rm-approve');
   const rejectBtn  = m.querySelector('#rm-reject');
   const undoBtn    = m.querySelector('#rm-undo');
-  if (approveBtn) approveBtn.style.display = check.status === 'approved' ? 'none' : '';
+  if (approveBtn) {
+    approveBtn.style.display = check.status === 'approved' ? 'none' : '';
+    // With a QB match, Approve waits until the difference is fixed (Save Changes pushes it to QB).
+    const blocked = !!_reviewMatch?.qbTxn && !isCleanMatch(_reviewMatch);
+    approveBtn.disabled = blocked;
+    approveBtn.title = blocked ? 'Fix the difference and Save Changes first; Approve unlocks once QuickBooks matches.' : '';
+  }
   if (rejectBtn)  rejectBtn.style.display  = check.status === 'rejected'  ? 'none' : '';
   if (undoBtn)    undoBtn.style.display    = ['approved','rejected'].includes(check.status) ? '' : 'none';
 
@@ -2385,10 +2453,14 @@ function bindEvents() {
     }
   });
 
+  $('#btn-bulk-approve')?.addEventListener('click', showBulkApproveConfirm);
+
   // ── Filter pills ──
   $$('.pill').forEach(pill => {
     pill.addEventListener('click', () => {
       currentFilter = pill.dataset.status;
+      // A status pill is a plain view; a leftover attention chip made Matched read 0.
+      _attentionFilter = '';
       $$('.pill').forEach(p => p.classList.toggle('active', p.dataset.status === currentFilter));
       renderMatches();
     });
@@ -2776,16 +2848,11 @@ function bindEvents() {
     let qbSavePromise = Promise.resolve({ success: true });
     if (_reviewMatch?.qbTxn) {
       const qt = _reviewMatch.qbTxn;
-      let qbIntuitId = null;
-      if (qt.txn_id) {
-        const parts = String(qt.txn_id).split('-');
-        qbIntuitId = parts.slice(1).join('-') || null;
-      }
       qbSavePromise = sendMsg({
         type: 'SAVE_QB_TXN',
         txnId: qt.id,
         txnType: qt.txn_type || null,
-        qbIntuitId,
+        qbTxn: qt,               // carries intuit_id, the id QuickBooks actually knows
         fields: qbFields,
       });
     }
@@ -2797,7 +2864,7 @@ function bindEvents() {
     btn.disabled = false; btn.textContent = 'Save Changes';
     const checkOk = !!checkRes?.success;
     const qbOk   = !!qbRes?.success;
-    const qbWarn = qbRes?.qbWarning || null;
+    const qbWarn = null; // SAVE_QB_TXN now fails outright instead of half-saving
 
     if (checkOk) {
       // At least the check fields saved — update memory caches
@@ -2807,7 +2874,17 @@ function bindEvents() {
         if (idx !== -1) Object.assign(_cachedChecks[idx], checkFields);
       }
       if (_reviewMatch?.check) Object.assign(_reviewMatch.check, checkFields);
-      if (qbOk && _reviewMatch?.qbTxn) Object.assign(_reviewMatch.qbTxn, { amount: qbFields.amount, txn_date: qbFields.txn_date, payee: qbFields.payee, doc_number: qbFields.doc_number });
+      if (qbOk && _reviewMatch?.qbTxn) {
+        Object.assign(_reviewMatch.qbTxn, { amount: qbFields.amount, txn_date: qbFields.txn_date, payee: qbFields.payee, doc_number: qbFields.doc_number });
+        // The difference is gone in QuickBooks now: recompute so Approve unlocks
+        // without a re-sync. Payee/number edits don't change amtDiff.
+        const m = _reviewMatch;
+        m.amtDiff = Math.abs((parseFloat(m.check?.amount) || 0) - (parseFloat(m.qbTxn.amount) || 0));
+        if (m.status === 'discrepancy' && m.amtDiff <= 0.01) m.status = 'matched';
+        renderMatches();
+        const ap = $('#rm-approve');
+        if (ap) ap.disabled = !isCleanMatch(m);
+      }
 
       if (fb) {
         if (qbWarn) {
