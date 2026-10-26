@@ -59,19 +59,23 @@ export type SortDirection = 'asc' | 'desc';
 export function extVal(ext: any, field: string): string {
   if (!ext) return '';
   const f = ext[field];
-  if (typeof f === 'object' && f !== null) return f.value || '';
+  // `value` can be a number (amounts, check numbers), so always hand back a string.
+  if (typeof f === 'object' && f !== null) return f.value == null ? '' : String(f.value);
   if (typeof f === 'string') return f;
   if (typeof f === 'number') return String(f);
   return '';
 }
 
-export function parseAmount(amt: string): number {
-  const cleaned = amt.replace(/[^0-9.-]/g, '');
+// Callers pass raw stored values, which are not always strings: a number here
+// crashed the whole page with "e.replace is not a function".
+export function parseAmount(amt: string | number | null | undefined): number {
+  if (typeof amt === 'number') return amt;
+  const cleaned = String(amt ?? '').replace(/[^0-9.-]/g, '');
   return parseFloat(cleaned) || 0;
 }
 
-export function normalizeString(str: string): string {
-  return str.toLowerCase().trim().replace(/\s+/g, ' ');
+export function normalizeString(str: string | number | null | undefined): string {
+  return String(str ?? '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
 export function formatCurrency(amount: string | number): string {

@@ -46,8 +46,8 @@ export function computeCorrections(row: ComparisonRow): FixCorrections {
   }
 
   // Check number
-  const extCN = (row.checkNumber || '').replace(/\D/g, '').replace(/^0+/, '');
-  const qbCN  = (qb.checkNumber  || '').replace(/\D/g, '').replace(/^0+/, '');
+  const extCN = String(row.checkNumber ?? '').replace(/\D/g, '').replace(/^0+/, '');
+  const qbCN  = String(qb.checkNumber  ?? '').replace(/\D/g, '').replace(/^0+/, '');
   if (extCN && extCN !== qbCN) {
     corrections.docNumber = row.checkNumber;
   }
