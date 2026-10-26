@@ -1,0 +1,31 @@
+# Kyriq
+
+> Kyriq is check reconciliation software for QuickBooks Online. Upload the bank statement you already download; Kyriq extracts the checks (typed or handwritten), matches each one to the QuickBooks Online register, lets an authorized user approve exact matches in bulk, and clears approved checks in the QuickBooks Online reconciliation. Nothing is cleared without approval. Built for bookkeeping and accounting firms.
+
+Key facts:
+- Works with QuickBooks Online only (not QuickBooks Desktop, not Xero).
+- Accepts bank statement PDFs and check images (PDF, JPG, PNG); detects multiple checks per page.
+- Views: 100% Matches, Needs Attention, All Checks. Flags duplicates and discrepancies. Every decision is logged.
+- Chrome extension included: approve and clear matched checks inside QuickBooks Online.
+- Pricing (USD, monthly): Starter $249 (1,200 checks), Professional $649 (4,500), Firm $1,299 (10,000); $0.20 per extra check; annual plans include one month free. Unlimited companies and users.
+- Free trial: 14 days or 250 checks, whichever comes first; no credit card.
+- Support: support@kyriq.com
+
+## Product
+- [Check reconciliation for QuickBooks Online](https://kyriq.com/features/check-reconciliation-quickbooks-online)
+- [Handwritten check OCR](https://kyriq.com/features/handwritten-check-ocr)
+- [Bulk check processing](https://kyriq.com/features/bulk-check-processing)
+- [Chrome extension](https://kyriq.com/features/quickbooks-chrome-extension)
+- [Pricing](https://kyriq.com/pricing)
+
+## Guides
+- [All QuickBooks Online check guides](https://kyriq.com/guides)
+- [Checks not showing as cleared in QuickBooks Online](https://kyriq.com/guides/checks-not-showing-as-cleared-quickbooks-online)
+- [How to clear outstanding checks in QuickBooks Online](https://kyriq.com/guides/clear-outstanding-checks-quickbooks-online)
+
+## Compare
+- [How Kyriq compares](https://kyriq.com/compare)
+
+## Free tools
+- [MICR line decoder](https://kyriq.com/tools/micr-line-decoder)
+- [Outstanding checks template](https://kyriq.com/tools/outstanding-checks-template)

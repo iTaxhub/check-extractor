@@ -201,7 +201,7 @@ console.log('  ok  every CTA reads "Start Free Trial" and resolves to /signup');
   assert.match(src, /Monthly/, `${LANDING} lost the monthly side of the billing toggle`);
   assert.match(src, /Annual · one month free/, `${LANDING} lost the annual side of the billing toggle`);
   assert.match(
-    src,
+    read('lib/pricing.ts'), // INCLUDED_IN_EVERY_PLAN, rendered on every plan card
     /Kyriq Chrome extension included/,
     `${LANDING}: the Chrome-extension note is gone — it must appear on every plan`
   );
@@ -219,9 +219,13 @@ console.log('  ok  every CTA reads "Start Free Trial" and resolves to /signup');
 // The 15 pairs come from the client's redesign site. A partial edit or an
 // invented extra question fails here rather than shipping quietly.
 {
-  const src = read(LANDING);
-  const faqs = src.match(/const FAQS: \{ q: string; a: string \}\[\] = \[([\s\S]*?)\r?\n\];/);
-  assert.ok(faqs, `${LANDING}: the FAQS list is gone`);
+  // The pairs live in lib/marketing/faqs.ts so app/page.tsx can emit them as
+  // FAQPage JSON-LD; the landing page imports them from there.
+  const FAQ_FILE = 'lib/marketing/faqs.ts';
+  assert.ok(read(LANDING).includes("from '@/lib/marketing/faqs'"), `${LANDING} no longer renders the shared FAQ`);
+  const src = read(FAQ_FILE);
+  const faqs = src.match(/export const FAQS: \{ q: string; a: string \}\[\] = \[([\s\S]*?)\r?\n\];/);
+  assert.ok(faqs, `${FAQ_FILE}: the FAQS list is gone`);
   const pairs = [...faqs![1].matchAll(/^\s*q:\s*['"`]/gm)].length;
   assert.equal(pairs, 15, `${LANDING}: FAQS holds ${pairs} pairs, the approved FAQ is 15 questions`);
   for (const q of ['What does Kyriq do?', 'Where can I get help?', 'Can Kyriq read handwritten checks?']) {
@@ -337,7 +341,8 @@ console.log('  ok  framer-motion branches on useReducedMotion');
   ] as const) {
     assert.match(
       read(dupe),
-      new RegExp(`redirect\\('${canonical}'\\)`),
+      // permanentRedirect (308) since the SEO pass, so ranking moves to the canonical.
+      new RegExp(`[rR]edirect\\('${canonical}'\\)`),
       `${dupe} is no longer a redirect to ${canonical} — the duplicate legal page is back`
     );
   }

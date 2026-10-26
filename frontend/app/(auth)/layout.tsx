@@ -1,5 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
+
+// Sign-in, sign-up and password pages are client components with no metadata
+// of their own, so they used to inherit the homepage title and get indexed as
+// duplicates of it.
+export const metadata: Metadata = {
+  title: 'Account',
+  robots: { index: false, follow: true },
+};
 
 export default function AuthLayout({
   children,

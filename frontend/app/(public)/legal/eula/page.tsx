@@ -1,9 +1,11 @@
 import { LegalShell } from '@/components/landing/LegalShell';
+import { pageMetadata } from '@/components/marketing/sectionRoute';
 
-export const metadata = {
-  title: 'End User License Agreement | Kyriq',
-  description: 'End User License Agreement for Kyriq',
-};
+export const metadata = pageMetadata({
+  title: 'End User License Agreement',
+  description: 'The End User License Agreement for the Kyriq web app and Kyriq Chrome extension for check reconciliation in QuickBooks Online.',
+  path: '/legal/eula',
+});
 
 export default function EULAPage() {
   return (

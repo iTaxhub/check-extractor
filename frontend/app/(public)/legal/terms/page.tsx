@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 /**
  * Duplicate resolved (CHECKLIST 2.4). There were two Terms of Service pages:
@@ -9,5 +9,5 @@ import { redirect } from 'next/navigation';
  * bookmark already in the wild still lands somewhere correct.
  */
 export default function LegalTermsRedirect() {
-  redirect('/terms');
+  permanentRedirect('/terms');
 }

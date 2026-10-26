@@ -1,9 +1,11 @@
 import { LegalShell } from '@/components/landing/LegalShell';
+import { pageMetadata } from '@/components/marketing/sectionRoute';
 
-export const metadata = {
-  title: 'Support | Kyriq',
-  description: 'Get help with Kyriq and the Kyriq Chrome extension',
-};
+export const metadata = pageMetadata({
+  title: 'Support',
+  description: 'Get help with Kyriq: connecting QuickBooks Online, uploading bank statements, reviewing check matches and using the Kyriq Chrome extension.',
+  path: '/support',
+});
 
 export default function SupportPage() {
   return (

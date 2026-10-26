@@ -1,0 +1,3 @@
+Check number,Date issued,Payee,Amount,Bank account,Memo,Date cleared,Days outstanding,Status,Follow-up action,Notes
+1001,2026-09-02,Example Supply Co,1250.00,Operating,Invoice 4471,,,Outstanding,Confirm payee received,
+1002,2026-09-05,Example Landlord LLC,3400.00,Operating,October rent,2026-09-12,,Cleared,,

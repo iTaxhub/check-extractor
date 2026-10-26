@@ -1,9 +1,11 @@
 import { LegalShell } from '@/components/landing/LegalShell';
+import { pageMetadata } from '@/components/marketing/sectionRoute';
 
-export const metadata = {
-  title: 'Privacy Policy | Kyriq',
-  description: 'Privacy Policy for Kyriq',
-};
+export const metadata = pageMetadata({
+  title: 'Privacy Policy',
+  description: 'How Kyriq collects, uses, stores and protects your data, including bank statements, check images and QuickBooks Online connection data.',
+  path: '/privacy',
+});
 
 export default function PrivacyPolicyPage() {
   return (
