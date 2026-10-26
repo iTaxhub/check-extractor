@@ -52,7 +52,7 @@ export default function PulsePage() {
 
   const signupTrend = data?.signupsByDay ? groupByDay(data.signupsByDay) : [];
 
-  const pct = (v: number | null | undefined) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+  const pct = (v: number | null | undefined) => (v == null ? "-" : `${Math.round(v * 100)}%`);
   const plans = data
     ? [
         // Four plan buckets, so the first four categorical slots in order. Comped
@@ -71,21 +71,21 @@ export default function PulsePage() {
 
       {/* ── Revenue + firms ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiTile label="MRR" value={data ? formatCurrency(data.mrrCents / 100) : "—"} loading={isLoading} />
-        <KpiTile label="ARR" value={data ? formatCurrency(data.arrCents / 100) : "—"} loading={isLoading} />
-        <KpiTile label="Paying firms" value={data ? formatNumber(data.paidCustomers) : "—"} loading={isLoading} />
-        <KpiTile label="Firms on trial" value={data ? formatNumber(data.usersOnTrial ?? 0) : "—"} loading={isLoading} />
+        <KpiTile label="MRR" value={data ? formatCurrency(data.mrrCents / 100) : "-"} loading={isLoading} />
+        <KpiTile label="ARR" value={data ? formatCurrency(data.arrCents / 100) : "-"} loading={isLoading} />
+        <KpiTile label="Paying firms" value={data ? formatNumber(data.paidCustomers) : "-"} loading={isLoading} />
+        <KpiTile label="Firms on trial" value={data ? formatNumber(data.usersOnTrial ?? 0) : "-"} loading={isLoading} />
         <KpiTile label="Trial → paid" value={pct(data?.trialConversionRate)} loading={isLoading} />
       </div>
 
       {/* ── Usage in the selected range ─────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KpiTile label="Total users" value={data ? formatNumber(data.totalUsers) : "—"} loading={isLoading} />
-        <KpiTile label="New signups" value={data ? formatNumber(data.newSignups) : "—"} loading={isLoading} />
+        <KpiTile label="Total users" value={data ? formatNumber(data.totalUsers) : "-"} loading={isLoading} />
+        <KpiTile label="New signups" value={data ? formatNumber(data.newSignups) : "-"} loading={isLoading} />
         {/* totalAiGenerations is the check_processed sum from usage_ledger. */}
-        <KpiTile label="Checks processed" value={data ? formatNumber(data.totalAiGenerations) : "—"} loading={isLoading} />
+        <KpiTile label="Checks processed" value={data ? formatNumber(data.totalAiGenerations) : "-"} loading={isLoading} />
         {/* admin-metrics counts distinct usage_ledger.user_id, i.e. users, not tenants. */}
-        <KpiTile label="Active users" value={data ? formatNumber(data.activeUsers) : "—"} loading={isLoading} />
+        <KpiTile label="Active users" value={data ? formatNumber(data.activeUsers) : "-"} loading={isLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

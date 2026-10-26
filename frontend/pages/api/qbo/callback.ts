@@ -347,7 +347,7 @@ export default async function handler(
     // If OAuth was initiated from the extension, redirect to the lightweight completion page
     // so the extension's tabs.onUpdated listener can detect it and auto-refresh connections.
     if (stateData?.source === 'extension') {
-      console.log('✅ Extension OAuth complete — redirecting to /qb-oauth-complete');
+      console.log('✅ Extension OAuth complete, redirecting to /qb-oauth-complete');
       return res.redirect(`/qb-oauth-complete?company=${encodeURIComponent(companyName || '')}`);
     }
 

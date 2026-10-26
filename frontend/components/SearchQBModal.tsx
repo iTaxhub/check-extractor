@@ -16,12 +16,12 @@ import { cn } from '@/lib/utils';
  */
 
 function fmt(amount: number | null | undefined): string {
-  if (amount == null) return '—';
+  if (amount == null) return '-';
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
 
 function fmtDate(d: string | null | undefined): string {
-  if (!d) return '—';
+  if (!d) return '-';
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   });
@@ -118,7 +118,7 @@ export default function SearchQBModal({ check, onSelect, onClose }: SearchQBModa
       title="Find QuickBooks transaction"
       description={
         <>
-          Matching check <strong className="nums">#{check?.check_number || '—'}</strong> —{' '}
+          Matching check <strong className="nums">#{check?.check_number || '-'}</strong> , {' '}
           <strong className="nums">{fmt(check?.amount)}</strong> to{' '}
           <strong>{check?.payee || 'unknown payee'}</strong>
         </>
@@ -138,10 +138,10 @@ export default function SearchQBModal({ check, onSelect, onClose }: SearchQBModa
           reader is comparing against never scroll away. */}
       <GlassPanel tone="sunken" radius="tile" padding="none" className="mb-3 grid grid-cols-2 sm:grid-cols-4">
         {[
-          { label: 'Check #', value: check?.check_number || '—', nums: true },
+          { label: 'Check #', value: check?.check_number || '-', nums: true },
           { label: 'Amount', value: fmt(check?.amount), nums: true },
           { label: 'Date', value: fmtDate(check?.check_date), nums: true },
-          { label: 'Payee', value: check?.payee || '—', nums: false },
+          { label: 'Payee', value: check?.payee || '-', nums: false },
         ].map((item) => (
           <div key={item.label} className="min-w-0 px-4 py-2">
             <div className="text-eyebrow text-ink-faint">{item.label}</div>

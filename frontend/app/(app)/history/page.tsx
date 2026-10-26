@@ -98,9 +98,9 @@ const STATUS_PILL: Record<string, { status: StatusKey; label: string }> = {
 };
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
@@ -113,7 +113,7 @@ const KIND_TONE: Record<DocumentKind, 'neutral' | 'brand' | 'warning' | 'outline
 };
 
 function approverLabel(batch: BatchPayload, approvers: ApproverMap): string {
-  if (!batch.approved_by) return '—';
+  if (!batch.approved_by) return '-';
   const a = approvers[batch.approved_by];
   return a?.name || a?.email || 'A firm administrator';
 }
@@ -359,7 +359,7 @@ export default function HistoryPage() {
               </p>
               {failure.kind === 'migration_not_applied' ? (
                 <p className="mt-2 text-xs text-ink-faint">
-                  This is a deployment step, not an empty firm. Nothing has been lost — apply
+                  This is a deployment step, not an empty firm. Nothing has been lost, apply
                   the batches migration and past runs appear here.
                 </p>
               ) : null}

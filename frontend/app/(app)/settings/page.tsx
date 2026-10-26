@@ -174,7 +174,7 @@ function SettingsPageContent() {
         if (notice === 'trial_already_used') {
             handledOAuthRef.current = true
             toast(
-                'This QuickBooks company has already had a Kyriq trial, so a new one was not started. The connection is active — choose a plan on the Billing page to keep processing.',
+                'This QuickBooks company has already had a Kyriq trial, so a new one was not started. The connection is active, choose a plan on the Billing page to keep processing.',
                 { duration: 12000, icon: 'ℹ️' }
             )
             router.replace('/settings?tab=integrations', { scroll: false })
@@ -349,7 +349,7 @@ function SettingsPageContent() {
             let data: any
             try { data = JSON.parse(rawText) } catch {
                 throw new Error(response.status === 504 || rawText.startsWith('An error')
-                    ? 'Request timed out — try a narrower date range or add filters to reduce data volume.'
+                    ? 'Request timed out, try a narrower date range or add filters to reduce data volume.'
                     : `Server error (${response.status}): ${rawText.substring(0, 120)}`)
             }
             if (response.ok) {
@@ -725,7 +725,7 @@ function SettingsPageContent() {
                                 </div>
                                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                                     <dt className="text-ink-soft">Company</dt>
-                                    <dd className="font-medium text-ink-strong">{qboConnected ? companyName || 'Name not available' : '—'}</dd>
+                                    <dd className="font-medium text-ink-strong">{qboConnected ? companyName || 'Name not available' : '-'}</dd>
                                     <dt className="text-ink-soft">Status</dt>
                                     <dd>
                                         {qboConnected ? (
@@ -949,7 +949,7 @@ function SettingsPageContent() {
                                                         <ul className="nums space-y-0.5">
                                                             {diagnosisResult.entitiesWithData.map((item: any, i: number) => (
                                                                 <li key={i}>
-                                                                    <strong>{item.type}</strong>: {item.count.toLocaleString()} records &mdash; {item.description}
+                                                                    <strong>{item.type}</strong>: {item.count.toLocaleString()} records, {item.description}
                                                                 </li>
                                                             ))}
                                                         </ul>
@@ -1029,7 +1029,7 @@ function SettingsPageContent() {
                                                         <ul className="nums space-y-0.5">
                                                             {exploreResult.hasData.map((item: any, i: number) => (
                                                                 <li key={i}>
-                                                                    <strong>{item.type}</strong>: {item.count.toLocaleString()} records &mdash; {item.description}
+                                                                    <strong>{item.type}</strong>: {item.count.toLocaleString()} records, {item.description}
                                                                 </li>
                                                             ))}
                                                         </ul>
@@ -1058,7 +1058,7 @@ function SettingsPageContent() {
                                                 >
                                                     <div className="flex flex-wrap items-center gap-2 font-medium">
                                                         <span className="font-semibold">{entity.entityType}</span>
-                                                        <span className="opacity-80">&mdash; {entity.description}</span>
+                                                        <span className="opacity-80">{entity.description}</span>
                                                         {entity.totalCount !== undefined && (
                                                             <span className="nums ml-auto rounded-full bg-surface px-2 py-0.5 text-ink-body">
                                                                 {entity.totalCount.toLocaleString()} total
@@ -1182,7 +1182,7 @@ function SettingsPageContent() {
                     <GlassCardTitle>Two-factor authentication</GlassCardTitle>
                     <p className="text-sm text-ink-body">
                         Kyriq uses an authenticator app (TOTP) for two-factor authentication.
-                        It is <strong className="text-ink-strong">required for administrators</strong> &mdash; an
+                        It is <strong className="text-ink-strong">required for administrators</strong>, an
                         administrator signing in without it is sent to set it up before any
                         page loads.
                     </p>
@@ -1302,7 +1302,7 @@ function SettingsPageContent() {
 
                     <Field
                         label="Redirect URI"
-                        hint="Auto-configured — add this exact URL to your QuickBooks app's Redirect URIs"
+                        hint="Auto-configured, add this exact URL to your QuickBooks app's Redirect URIs"
                     >
                         <GlassPanel tone="sunken" radius="input" padding="none" className="px-3.5 py-2.5">
                             <span className="select-all font-mono text-sm text-ink-body">{QB_REDIRECT_URI}</span>

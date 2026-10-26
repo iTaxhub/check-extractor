@@ -196,7 +196,7 @@ async function usageNotices(svc: any): Promise<Outcome> {
     if (stateError) {
       o.failures.push(
         isMissingSchema(stateError)
-          ? 'tenant_usage_state() is absent — apply migrations 026-029 first'
+          ? 'tenant_usage_state() is absent, apply migrations 026-029 first'
           : `${tenant.id}: ${stateError.message}`
       );
       // One missing function means every tenant will fail the same way.

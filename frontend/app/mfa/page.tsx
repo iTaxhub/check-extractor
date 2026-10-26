@@ -179,7 +179,7 @@ function MfaFlow() {
       `Issued  : ${new Date().toLocaleString('en-GB')}`,
       '',
       'Each code works ONCE. Use one at kyriq.com/mfa if you lose your',
-      'authenticator app. Keep this file somewhere only you can reach —',
+      'authenticator app. Keep this file somewhere only you can reach , ',
       'anyone holding these can get past two-factor on your account.',
       '',
       ...codes,

@@ -73,12 +73,12 @@ const PANEL_CELL = 'px-6 py-3';
  * colour on the pill and another on the stripe.
  */
 const MATCH_STATUS: Record<string, { pill: StatusKey; accent: string }> = {
-  matched:     { pill: 'matched',   accent: 'border-l-success' },
-  approved:    { pill: 'approved',  accent: 'border-l-info' },
-  pending:     { pill: 'pending',   accent: 'border-l-warning' },
-  discrepancy: { pill: 'error',     accent: 'border-l-error' },
+  matched:     { pill: 'matched',  accent: 'border-l-success' },
+  approved:    { pill: 'approved', accent: 'border-l-info' },
+  pending:     { pill: 'pending',  accent: 'border-l-warning' },
+  discrepancy: { pill: 'error',    accent: 'border-l-error' },
   unmatched:   { pill: 'unmatched', accent: 'border-l-warning' },
-  flagged:     { pill: 'review',    accent: 'border-l-warning' },
+  flagged:     { pill: 'review',   accent: 'border-l-warning' },
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -102,12 +102,12 @@ function confidenceTone(score: number): 'success' | 'warning' | 'error' {
 }
 
 function fmt(amount: number | null | undefined): string {
-  if (amount == null) return '—';
+  if (amount == null) return '-';
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
 
 function fmtDate(d: string | null | undefined): string {
-  if (!d) return '—';
+  if (!d) return '-';
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -188,9 +188,9 @@ export default function MatchRow({
         title="Create this cheque in QuickBooks?"
         description="Adds a new cheque transaction to the connected company."
         details={[
-          ['Cheque #', check?.check_number || '—'],
-          ['Payee', check?.payee || '—'],
-          ['Amount', check?.amount != null ? `$${Number(check.amount).toFixed(2)}` : '—'],
+          ['Cheque #', check?.check_number || '-'],
+          ['Payee', check?.payee || '-'],
+          ['Amount', check?.amount != null ? `$${Number(check.amount).toFixed(2)}` : '-'],
         ]}
         confirmLabel="Create in QuickBooks"
       />
@@ -201,7 +201,7 @@ export default function MatchRow({
 
         Below `lg` it collapses to checkbox + one stacked column. The old fixed
         template needed 534px and simply overflowed its own `overflow-hidden`
-        container at 400px — the QuickBooks side and EVERY row action were
+        container at 400px, the QuickBooks side and EVERY row action were
         clipped out of reach, with no horizontal scrollbar to find them.
       */}
       <div
@@ -227,7 +227,7 @@ export default function MatchRow({
             <>
               <div className="flex items-center gap-2">
                 {status === 'approved' && <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />}
-                <span className="nums text-sm font-semibold text-ink-strong">#{check.check_number || '—'}</span>
+                <span className="nums text-sm font-semibold text-ink-strong">#{check.check_number || '-'}</span>
                 <span className="nums-money text-sm font-semibold text-ink-strong">{fmt(check.amount)}</span>
               </div>
               <div className="nums text-xs text-ink-faint">{fmtDate(check.check_date)}</div>
@@ -572,9 +572,9 @@ function ResolvePanel({ match, onResolve, onClose }: {
       </div>
       <div className="mb-3 flex flex-col gap-2">
         {[
-          { value: 'use_check_amount', label: `Use check amount (${fmt(checkAmt)}) — update QB` },
-          { value: 'use_qb_amount', label: `Use QB amount (${fmt(qbAmt)}) — accept as-is` },
-          { value: 'manual_override', label: "Manual override — I'll enter the correct amount" },
+          { value: 'use_check_amount', label: `Use check amount (${fmt(checkAmt)}), update QB` },
+          { value: 'use_qb_amount', label: `Use QB amount (${fmt(qbAmt)}), accept as-is` },
+          { value: 'manual_override', label: "Manual override, I'll enter the correct amount" },
         ].map((opt) => (
           <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-xs text-ink-body">
             <input

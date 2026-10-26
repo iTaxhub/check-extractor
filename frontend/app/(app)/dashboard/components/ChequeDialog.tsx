@@ -326,7 +326,7 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
                         />
                       ) : (
                         <span className={`font-medium text-ink-strong${field === 'amount' ? ' nums' : ''}`}>
-                          {extVal(selectedCheck.extraction, field) || '—'}
+                          {extVal(selectedCheck.extraction, field) || '-'}
                         </span>
                       )}
                     </div>
@@ -366,10 +366,10 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
                           />
                         </div>
                       </Td>
-                      <Td className={`${DENSE_CELL} font-medium`}>{extVal(check.extraction, 'payee') || '—'}</Td>
-                      <Td numeric className={`${DENSE_CELL} nums-money font-semibold text-ink-strong`}>{extVal(check.extraction, 'amount') || '—'}</Td>
-                      <Td className={`${DENSE_CELL} nums text-ink-body`}>{extVal(check.extraction, 'checkDate') || '—'}</Td>
-                      <Td numeric className={`${DENSE_CELL} text-ink-body`}>{extVal(check.extraction, 'checkNumber') || '—'}</Td>
+                      <Td className={`${DENSE_CELL} font-medium`}>{extVal(check.extraction, 'payee') || '-'}</Td>
+                      <Td numeric className={`${DENSE_CELL} nums-money font-semibold text-ink-strong`}>{extVal(check.extraction, 'amount') || '-'}</Td>
+                      <Td className={`${DENSE_CELL} nums text-ink-body`}>{extVal(check.extraction, 'checkDate') || '-'}</Td>
+                      <Td numeric className={`${DENSE_CELL} text-ink-body`}>{extVal(check.extraction, 'checkNumber') || '-'}</Td>
                       <Td numeric muted className={DENSE_CELL}>{check.page}</Td>
                       <Td className={`${DENSE_CELL} text-center`}>
                         <span className="inline-flex text-brand" aria-hidden>

@@ -97,7 +97,7 @@ export default function StartBatchCard({
         <Field
           label="Bank account"
           htmlFor="batch-account"
-          hint="Optional — name it to keep runs apart"
+          hint="Optional, name it to keep runs apart"
         >
           <Input
             id="batch-account"

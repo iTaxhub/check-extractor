@@ -178,7 +178,7 @@ export default function FirmDashboardPage() {
       let data: any;
       try { data = JSON.parse(rawText); } catch {
         throw new Error(res.status === 504 || rawText.startsWith('An error')
-          ? 'Request timed out — try again or add a date range filter.'
+          ? 'Request timed out, try again or add a date range filter.'
           : `Server error (${res.status}): ${rawText.substring(0, 120)}`);
       }
       if (!res.ok) throw new Error(data.error || 'Sync failed');
@@ -359,9 +359,9 @@ export default function FirmDashboardPage() {
           items.push({
             check_id: c.check_id,
             job_id: j.job_id,
-            checkNumber: extVal(c.extraction, 'checkNumber') || '—',
+            checkNumber: extVal(c.extraction, 'checkNumber') || '-',
             payee: extVal(c.extraction, 'payee') || 'Unknown',
-            amount: extVal(c.extraction, 'amount') || '—',
+            amount: extVal(c.extraction, 'amount') || '-',
             status: avgConf > 0.5 ? 'review' : avgConf > 0.3 ? 'mismatch' : 'manual',
           });
         }
@@ -613,7 +613,7 @@ export default function FirmDashboardPage() {
                           {client.alerts > 0 ? (
                             <Badge tone="error" size="sm"><AlertTriangle size={10} /> {client.alerts}</Badge>
                           ) : (
-                            <span className="text-ink-faint">—</span>
+                            <span className="text-ink-faint">-</span>
                           )}
                         </Td>
                         <Td>

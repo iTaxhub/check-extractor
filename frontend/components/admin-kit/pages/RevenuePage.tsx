@@ -68,7 +68,7 @@ interface StripeBalance {
 
 function getChargeEmail(c: StripeCharge): string {
   const expanded = typeof c.customer === "object" && c.customer !== null ? c.customer.email : null;
-  return expanded ?? c.receipt_email ?? c.billing_details?.email ?? "—";
+  return expanded ?? c.receipt_email ?? c.billing_details?.email ?? "-";
 }
 
 function groupChargesByDay(charges: StripeCharge[]): Array<{ day: string; revenue: number }> {
@@ -93,7 +93,7 @@ function buildColumns(charges: StripeCharge[]): ColumnDef<StripeCharge, unknown>
   const emailCounts: Record<string, number> = {};
   for (const c of charges) {
     const e = getChargeEmail(c);
-    if (e !== "—") emailCounts[e] = (emailCounts[e] ?? 0) + 1;
+    if (e !== "-") emailCounts[e] = (emailCounts[e] ?? 0) + 1;
   }
   return [
     {
@@ -102,8 +102,8 @@ function buildColumns(charges: StripeCharge[]): ColumnDef<StripeCharge, unknown>
       accessorFn: (row) => getChargeEmail(row),
       cell: ({ row }) => {
         const email = getChargeEmail(row.original);
-        const count = email !== "—" ? (emailCounts[email] ?? 1) : 1;
-        const initials = email !== "—" ? email.slice(0, 2).toUpperCase() : "?";
+        const count = email !== "-" ? (emailCounts[email] ?? 1) : 1;
+        const initials = email !== "-" ? email.slice(0, 2).toUpperCase() : "?";
         return (
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 shrink-0 rounded-full bg-brand-wash border border-brand/30 flex items-center justify-center text-xs font-bold text-brand-deep">
@@ -374,7 +374,7 @@ function ProfitBreakdownModal({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Profitability breakdown — {monthLabel}</DialogTitle>
+          <DialogTitle>Profitability breakdown, {monthLabel}</DialogTitle>
           <DialogDescription>Are we making a profit, and what does each plan earn after fees?</DialogDescription>
         </DialogHeader>
 
@@ -386,13 +386,13 @@ function ProfitBreakdownModal({
                          : "border-error-border bg-error-bg text-error-text"
           )}>
             {isProfitable
-              ? `Profitable — an estimated ${formatCurrency(netProfit)}/mo net (${formatPct(marginPct)} margin) after Stripe fees.`
-              : `Not profitable right now — an estimated ${formatCurrency(Math.abs(netProfit))}/mo shortfall after Stripe fees.`}
+              ? `Profitable, an estimated ${formatCurrency(netProfit)}/mo net (${formatPct(marginPct)} margin) after Stripe fees.`
+              : `Not profitable right now, an estimated ${formatCurrency(Math.abs(netProfit))}/mo shortfall after Stripe fees.`}
           </div>
 
           {/* User split */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-ink-soft mb-2">Users — {formatNumber(totalUsers)} total</p>
+            <p className="text-[11px] uppercase tracking-wider text-ink-soft mb-2">Users, {formatNumber(totalUsers)} total</p>
             <div className="grid grid-cols-2 gap-2.5">
               <div className="rounded-lg border border-glass-hairline bg-surface-sunken p-3">
                 <p className="text-[11px] text-ink-soft">Free</p>
@@ -426,7 +426,7 @@ function ProfitBreakdownModal({
                 <span className="font-bold text-ink-strong tabular-nums">{formatCurrency(totalMonthlyCosts)}</span>
               </div>
             </div>
-            <p className="mt-1.5 text-[11px] text-ink-faint">OCR provider and hosting costs aren't tracked here — see the Profit Calculator for scenario modeling.</p>
+            <p className="mt-1.5 text-[11px] text-ink-faint">OCR provider and hosting costs aren't tracked here, see the Profit Calculator for scenario modeling.</p>
           </div>
 
           {/* Revenue vs cost */}
@@ -523,7 +523,7 @@ export default function RevenuePage() {
 
   const succeededCharges = charges.filter((c) => c.status === "succeeded" && !c.refunded);
   const totalCollected = succeededCharges.reduce((s, c) => s + c.amount / 100, 0);
-  const uniqueEmails = new Set(succeededCharges.map(getChargeEmail).filter((e) => e !== "—")).size;
+  const uniqueEmails = new Set(succeededCharges.map(getChargeEmail).filter((e) => e !== "-")).size;
   const arpu = uniqueEmails > 0 ? totalCollected / uniqueEmails : 0;
   const avgTx = succeededCharges.length > 0 ? totalCollected / succeededCharges.length : 0;
 
@@ -559,7 +559,7 @@ export default function RevenuePage() {
   const emailChargeCounts: Record<string, number> = {};
   for (const c of succeededCharges) {
     const e = getChargeEmail(c);
-    if (e !== "—") emailChargeCounts[e] = (emailChargeCounts[e] ?? 0) + 1;
+    if (e !== "-") emailChargeCounts[e] = (emailChargeCounts[e] ?? 0) + 1;
   }
   const returningCustomers = Object.values(emailChargeCounts).filter((n) => n > 1).length;
   const newCustomers = Object.values(emailChargeCounts).filter((n) => n === 1).length;
@@ -577,8 +577,8 @@ export default function RevenuePage() {
   const healthVerdict = !metrics
     ? ""
     : mrrUsd <= 0
-      ? "No active recurring revenue yet — focus on converting trials and signups to paid plans."
-      : `Revenue is being generated: ${formatCurrency(mrrUsd)} MRR (${formatCurrency(metrics.arrCents / 100)} ARR) from ${paying} paying customer${paying !== 1 ? "s" : ""}.${duplicates.length > 0 ? " ⚠ Duplicate billing is inflating totals — resolve it above." : ""}`;
+      ? "No active recurring revenue yet, focus on converting trials and signups to paid plans."
+      : `Revenue is being generated: ${formatCurrency(mrrUsd)} MRR (${formatCurrency(metrics.arrCents / 100)} ARR) from ${paying} paying customer${paying !== 1 ? "s" : ""}.${duplicates.length > 0 ? " ⚠ Duplicate billing is inflating totals, resolve it above." : ""}`;
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -621,7 +621,7 @@ export default function RevenuePage() {
             <p className="text-xs font-semibold text-warning-text">Duplicate billing detected</p>
             {duplicates.map((d) => (
               <p key={d.email} className="text-xs text-warning-text/80 mt-0.5">
-                <span className="font-medium">{d.email}</span> — {d.count} active subscriptions, charged {d.count}×/month
+                <span className="font-medium">{d.email}</span>, {d.count} active subscriptions, charged {d.count}×/month
               </p>
             ))}
           </div>
@@ -634,34 +634,34 @@ export default function RevenuePage() {
 
       {/* ── Top 6 KPIs ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Total Collected"  value={chargesQuery.data ? formatCurrency(totalCollected) : "—"} sub="this period"         loading={chargesQuery.isLoading} tooltip="Sum of all succeeded charges in the selected date period. Does not include refunded or failed charges." />
-        <KpiCard label="MRR"              value={metrics ? formatCurrency(mrrUsd) : "—"}                  sub="monthly recurring"   loading={metricsLoading}         tooltip="Monthly Recurring Revenue — sum of all active monthly subscription amounts billed per month." />
-        <KpiCard label="ARR"              value={metrics ? formatCurrency(metrics.arrCents / 100) : "—"}  sub="annual recurring"    loading={metricsLoading}         tooltip="Annual Recurring Revenue — sum of all active annual subscription amounts billed per year." />
-        <KpiCard label="Active Subs"      value={metrics ? formatNumber(metrics.activeSubsCount) : "—"}   sub="live subscriptions"  loading={metricsLoading}         tooltip="Number of live Stripe subscriptions right now, regardless of plan type." />
-        <KpiCard label="Unique Customers" value={metrics ? formatNumber(metrics.uniquePayingCustomers) : "—"} sub="paying customers" loading={metricsLoading}        tooltip="Distinct paying customers with at least one active subscription. A customer with two subs counts once." />
-        <KpiCard label="ARPU"             value={chargesQuery.data ? formatCurrency(arpu) : "—"}          sub="avg revenue / user"  loading={chargesQuery.isLoading} tooltip="Average Revenue Per User — Total Collected divided by the number of unique paying email addresses." />
+        <KpiCard label="Total Collected"  value={chargesQuery.data ? formatCurrency(totalCollected) : "-"} sub="this period"         loading={chargesQuery.isLoading} tooltip="Sum of all succeeded charges in the selected date period. Does not include refunded or failed charges." />
+        <KpiCard label="MRR"              value={metrics ? formatCurrency(mrrUsd) : "-"}                  sub="monthly recurring"   loading={metricsLoading}         tooltip="Monthly Recurring Revenue, sum of all active monthly subscription amounts billed per month." />
+        <KpiCard label="ARR"              value={metrics ? formatCurrency(metrics.arrCents / 100) : "-"}  sub="annual recurring"    loading={metricsLoading}         tooltip="Annual Recurring Revenue, sum of all active annual subscription amounts billed per year." />
+        <KpiCard label="Active Subs"      value={metrics ? formatNumber(metrics.activeSubsCount) : "-"}   sub="live subscriptions"  loading={metricsLoading}         tooltip="Number of live Stripe subscriptions right now, regardless of plan type." />
+        <KpiCard label="Unique Customers" value={metrics ? formatNumber(metrics.uniquePayingCustomers) : "-"} sub="paying customers" loading={metricsLoading}        tooltip="Distinct paying customers with at least one active subscription. A customer with two subs counts once." />
+        <KpiCard label="ARPU"             value={chargesQuery.data ? formatCurrency(arpu) : "-"}          sub="avg revenue / user"  loading={chargesQuery.isLoading} tooltip="Average Revenue Per User, Total Collected divided by the number of unique paying email addresses." />
       </div>
 
       {/* ── Stripe balance strip ── */}
       <div className="grid grid-cols-3 gap-3">
         <KpiCard
           label="Available Balance"
-          value={availableBalanceUsd !== null ? formatCurrency(availableBalanceUsd) : "—"}
+          value={availableBalanceUsd !== null ? formatCurrency(availableBalanceUsd) : "-"}
           sub="ready for payout"
           loading={balanceQuery.isLoading}
           highlight={availableBalanceUsd !== null && availableBalanceUsd < 0 ? "red" : "emerald"}
-          tooltip="Cash sitting in Stripe ready for the next bank payout. Goes negative when refunds exceed incoming funds — the deficit is deducted from your next payout automatically."
+          tooltip="Cash sitting in Stripe ready for the next bank payout. Goes negative when refunds exceed incoming funds, the deficit is deducted from your next payout automatically."
         />
         <KpiCard
           label="Pending Balance"
-          value={pendingBalanceUsd !== null ? formatCurrency(pendingBalanceUsd) : "—"}
+          value={pendingBalanceUsd !== null ? formatCurrency(pendingBalanceUsd) : "-"}
           sub="clearing in 2–5 days"
           loading={balanceQuery.isLoading}
           tooltip="Charges still clearing through the payment network. This amount moves to Available Balance in 2–5 business days."
         />
         <KpiCard
           label="Paid to Bank"
-          value={paidToBankUsd !== null ? formatCurrency(paidToBankUsd) : "—"}
+          value={paidToBankUsd !== null ? formatCurrency(paidToBankUsd) : "-"}
           sub="total swept via payouts"
           loading={payoutsQuery.isLoading}
           highlight="emerald"
@@ -700,10 +700,10 @@ export default function RevenuePage() {
 
       {/* ── Bottom 6 KPIs ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Monthly Subs"    value={metrics ? formatNumber(metrics.monthlyUsers) : "—"}              sub={`${formatUsd(PLANS[0].monthly)}–${formatUsd(PLANS[PLANS.length - 1].monthly)}/mo`} loading={metricsLoading}      tooltip={`Firms billed monthly, across all three tiers (${formatUsd(PLANS[0].monthly)}–${formatUsd(PLANS[PLANS.length - 1].monthly)}/mo).`} />
-        <KpiCard label="Annual Subs"     value={metrics ? formatNumber(metrics.yearlyUsers) : "—"}               sub={`${formatUsd(PLANS[0].annual)}–${formatUsd(PLANS[PLANS.length - 1].annual)}/yr`}  loading={metricsLoading}      tooltip={`Firms billed annually, across all three tiers (${formatUsd(PLANS[0].annual)}–${formatUsd(PLANS[PLANS.length - 1].annual)}/yr).`} />
-        <KpiCard label="Conversion"      value={metrics ? formatPct(conversionPct) : "—"}                        sub={metrics ? `${metrics.paidCustomers} paid of ${metrics.totalUsers}` : undefined} loading={metricsLoading} tooltip="Percentage of all registered users who are distinct paying customers (deduped by email — duplicate subscriptions count once)." />
-        <KpiCard label="Avg Transaction" value={chargesQuery.data ? formatCurrency(avgTx) : "—"}                 sub={`${succeededCharges.length} succeeded`} loading={chargesQuery.isLoading} tooltip="Average charge amount across all succeeded transactions in the selected period." />
+        <KpiCard label="Monthly Subs"    value={metrics ? formatNumber(metrics.monthlyUsers) : "-"}              sub={`${formatUsd(PLANS[0].monthly)}–${formatUsd(PLANS[PLANS.length - 1].monthly)}/mo`} loading={metricsLoading}      tooltip={`Firms billed monthly, across all three tiers (${formatUsd(PLANS[0].monthly)}–${formatUsd(PLANS[PLANS.length - 1].monthly)}/mo).`} />
+        <KpiCard label="Annual Subs"     value={metrics ? formatNumber(metrics.yearlyUsers) : "-"}               sub={`${formatUsd(PLANS[0].annual)}–${formatUsd(PLANS[PLANS.length - 1].annual)}/yr`}  loading={metricsLoading}      tooltip={`Firms billed annually, across all three tiers (${formatUsd(PLANS[0].annual)}–${formatUsd(PLANS[PLANS.length - 1].annual)}/yr).`} />
+        <KpiCard label="Conversion"      value={metrics ? formatPct(conversionPct) : "-"}                        sub={metrics ? `${metrics.paidCustomers} paid of ${metrics.totalUsers}` : undefined} loading={metricsLoading} tooltip="Percentage of all registered users who are distinct paying customers (deduped by email, duplicate subscriptions count once)." />
+        <KpiCard label="Avg Transaction" value={chargesQuery.data ? formatCurrency(avgTx) : "-"}                 sub={`${succeededCharges.length} succeeded`} loading={chargesQuery.isLoading} tooltip="Average charge amount across all succeeded transactions in the selected period." />
       </div>
 
       {/* ── Revenue breakdown — how revenue is generated ── */}
@@ -731,9 +731,9 @@ export default function RevenuePage() {
             <div className="rounded-card border border-glass-hairline bg-surface-sunken p-3.5">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs text-ink-soft">Monthly plans</p>
-                <span className="text-[11px] text-ink-faint">{metrics ? `${metrics.activeMonthlySubs} subs` : "—"}</span>
+                <span className="text-[11px] text-ink-faint">{metrics ? `${metrics.activeMonthlySubs} subs` : "-"}</span>
               </div>
-              <p className="text-lg font-bold text-ink-strong tabular-nums">{metrics ? formatCurrency(monthlyMrr) : "—"}<span className="ml-1 text-[11px] font-normal text-ink-soft">/mo</span></p>
+              <p className="text-lg font-bold text-ink-strong tabular-nums">{metrics ? formatCurrency(monthlyMrr) : "-"}<span className="ml-1 text-[11px] font-normal text-ink-soft">/mo</span></p>
               {mrrTotal > 0 && (
                 <div className="mt-2 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
                   <div className="h-full bg-brand" style={{ width: `${monthlyShare}%` }} />
@@ -744,25 +744,25 @@ export default function RevenuePage() {
             <div className="rounded-card border border-glass-hairline bg-surface-sunken p-3.5">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs text-ink-soft">Annual plans</p>
-                <span className="text-[11px] text-ink-faint">{metrics ? `${metrics.activeYearlySubs} subs` : "—"}</span>
+                <span className="text-[11px] text-ink-faint">{metrics ? `${metrics.activeYearlySubs} subs` : "-"}</span>
               </div>
-              <p className="text-lg font-bold text-ink-strong tabular-nums">{metrics ? formatCurrency(yearlyMrr) : "—"}<span className="ml-1 text-[11px] font-normal text-ink-soft">/mo</span></p>
+              <p className="text-lg font-bold text-ink-strong tabular-nums">{metrics ? formatCurrency(yearlyMrr) : "-"}<span className="ml-1 text-[11px] font-normal text-ink-soft">/mo</span></p>
               {mrrTotal > 0 && (
                 <div className="mt-2 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
                   <div className="h-full bg-success" style={{ width: `${yearlyShare}%` }} />
                 </div>
               )}
-              <p className="mt-1 text-[11px] text-ink-faint">{formatPct(yearlyShare)} of MRR · {metrics ? formatCurrency(metrics.arrCents / 100) : "—"} ARR</p>
+              <p className="mt-1 text-[11px] text-ink-faint">{formatPct(yearlyShare)} of MRR · {metrics ? formatCurrency(metrics.arrCents / 100) : "-"} ARR</p>
             </div>
           </div>
         </div>
 
         {/* Gross vs net + new vs returning */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Gross (period)" value={chargesQuery.data ? formatCurrency(totalCollected) : "—"} sub="collected charges" loading={chargesQuery.isLoading} tooltip="Total succeeded charges in the period, before any fees." />
-          <KpiCard label="Est. net" value={chargesQuery.data ? formatCurrency(netCollected) : "—"} sub="after Stripe fees" loading={chargesQuery.isLoading} highlight="emerald" tooltip="Gross minus estimated Stripe fees (2.9% + $0.30 per successful charge). Real fees may vary by card/region." />
-          <KpiCard label="New customers" value={chargesQuery.data ? formatNumber(newCustomers) : "—"} sub="1 charge this period" loading={chargesQuery.isLoading} tooltip="Emails with exactly one succeeded charge in the period — likely first-time payers." />
-          <KpiCard label="Returning" value={chargesQuery.data ? formatNumber(returningCustomers) : "—"} sub="repeat charges" loading={chargesQuery.isLoading} tooltip="Emails with more than one succeeded charge in the period — renewals or repeat purchases." />
+          <KpiCard label="Gross (period)" value={chargesQuery.data ? formatCurrency(totalCollected) : "-"} sub="collected charges" loading={chargesQuery.isLoading} tooltip="Total succeeded charges in the period, before any fees." />
+          <KpiCard label="Est. net" value={chargesQuery.data ? formatCurrency(netCollected) : "-"} sub="after Stripe fees" loading={chargesQuery.isLoading} highlight="emerald" tooltip="Gross minus estimated Stripe fees (2.9% + $0.30 per successful charge). Real fees may vary by card/region." />
+          <KpiCard label="New customers" value={chargesQuery.data ? formatNumber(newCustomers) : "-"} sub="1 charge this period" loading={chargesQuery.isLoading} tooltip="Emails with exactly one succeeded charge in the period, likely first-time payers." />
+          <KpiCard label="Returning" value={chargesQuery.data ? formatNumber(returningCustomers) : "-"} sub="repeat charges" loading={chargesQuery.isLoading} tooltip="Emails with more than one succeeded charge in the period, renewals or repeat purchases." />
         </div>
       </div>
 
@@ -774,7 +774,7 @@ export default function RevenuePage() {
         <div className="px-6 py-4 border-b border-glass-hairline flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-ink-strong">Recent Transactions</p>
-            <p className="text-xs text-ink-soft mt-0.5">Last 20 charges — live from Stripe</p>
+            <p className="text-xs text-ink-soft mt-0.5">Last 20 charges, live from Stripe</p>
           </div>
           <button
             onClick={() => navigate("/transactions")}

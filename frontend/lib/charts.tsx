@@ -188,7 +188,7 @@ export function pieLabel(props: any) {
   const pct = `${(percent * 100).toFixed(0)}%`;
 
   /* Below ~420px the ring leaves roughly 50px either side, which does not
-     hold a word like "professional" — the label then renders half off the
+     hold a word like "professional", the label then renders half off the
      card. So on a narrow chart the percentage moves INSIDE the ring, where it
      always fits, and the category name is carried by the tooltip. The desktop
      label is unchanged.

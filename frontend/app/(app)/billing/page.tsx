@@ -46,9 +46,9 @@ const MONTH_ROW = 'px-5 py-3.5';
  * between these and the checklist table is what check-parcel-h.ts asserts.
  */
 const PLANS = [
-  { name: 'Starter',      monthly: 249,  annual: 2739,  includedChecks: 1200,  overage: 0.20, popular: false },
-  { name: 'Professional', monthly: 649,  annual: 7139,  includedChecks: 4500,  overage: 0.20, popular: true },
-  { name: 'Firm',         monthly: 1299, annual: 14289, includedChecks: 10000, overage: 0.20, popular: false },
+  { name: 'Starter',     monthly: 249, annual: 2739, includedChecks: 1200, overage: 0.20, popular: false },
+  { name: 'Professional', monthly: 649, annual: 7139, includedChecks: 4500, overage: 0.20, popular: true },
+  { name: 'Firm',        monthly: 1299, annual: 14289, includedChecks: 10000, overage: 0.20, popular: false },
 ] as const;
 
 /** Display name -> Stripe plan key (keys are what lib/billing/plans.ts and the API use). */
@@ -211,7 +211,7 @@ const money = (n: number) => `$${n.toFixed(2)}`;
 /** Stripe sends minor units. Converted here, never summed as floats upstream. */
 const minor = (n: number) => `$${(n / 100).toFixed(2)}`;
 const day = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
 const whole = (n: number) => n.toLocaleString('en-US');
 
 export default function BillingPage() {
@@ -460,7 +460,7 @@ export default function BillingPage() {
               <GlassCardTitle className="text-base">Confirming with Stripe</GlassCardTitle>
               <p className="mt-1 text-xs text-ink-body">
                 Stripe has taken the details. Access changes only once Stripe&apos;s signed
-                confirmation reaches us, which is usually seconds — returning to this page does not
+                confirmation reaches us, which is usually seconds, returning to this page does not
                 grant it. Reload if the plan below has not updated.
               </p>
             </div>
@@ -547,11 +547,11 @@ export default function BillingPage() {
               <p className="nums-money mt-1 text-sm font-semibold text-ink-strong">
                 {sub.subscription.overage.estimateUsd != null
                   ? money(sub.subscription.overage.estimateUsd)
-                  : '—'}
+                  : '-'}
               </p>
               <p className="nums mt-0.5 text-[11px] text-ink-faint">
                 {whole(sub.subscription.overage.units)} over ·{' '}
-                {sub.subscription.overage.rate != null ? money(sub.subscription.overage.rate) : '—'} each
+                {sub.subscription.overage.rate != null ? money(sub.subscription.overage.rate) : '-'} each
               </p>
             </GlassPanel>
           </div>
@@ -755,7 +755,7 @@ export default function BillingPage() {
               <GlassPanel tone="plain" radius="tile" padding="sm">
                 <p className="text-eyebrow text-ink-faint">Days left</p>
                 <p className="nums mt-1 text-sm font-semibold text-ink-strong">
-                  {trial?.daysRemaining ?? '—'}
+                  {trial?.daysRemaining ?? '-'}
                 </p>
                 <p className="mt-0.5 text-[11px] text-ink-faint">
                   {trial?.trialEndsAt

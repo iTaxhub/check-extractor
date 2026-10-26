@@ -752,7 +752,7 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
     }));
 
     const conversionRate =
-      viewed > 0 ? ((completed / viewed) * 100).toFixed(1) : "—";
+      viewed > 0 ? ((completed / viewed) * 100).toFixed(1) : "-";
 
     const sourceRows: SourceRow[] = Object.entries(sourceMap)
       .map(([screen, taps]) => ({ screen, taps }))
@@ -815,7 +815,7 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
           label="View → Paid"
           value={conversionRate}
           suffix={
-            typeof conversionRate === "string" && conversionRate !== "—"
+            typeof conversionRate === "string" && conversionRate !== "-"
               ? "%"
               : undefined
           }
@@ -977,7 +977,7 @@ function ConversionTab({ from, to }: { from: string; to: string }) {
                       {formatNumber(r.abandoned)}
                     </td>
                     <td className="px-3 py-2 text-right font-medium text-ink-strong tabular-nums">
-                      {r.reached > 0 ? `${r.convRate.toFixed(1)}%` : "—"}
+                      {r.reached > 0 ? `${r.convRate.toFixed(1)}%` : "-"}
                     </td>
                   </tr>
                 ))}
@@ -1123,7 +1123,7 @@ function LandingTab({ from, to }: { from: string; to: string }) {
   const scrollRate =
     totalSessions > 0 && finalCtaReach
       ? ((finalCtaReach.sessions / totalSessions) * 100).toFixed(1)
-      : "—";
+      : "-";
 
   const funnelChartData = sectionFunnel.map((s, i) => ({
     ...s,
@@ -1150,7 +1150,7 @@ function LandingTab({ from, to }: { from: string; to: string }) {
         <KpiTile
           label="Scroll-to-CTA Rate"
           value={scrollRate}
-          suffix={scrollRate !== "—" ? "%" : undefined}
+          suffix={scrollRate !== "-" ? "%" : undefined}
           loading={isLoading}
         />
       </div>
@@ -1257,7 +1257,7 @@ function LandingTab({ from, to }: { from: string; to: string }) {
                 <span className="text-right text-ink-soft tabular-nums">
                   {totalCtaClicks > 0
                     ? ((row.clicks / totalCtaClicks) * 100).toFixed(1)
-                    : "—"}
+                    : "-"}
                   %
                 </span>
               </div>
@@ -1353,7 +1353,7 @@ function BreakdownCard({
                 {formatNumber(row.sessions)}
               </span>
               <span className="text-right text-ink-soft tabular-nums">
-                {total > 0 ? ((row.sessions / total) * 100).toFixed(1) : "—"}%
+                {total > 0 ? ((row.sessions / total) * 100).toFixed(1) : "-"}%
               </span>
             </div>
           ))}
@@ -1428,7 +1428,7 @@ function VisitorsTab({ from, to }: { from: string; to: string }) {
         />
         <BreakdownCard
           title="By Timezone"
-          description="Browser timezone — a reliable geo proxy"
+          description="Browser timezone, a reliable geo proxy"
           rows={data?.byTimezone ?? []}
           colLabel="Timezone"
         />
@@ -1488,7 +1488,7 @@ function HourlyTab() {
 
       <ChartCard
         title="Voice demand by hour (UTC)"
-        description="When voice is actually generated — the signal the GPU pre-warmer learns from. Highlighted bars are current warm windows; the ▾ marks the current UTC hour."
+        description="When voice is actually generated, the signal the GPU pre-warmer learns from. Highlighted bars are current warm windows; the ▾ marks the current UTC hour."
         loading={isLoading && !byHour.length}
       >
         {chartData.some((d) => d.count > 0) ? (
@@ -1542,7 +1542,7 @@ function HourlyTab() {
             {data!.warmHours
               .map((h) => `${String(h).padStart(2, "0")}:00`)
               .join(", ")}{" "}
-            UTC — the pre-warmer pings the GPU during these hours so the first
+            UTC, the pre-warmer pings the GPU during these hours so the first
             user of a peak isn't cold.
           </p>
         )}

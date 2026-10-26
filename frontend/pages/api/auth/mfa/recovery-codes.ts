@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // A 200 is not proof: assert the rows landed.
     if ((inserted?.length ?? 0) !== RECOVERY_CODE_COUNT) {
       throw new Error(
-        `Stored ${inserted?.length ?? 0} of ${RECOVERY_CODE_COUNT} recovery codes — suspect RLS on mfa_recovery_codes`
+        `Stored ${inserted?.length ?? 0} of ${RECOVERY_CODE_COUNT} recovery codes, suspect RLS on mfa_recovery_codes`
       );
     }
 

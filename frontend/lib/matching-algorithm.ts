@@ -287,7 +287,7 @@ export async function runMatching(
 
   if (txnsErr) throw txnsErr;
   if (!qbTxns?.length) {
-    console.log('[Matching] No QB transactions found — marking all as unmatched');
+    console.log('[Matching] No QB transactions found, marking all as unmatched');
     // Create unmatched entries for all checks
     const unmatchedResults = checks.map((check) => ({
       check_id: check.id,

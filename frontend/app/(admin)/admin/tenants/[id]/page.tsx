@@ -266,10 +266,10 @@ export default function TenantDetailPage() {
               {checks?.map((c: any, i: number) => (
                 <Tr key={c.id} interactive>
                   <Td muted className="px-2 text-center font-mono text-xs">{i + 1}</Td>
-                  <Td className="nums font-mono text-sm">{c.check_number || '—'}</Td>
-                  <Td className="text-sm">{c.payee || '—'}</Td>
-                  <Td numeric className="nums-money text-sm">{c.amount ? `$${Number(c.amount).toFixed(2)}` : '—'}</Td>
-                  <Td numeric muted className="text-xs">{c.check_date || '—'}</Td>
+                  <Td className="nums font-mono text-sm">{c.check_number || '-'}</Td>
+                  <Td className="text-sm">{c.payee || '-'}</Td>
+                  <Td numeric className="nums-money text-sm">{c.amount ? `$${Number(c.amount).toFixed(2)}` : '-'}</Td>
+                  <Td numeric muted className="text-xs">{c.check_date || '-'}</Td>
                   <Td><Badge tone={checkTone(c.status)} size="sm" className="uppercase">{c.status?.replace(/_/g, ' ')}</Badge></Td>
                 </Tr>
               ))}
@@ -302,13 +302,13 @@ export default function TenantDetailPage() {
               {qbEntries?.map((e: any, i: number) => (
                 <Tr key={e.id} interactive>
                   <Td muted className="px-2 text-center font-mono text-xs">{i + 1}</Td>
-                  <Td className="nums font-mono text-sm">{e.check_number || '—'}</Td>
-                  <Td className="text-sm">{e.payee || '—'}</Td>
-                  <Td numeric className="nums-money text-sm">{e.amount ? `$${Number(e.amount).toFixed(2)}` : '—'}</Td>
-                  <Td numeric muted className="text-xs">{e.date || '—'}</Td>
-                  <Td muted className="max-w-[120px] truncate text-sm">{e.account || '—'}</Td>
+                  <Td className="nums font-mono text-sm">{e.check_number || '-'}</Td>
+                  <Td className="text-sm">{e.payee || '-'}</Td>
+                  <Td numeric className="nums-money text-sm">{e.amount ? `$${Number(e.amount).toFixed(2)}` : '-'}</Td>
+                  <Td numeric muted className="text-xs">{e.date || '-'}</Td>
+                  <Td muted className="max-w-[120px] truncate text-sm">{e.account || '-'}</Td>
                   <Td><Badge tone="outline" size="sm" className="uppercase">{e.qb_source?.replace(/_/g, ' ')}</Badge></Td>
-                  <Td muted className="max-w-[160px] truncate text-xs">{e.memo || '—'}</Td>
+                  <Td muted className="max-w-[160px] truncate text-xs">{e.memo || '-'}</Td>
                 </Tr>
               ))}
             </Tbody>

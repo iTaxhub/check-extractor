@@ -74,7 +74,7 @@ export const KIND_LABEL: Record<DocumentKind, string> = {
 };
 
 export const KIND_ORDER: DocumentKind[] = [
-  'no-cheques',      // first: these are the ones a person has to look at
+  'no-cheques',     // first: these are the ones a person has to look at
   'bank-statement',
   'cheque-sheet',
   'single-cheque',
@@ -147,7 +147,7 @@ export function classifyDocument(s: DocumentSignals): DocumentVerdict {
     return {
       kind: 'bank-statement',
       confidence: coverage <= 0.5 ? 'high' : 'medium',
-      reason: `${cheques} cheques on ${withCheques} of ${counted} pages — the rest look like transactions`,
+      reason: `${cheques} cheques on ${withCheques} of ${counted} pages, the rest look like transactions`,
     };
   }
 
@@ -157,7 +157,7 @@ export function classifyDocument(s: DocumentSignals): DocumentVerdict {
   return {
     kind: 'cheque-sheet',
     confidence: 'low',
-    reason: `${cheques} cheques across ${withCheques} of ${counted} pages — check this one`,
+    reason: `${cheques} cheques across ${withCheques} of ${counted} pages, check this one`,
   };
 }
 

@@ -33,7 +33,7 @@ import { createClient } from '@/lib/supabase/client';
 const VOUCH_TARGETS = [
   { kind: 'Deposit' as const, glyph: 'D', title: 'Create as Deposit', hint: 'Best for received / incoming cheques' },
   { kind: 'Purchase' as const, glyph: 'P', title: 'Create as Purchase / Cheque Written', hint: 'Best for outgoing / written cheques' },
-  { kind: 'local' as const, glyph: 'K', title: 'Vouch in Kyriq only', hint: "Mark as resolved — don't touch QB" },
+  { kind: 'local' as const, glyph: 'K', title: 'Vouch in Kyriq only', hint: "Mark as resolved, don't touch QB" },
 ];
 
 export default function QBComparisonsPage() {
@@ -215,12 +215,12 @@ export default function QBComparisonsPage() {
     const RECONCILE_URL = 'https://app.qbo.intuit.com/app/reconcile';
     switch (qbSync?.status) {
       case 'already_cleared':
-        showToast('success', 'Approved — QuickBooks already has this transaction cleared ✓');
+        showToast('success', 'Approved, QuickBooks already has this transaction cleared ✓');
         break;
       case 'queued_for_reconcile':
         showToast(
           'success',
-          'Approved — open QB Reconcile and click "Auto-Clear Kyriq Approved" (Chrome extension) to tick the C.'
+          'Approved, open QB Reconcile and click "Auto-Clear Kyriq Approved" (Chrome extension) to tick the C.'
         );
         // Auto-open Reconcile once per session on first queued approve.
         if (!reconcileTabOpenedRef.current && typeof window !== 'undefined') {
@@ -231,11 +231,11 @@ export default function QBComparisonsPage() {
       case 'manual_required':
         showToast(
           'warning',
-          qbSync.message || 'Approved — Bill Payment must be ticked Cleared manually on QB Reconcile.'
+          qbSync.message || 'Approved, Bill Payment must be ticked Cleared manually on QB Reconcile.'
         );
         break;
       case 'inactive_entity':
-        showToast('warning', 'Approved in Kyriq ✓ — QB not stamped: a linked vendor or account is inactive in QuickBooks. Reactivate it and re-approve.');
+        showToast('warning', 'Approved in Kyriq ✓, QB not stamped: a linked vendor or account is inactive in QuickBooks. Reactivate it and re-approve.');
         break;
       case 'failed':
         showToast('warning', `Approved in Kyriq ⚠ QB stamp failed: ${qbSync.message || 'unknown error'}`);
@@ -243,8 +243,8 @@ export default function QBComparisonsPage() {
       case 'skipped':
         showToast('warning',
           qbEntryId
-            ? `Approved in Kyriq ✓ — QB sync skipped: ${qbSync?.message || 'unknown reason'}`
-            : 'Approved in Kyriq ✓ — no QuickBooks transaction linked, so it cannot be cleared in QB. Use "Find in QB" to link first.'
+            ? `Approved in Kyriq ✓, QB sync skipped: ${qbSync?.message || 'unknown reason'}`
+            : 'Approved in Kyriq ✓, no QuickBooks transaction linked, so it cannot be cleared in QB. Use "Find in QB" to link first.'
         );
         break;
       default:
@@ -336,7 +336,7 @@ export default function QBComparisonsPage() {
       let data: any;
       try { data = JSON.parse(rawText); } catch {
         throw new Error(res.status === 504 || rawText.startsWith('An error')
-          ? 'Request timed out — try adding a date range filter to reduce data volume.'
+          ? 'Request timed out, try adding a date range filter to reduce data volume.'
           : `Server error (${res.status}): ${rawText.substring(0, 120)}`);
       }
       console.log('✅ QB Sync result:', data);
@@ -345,7 +345,7 @@ export default function QBComparisonsPage() {
         const count = data.count ?? data.total ?? data.entries?.length ?? 0;
         const partialErrors: string[] = data.partialErrors || data.errors || [];
         if (count === 0) {
-          showToast('warning', `Sync complete — 0 QB transactions found. Check your QB connection or date range.`);
+          showToast('warning', `Sync complete, 0 QB transactions found. Check your QB connection or date range.`);
         } else if (partialErrors.length > 0) {
           showToast('warning', `Synced ${count} QB transactions ⚠ (${partialErrors.length} partial error${partialErrors.length > 1 ? 's' : ''}: ${partialErrors[0].slice(0, 60)})`);
         } else {
@@ -759,7 +759,7 @@ export default function QBComparisonsPage() {
               <AlertCircle size={20} className="shrink-0 text-error-text" aria-hidden />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-error-text">
-                  No QuickBooks data found — click to configure
+                  No QuickBooks data found, click to configure
                 </p>
                 <p className="text-xs text-ink-body">
                   {qbConnected
@@ -912,7 +912,7 @@ export default function QBComparisonsPage() {
         </p>
         <p className="mt-2 text-xs text-ink-faint">
           Note: BillPayment amounts cannot be changed via the QuickBooks API. Those rows will be
-          reported as failed — adjust the linked Bill in QuickBooks instead.
+          reported as failed, adjust the linked Bill in QuickBooks instead.
         </p>
       </Dialog>
 

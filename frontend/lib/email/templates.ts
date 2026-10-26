@@ -25,6 +25,7 @@
  *     invoice.
  */
 
+import { spell, type Spelling } from '@/lib/spelling';
 import { emailShell } from './layout';
 
 export type EmailCategory = 'transactional' | 'notification';
@@ -266,7 +267,7 @@ export const TEMPLATES = {
   trial_checks_exhausted: {
     category: 'transactional',
     spec: 'billing-05 trial allowance used',
-    subject: () => 'Your trial checks are used — choose a plan to continue',
+    subject: () => 'Your trial checks are used: choose a plan to continue',
     body: (v) => ({
       paragraphs: [
         `${firmOf(v)} has processed all ${v.checkLimit} checks included in the trial, so processing has stopped.`,
@@ -318,7 +319,7 @@ export const TEMPLATES = {
   usage_allowance_reached: {
     category: 'transactional',
     spec: 'billing-10 allowance reached, overage begins',
-    subject: () => 'Your included checks are used — overage has started',
+    subject: () => 'Your included checks are used and overage has started',
     body: (v) => ({
       paragraphs: [
         `${firmOf(v)} has processed all ${v.allowance} checks included in the ${v.planLabel || 'current'} plan for the period ending ${formatDate(v.periodEnd)}.`,
@@ -359,7 +360,7 @@ export const TEMPLATES = {
         v.amountUsd
           ? `Your card on file will be charged $${Number(v.amountUsd).toLocaleString('en-US')} for the next twelve months. Nothing is charged before that date.`
           : 'Your card on file will be charged for the next twelve months. Nothing is charged before that date.',
-        'No action is needed if you are staying. If you want to change plans or stop the renewal, do it before that date — cancelling afterwards does not refund the year.',
+        'No action is needed if you are staying. If you want to change plans or stop the renewal, do it before that date. Cancelling afterwards does not refund the year.',
       ],
       cta: { label: 'Review your plan', url: appUrl('/billing') },
     }),
@@ -544,7 +545,7 @@ export class EmailRenderError extends Error {}
 export function renderTemplate(
   key: TemplateKey,
   vars: Record<string, any>,
-  opts: { unsubscribeUrl?: string | null } = {}
+  opts: { unsubscribeUrl?: string | null; spelling?: Spelling } = {}
 ): RenderedEmail {
   const template: EmailTemplate = TEMPLATES[key];
   if (!template) throw new EmailRenderError(`Unknown email template: ${key}`);
@@ -557,9 +558,16 @@ export function renderTemplate(
     );
   }
 
-  const subject = template.subject(vars);
-  const body = template.body(vars);
-  const paragraphs = body.paragraphs.filter(Boolean);
+  // check/cheque by the firm's QuickBooks country (lib/spelling.ts). URLs are never respelled.
+  const sp = (t: string) => spell(t, opts.spelling ?? 'check');
+  const subject = sp(template.subject(vars));
+  const raw = template.body(vars);
+  const body = {
+    ...raw,
+    footnote: raw.footnote && sp(raw.footnote),
+    cta: raw.cta && { ...raw.cta, label: sp(raw.cta.label) },
+  };
+  const paragraphs = raw.paragraphs.filter(Boolean).map(sp);
 
   // A missing variable must never reach a customer as the word "undefined".
   // The render error is logged as a failed send by sendEmail(), not mailed.

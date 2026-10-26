@@ -79,13 +79,13 @@ const ALL_STATUSES = [
 const SETTLED_STATUSES = ['matched', 'approved'] as const;
 
 const STATUS_META: Record<string, { label: string; icon: React.ReactNode }> = {
-  all:         { label: 'All',         icon: <Filter className="h-3.5 w-3.5" /> },
-  pending:     { label: 'Pending',     icon: <Clock className="h-3.5 w-3.5" /> },
-  matched:     { label: 'Matched',     icon: <Check className="h-3.5 w-3.5" /> },
+  all:         { label: 'All',        icon: <Filter className="h-3.5 w-3.5" /> },
+  pending:     { label: 'Pending',    icon: <Clock className="h-3.5 w-3.5" /> },
+  matched:     { label: 'Matched',    icon: <Check className="h-3.5 w-3.5" /> },
   discrepancy: { label: 'Discrepancy', icon: <AlertTriangle className="h-3.5 w-3.5" /> },
-  unmatched:   { label: 'Unmatched',   icon: <HelpCircle className="h-3.5 w-3.5" /> },
-  flagged:     { label: 'Flagged',     icon: <Flag className="h-3.5 w-3.5" /> },
-  approved:    { label: 'Approved',    icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
+  unmatched:   { label: 'Unmatched',  icon: <HelpCircle className="h-3.5 w-3.5" /> },
+  flagged:     { label: 'Flagged',    icon: <Flag className="h-3.5 w-3.5" /> },
+  approved:    { label: 'Approved',   icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
 };
 
 /**
@@ -135,8 +135,8 @@ const THRESHOLD_DEFAULT = 95;
 
 const SORT_OPTIONS = [
   { key: 'confidence', label: 'Confidence (low first)' },
-  { key: 'date',       label: 'Most Recent' },
-  { key: 'amount',     label: 'Largest Discrepancy' },
+  { key: 'date',      label: 'Most Recent' },
+  { key: 'amount',    label: 'Largest Discrepancy' },
 ];
 
 /**
@@ -334,7 +334,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
           </Button>
           {/* The threshold and the action it feeds, as one unit. The Select is
               hidden while rows are selected because the threshold does not
-              apply to an explicit selection — hiding it is what keeps the
+              apply to an explicit selection, hiding it is what keeps the
               label honest. No extra row: it sits in the existing flex. */}
           {selected.size === 0 && (
             <Select
@@ -395,7 +395,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
       {/* ── Toolbar: status chips, search, sort, selection. One glass card. */}
       <GlassCard padding="sm" className="space-y-3">
         {/* The seven old status filters, scoped to the active tab and still
-            carrying their own live counts. Wraps rather than scrolls — a chip
+            carrying their own live counts. Wraps rather than scrolls, a chip
             row that needs a hidden scrollbar is a chip row nobody finds. */}
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Narrow by status">
           {activeTab.chips.map((key) => {
@@ -557,11 +557,11 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
                             aria-pressed={on}
                             className="nums rounded focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                           >
-                            {m.check?.check_number ? `#${m.check.check_number}` : '—'}
+                            {m.check?.check_number ? `#${m.check.check_number}` : '-'}
                           </button>
                         </td>
                         <td className="nums whitespace-nowrap px-3 py-2">{formatDate(m.check?.check_date)}</td>
-                        <td className="max-w-[160px] truncate px-3 py-2">{m.check?.payee || '—'}</td>
+                        <td className="max-w-[160px] truncate px-3 py-2">{m.check?.payee || '-'}</td>
                         <td className="max-w-[160px] truncate px-3 py-2">
                           {m.qb_txn
                             ? `${m.qb_txn.txn_type || 'Transaction'}${m.qb_txn.doc_number ? ` #${m.qb_txn.doc_number}` : ''}`
@@ -584,7 +584,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className="font-heading text-base font-semibold text-ink-strong">
-                    {`Cheque #${focused.check?.check_number || '—'}`}
+                    {`Cheque #${focused.check?.check_number || '-'}`}
                   </h3>
                   <span className="text-xs font-medium text-ink-faint">{issueLabel(focused)}</span>
                 </div>
@@ -613,7 +613,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
           </div>
 
           {/* The up-to-200-record view. The grid's own Pagination component,
-              reused — its PER_PAGE list is where 200 lives. */}
+              reused, its PER_PAGE list is where 200 lives. */}
           <GlassPanel padding="none" radius="card" className="overflow-hidden">
             <Pagination
               currentPage={page}

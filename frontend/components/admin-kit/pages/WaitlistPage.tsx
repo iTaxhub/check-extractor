@@ -78,11 +78,11 @@ export default function WaitlistPage() {
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Stat icon={Users} label="On the list" value={rows?.length ?? '—'} />
+        <Stat icon={Users} label="On the list" value={rows?.length ?? '-'} />
         <Stat
           icon={unconfirmed ? MailWarning : Mail}
           label="No confirmation sent"
-          value={rows ? unconfirmed : '—'}
+          value={rows ? unconfirmed : '-'}
           warn={unconfirmed > 0}
         />
 
@@ -109,7 +109,7 @@ export default function WaitlistPage() {
           {/* A plain link, not fetch+blob: the endpoint already sets
               Content-Disposition, so the browser does the download itself.
               next/link is wrong for this and the lint rule is misreading an API
-              route as a page — routing to it client-side would try to render a
+              route as a page, routing to it client-side would try to render a
               CSV response as a page instead of downloading it. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
@@ -154,8 +154,8 @@ export default function WaitlistPage() {
                 <td className="px-4 py-3">
                   <a href={`mailto:${r.email}`} className="font-medium text-brand hover:underline">{r.email}</a>
                 </td>
-                <td className="px-4 py-3 text-ink-body">{r.name || <span className="text-ink-faint">—</span>}</td>
-                <td className="px-4 py-3 text-ink-body">{r.company || <span className="text-ink-faint">—</span>}</td>
+                <td className="px-4 py-3 text-ink-body">{r.name || <span className="text-ink-faint">-</span>}</td>
+                <td className="px-4 py-3 text-ink-body">{r.company || <span className="text-ink-faint">-</span>}</td>
                 <td className="px-4 py-3">
                   {r.confirmed_at
                     ? <span className="text-ink-soft tabular-nums">{fmt(r.confirmed_at)}</span>

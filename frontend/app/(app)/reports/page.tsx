@@ -224,7 +224,7 @@ export default function ReportsPage() {
             Apply
           </Button>
           {/* `link`, not `ghost`: ghost carries its own backdrop-blur and this
-              sits inside a GlassCard — two blurred surfaces must not nest. */}
+              sits inside a GlassCard, two blurred surfaces must not nest. */}
           <Button size="sm" variant="link" onClick={reset} disabled={loading}>
             Reset to this month
           </Button>
@@ -335,7 +335,7 @@ export default function ReportsPage() {
               Cheques processed is one row per successfully processed cheque in the usage ledger,
               by the date it was processed
               {report && !report.cheques_processed.account_filter_applied
-                ? ' — the ledger records the company but not the bank account, so the account filter does not narrow this figure'
+                ? ', the ledger records the company but not the bank account, so the account filter does not narrow this figure'
                 : ''}
               . Reconciliations, cheques reconciled, matched and needs-attention are counted over
               the batches whose period overlaps the range, which is what &ldquo;August&rdquo; means
@@ -381,7 +381,7 @@ export default function ReportsPage() {
           {/* ── Per-reconciliation detail ──────────────────────── */}
           <TableShell>
             {/* overflow-x-auto so the last columns stay reachable at phone
-                width — TableShell clips, TableScroll scrolls. */}
+                width, TableShell clips, TableScroll scrolls. */}
             <TableScroll className="max-h-[60vh] overflow-x-auto">
               <Table className="min-w-[52rem]">
                 <Thead>
@@ -437,7 +437,7 @@ export default function ReportsPage() {
                         <Td numeric>{r.counts?.checks_total ?? 0}</Td>
                         <Td numeric>{r.counts?.matches_total ?? 0}</Td>
                         <Td numeric>{r.counts?.needs_attention ?? 0}</Td>
-                        <Td muted>{r.approved_at ? r.approved_at.slice(0, 10) : '—'}</Td>
+                        <Td muted>{r.approved_at ? r.approved_at.slice(0, 10) : '-'}</Td>
                       </Tr>
                     ))
                   )}

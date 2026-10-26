@@ -25,7 +25,7 @@ interface Reconciliation {
 }
 
 const money = (n: number | null) =>
-  n == null ? '—' : n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  n == null ? '-' : n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
 /** Longest unmatched list shown inline; the counts above are always exact. */
 const SHOW = 50;
@@ -92,8 +92,8 @@ export default function StatementPanel({ jobId, imageCount }: { jobId: string; i
                 <Tbody>
                   {data.unmatched_rows.slice(0, SHOW).map((r) => (
                     <Tr key={`${r.page}-${r.row_index}`}>
-                      <Td numeric>{r.check_number ?? '—'}</Td>
-                      <Td>{r.date ?? '—'}</Td>
+                      <Td numeric>{r.check_number ?? '-'}</Td>
+                      <Td>{r.date ?? '-'}</Td>
                       <Td numeric>{money(r.amount)}</Td>
                       <Td numeric muted>{r.page}</Td>
                     </Tr>

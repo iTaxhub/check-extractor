@@ -287,7 +287,7 @@ export async function getQbToken(
     // 'unknown', NOT 'needs_reconnect': absent credentials are our own
     // misconfiguration and a firm must not be emailed about reconnecting
     // something only we can fix.
-    const detail = 'Cannot refresh token — missing QuickBooks credentials';
+    const detail = 'Cannot refresh token, missing QuickBooks credentials';
     await markQbConnection({
       realmId: conn.realmId,
       tenantId: conn.tenantId,

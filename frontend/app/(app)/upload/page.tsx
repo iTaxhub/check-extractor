@@ -91,7 +91,7 @@ interface ReuploadAsk {
 }
 
 function fmtSize(bytes?: number): string {
-  if (!bytes) return '—';
+  if (!bytes) return '-';
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
@@ -424,7 +424,7 @@ function UploadPageInner() {
         const dup = await response.json().catch(() => ({} as any));
         const proceed = await askReupload(file.name, dup.previous_uploaded_at ?? null);
         if (!proceed) {
-          setProgressMessages(prev => ({ ...prev, [entryId]: ['Skipped — already uploaded'] }));
+          setProgressMessages(prev => ({ ...prev, [entryId]: ['Skipped, already uploaded'] }));
           throw new DuplicateSkipped(file.name);
         }
         response = await fetch('/api/upload-analyze?confirm_reupload=true', {
@@ -633,7 +633,7 @@ function UploadPageInner() {
         rejections.length > 0 && rejections.every((r) => r instanceof DuplicateSkipped);
       setError(
         allSkipped
-          ? 'Nothing was processed — every file had already been uploaded.'
+          ? 'Nothing was processed, every file had already been uploaded.'
           : 'All uploads failed. Please try again.'
       );
     }
@@ -936,7 +936,7 @@ function UploadPageInner() {
       )}
 
       {/* ══════════════════════════════════════════════════
-          STEP 2: PREVIEW — show pages, cheque count, images
+          STEP 2: PREVIEW, show pages, cheque count, images
          ══════════════════════════════════════════════════ */}
       {step === 'preview' && analyzeResult && (
         <>
@@ -1149,11 +1149,11 @@ function UploadPageInner() {
                               {page.checks_on_page}
                             </Badge>
                           ) : (
-                            <span className="text-ink-faint">—</span>
+                            <span className="text-ink-faint">-</span>
                           )}
                         </Td>
                         <Td numeric muted className="font-mono text-xs">
-                          {page.width > 0 ? `${page.width} x ${page.height}` : '—'}
+                          {page.width > 0 ? `${page.width} x ${page.height}` : '-'}
                         </Td>
                         <Td className="text-center">
                           <IconButton aria-label={`View page ${page.page_number}`} size="icon-sm">
@@ -1309,7 +1309,7 @@ function UploadPageInner() {
             <div className="min-w-0">
               <h1 className="font-heading text-2xl font-semibold text-ink-strong">Configure extraction</h1>
               <p className="nums mt-0.5 truncate text-sm text-ink-body">
-                {analyzeResult.pdf_name} — {totalPages} pages, {totalChecks} cheques
+                {analyzeResult.pdf_name}, {totalPages} pages, {totalChecks} cheques
               </p>
             </div>
             <Button
@@ -1352,7 +1352,7 @@ function UploadPageInner() {
                 {
                   key: 'pages',
                   title: 'Choose pages',
-                  hint: 'Tick the pages to extract — cheque pages are pre-ticked',
+                  hint: 'Tick the pages to extract, cheque pages are pre-ticked',
                 },
                 ...(totalChecks > 0
                   ? [{ key: 'cheques', title: 'Cheque range', hint: 'Select specific cheques' }]
@@ -1452,7 +1452,7 @@ function UploadPageInner() {
             />
             <span className="text-xs text-ink-body">
               Force re-run extraction
-              <span className="ml-1 text-ink-faint">— run again even if results already exist</span>
+              <span className="ml-1 text-ink-faint">run again even if results already exist</span>
             </span>
           </label>
 

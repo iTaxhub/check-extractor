@@ -104,7 +104,7 @@ function toFailure(status: number, body: any): DataFailure {
       kind: 'migration_not_applied',
       message:
         body?.message ||
-        'This is not available yet — the migration behind it has not been applied to this database.',
+        'This is not available yet, the migration behind it has not been applied to this database.',
     };
   }
   if (status === 403) return { kind: 'forbidden', message };

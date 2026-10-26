@@ -152,7 +152,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .maybeSingle();
       if (moveErr) throw moveErr;
       if (!moved || moved.tenant_id !== invitation.tenant_id) {
-        throw new Error('Joining the firm did not persist — suspect RLS on user_profiles');
+        throw new Error('Joining the firm did not persist, suspect RLS on user_profiles');
       }
 
       // Drop the abandoned single-user tenant so it stops appearing in the
@@ -186,7 +186,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
     if (createErr) throw createErr;
     if (!created || created.tenant_id !== invitation.tenant_id) {
-      throw new Error('Profile creation did not persist — suspect RLS on user_profiles');
+      throw new Error('Profile creation did not persist, suspect RLS on user_profiles');
     }
 
     await service.from('team_invitations').update({ status: 'accepted' }).eq('id', invitation.id);

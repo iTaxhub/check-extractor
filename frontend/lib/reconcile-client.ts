@@ -69,7 +69,7 @@ function toFailure(status: number, body: any): ReconcileFailure {
       kind: 'migration_not_applied',
       message:
         body?.message ||
-        'Reconciliation batches are not available yet — migration 032 has not been applied to this database.',
+        'Reconciliation batches are not available yet, migration 032 has not been applied to this database.',
     };
   }
   if (status === 401) return { kind: 'unauthenticated', message };

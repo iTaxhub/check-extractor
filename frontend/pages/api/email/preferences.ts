@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
     if (error) throw error;
     // A 200 from the driver is not proof: assert on the parsed row.
-    if (!data) throw new Error('Preference write returned no row — suspect RLS on email_preferences');
+    if (!data) throw new Error('Preference write returned no row, suspect RLS on email_preferences');
     if (Boolean(data.unsubscribed_at) === req.body.subscribed) {
       throw new Error('Preference write did not persist');
     }

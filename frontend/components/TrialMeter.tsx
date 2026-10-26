@@ -96,7 +96,7 @@ export default function TrialMeter() {
   const label = over
     ? status.blockReason === 'realm_trial_already_used'
       ? 'This QuickBooks company has already had its free trial'
-      : 'Free trial ended — history stays available'
+      : 'Free trial ended, history stays available'
     : `Free trial: ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} and ${checksLeft} of ${limit} cheques remaining`;
 
   return (

@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new BatchError(
           503,
           'migration_not_applied',
-          'The batches table is missing — apply supabase/migrations/032_batches.sql.'
+          'The batches table is missing, apply supabase/migrations/032_batches.sql.'
         );
       }
       throw new BatchError(500, 'read_failed', error.message);

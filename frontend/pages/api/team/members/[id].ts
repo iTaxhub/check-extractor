@@ -203,7 +203,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
     if (error) throw error;
     if (!updated) {
-      throw new Error('Role update returned no row — the write did not persist');
+      throw new Error('Role update returned no row, the write did not persist');
     }
     if (toDbRole(updated.role) !== nextRole) {
       throw new Error(`Role update did not persist (still ${updated.role})`);

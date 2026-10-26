@@ -312,12 +312,12 @@ export interface BatchPayload {
  */
 export function toBatchPayload(row: any, counts: BatchCounts): BatchPayload {
   if (!row || typeof row !== 'object') {
-    throw new Error('batch row missing — the write did not persist (check RLS and tenant_id)');
+    throw new Error('batch row missing, the write did not persist (check RLS and tenant_id)');
   }
   for (const field of ['id', 'tenant_id', 'realm_id', 'period_start', 'status'] as const) {
     if (!row[field]) {
       throw new Error(
-        `batch row is missing ${field} — the write did not persist as expected (check RLS and tenant_id)`
+        `batch row is missing ${field}, the write did not persist as expected (check RLS and tenant_id)`
       );
     }
   }

@@ -56,7 +56,7 @@ export default async function handler(
       for (const row of health || []) {
         if (row?.realm_id && row.status) statusByRealm.set(row.realm_id, row.status);
       }
-    } catch { /* column absent — fall back to 'connected' below */ }
+    } catch { /* column absent, fall back to 'connected' below */ }
 
     const accountsByRealm = new Map<string, number>();
     try {
@@ -67,7 +67,7 @@ export default async function handler(
       for (const row of accts || []) {
         if (row?.realm_id) accountsByRealm.set(row.realm_id, (accountsByRealm.get(row.realm_id) || 0) + 1);
       }
-    } catch { /* table absent — the switcher shows no account count */ }
+    } catch { /* table absent, the switcher shows no account count */ }
 
     // Enrich with pending check counts
     const enriched = await Promise.all(

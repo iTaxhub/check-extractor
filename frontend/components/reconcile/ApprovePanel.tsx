@@ -95,7 +95,7 @@ export default function ApprovePanel({ batch, onBatch }: ApprovePanelProps) {
               ? 'This reconciliation is approved. The batch is locked and the approval is in the audit log.'
               : canApprove
                 ? 'Nothing is left to decide. Approving locks this batch and records who approved it.'
-                : 'This batch cannot be approved yet — the steps below are not finished.'}
+                : 'This batch cannot be approved yet, the steps below are not finished.'}
           </p>
         </div>
         <Badge tone={complete ? 'success' : canApprove ? 'brand' : 'warning'} className="shrink-0">
@@ -120,7 +120,7 @@ export default function ApprovePanel({ batch, onBatch }: ApprovePanelProps) {
         </Fact>
         <Fact icon={<Landmark className="h-3.5 w-3.5" aria-hidden />} label="Account">
           {batch.account_name || (
-            <span className="text-ink-faint">Whole company — no single account</span>
+            <span className="text-ink-faint">Whole company, no single account</span>
           )}
         </Fact>
         <Fact icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />} label="Period">
@@ -147,13 +147,13 @@ export default function ApprovePanel({ batch, onBatch }: ApprovePanelProps) {
           </Line>
           <Line tone={c.rejected > 0 ? 'muted' : 'ok'}>
             <span className="nums font-medium text-ink-strong">{c.rejected}</span> excluded as
-            rejected — left out of the approval and still visible in Review.
+            rejected, left out of the approval and still visible in Review.
           </Line>
           <Line tone={c.needs_attention > 0 ? 'warn' : 'ok'}>
             <span className="nums font-medium text-ink-strong">{c.needs_attention}</span> unresolved
             {c.needs_attention > 0
-              ? ' — these block approval until each one is settled in Review.'
-              : ' — nothing is waiting on a decision.'}
+              ? ', these block approval until each one is settled in Review.'
+              : ', nothing is waiting on a decision.'}
           </Line>
           {/* Honest about the boundary. This endpoint does not touch QuickBooks. */}
           <Line tone="muted">
@@ -181,7 +181,7 @@ export default function ApprovePanel({ batch, onBatch }: ApprovePanelProps) {
                 <span className="font-medium text-ink-strong">
                   Step <span className="nums">{s.step}</span> · {s.label}
                 </span>{' '}
-                — {s.reason || 'Not complete.'}
+               , {s.reason || 'Not complete.'}
               </li>
             ))}
           </ul>

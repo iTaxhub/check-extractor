@@ -124,6 +124,11 @@ export default async function handler(
         .eq('realm_id', realmId),
     ]);
 
+    // Separate write: until migration 051 adds the column this fails on its own
+    // and must not take the company-name update down with it. Emails read it
+    // to choose "check" or "cheque" (lib/spelling.ts).
+    await supabase.from('qb_connections').update({ country: companyInfo.Country ?? null }).eq('realm_id', realmId);
+
     return res.status(200).json({
       connected: true,
       cached: false,

@@ -34,7 +34,7 @@ const BING_VERIFICATION = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
 export const metadata: Metadata = {
   metadataBase: new URL('https://kyriq.com'),
   title: {
-    default: 'Kyriq — Check Reconciliation for QuickBooks Online',
+    default: 'Kyriq | Check Reconciliation for QuickBooks Online',
     template: '%s | Kyriq',
   },
   description: 'Check reconciliation software for QuickBooks Online. Upload a bank statement, match every check, approve exact matches in bulk and clear them in QBO.',
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     ...(BING_VERIFICATION ? { other: { 'msvalidate.01': BING_VERIFICATION } } : {}),
   },
   openGraph: {
-    title: 'Kyriq — Check Reconciliation for QuickBooks Online',
+    title: 'Kyriq | Check Reconciliation for QuickBooks Online',
     description: 'Reconcile checks with confidence while your team stays in control of every approval.',
     // A purpose-built 1200x630 JPEG, NOT one of the 4K landing PNGs.
     // Social scrapers fetch this URL directly and never go through Next's image
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Kyriq — Check Reconciliation for QuickBooks Online',
+    title: 'Kyriq | Check Reconciliation for QuickBooks Online',
     description: 'Reconcile checks with confidence while your team stays in control of every approval.',
     images: ['/landing/og-card-1200x630.jpg'],
   },

@@ -236,7 +236,7 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!url || !anonKey) {
   console.log(
-    'batches: SKIPPING the live-DB half — set NEXT_PUBLIC_SUPABASE_URL and ' +
+    'batches: SKIPPING the live-DB half, set NEXT_PUBLIC_SUPABASE_URL and ' +
       'NEXT_PUBLIC_SUPABASE_ANON_KEY (e.g. `npx dotenv -e ../.env -- npx tsx lib/batches.check.ts`) ' +
       'to assert that an anon-key request returns zero rows.'
   );
@@ -271,7 +271,7 @@ if (!url || !anonKey) {
             : { p_batch_id: '00000000-0000-0000-0000-000000000000' };
         const { error: fnErr } = await service.rpc(fn, args as any);
         if (MISSING.test(String(fnErr?.code || ''))) {
-          console.log(`batches: SKIP public.${fn}() — not present (migration 032 not applied)`);
+          console.log(`batches: SKIP public.${fn}(), not present (migration 032 not applied)`);
         } else if (fnErr) {
           failures++;
           console.error(`batches: FAIL public.${fn}() errored: ${fnErr.code} ${fnErr.message}`);
@@ -289,7 +289,7 @@ if (!url || !anonKey) {
 
     if (MISSING.test(code) || tableKnownPresent === false) {
       console.log(
-        'batches: SKIP the RLS assertion — the batches table is NOT present in this ' +
+        'batches: SKIP the RLS assertion, the batches table is NOT present in this ' +
           'database, and a missing table returns zero rows for every caller. ' +
           'Apply supabase/migrations/032_batches.sql and re-run. ' +
           'This is NOT a pass.'
@@ -315,7 +315,7 @@ if (!url || !anonKey) {
       period_end: '2026-01-31',
     });
     if (MISSING.test(String(writeErr?.code || '')) || tableKnownPresent === false) {
-      console.log('batches: SKIP anon insert probe — batches not present');
+      console.log('batches: SKIP anon insert probe, batches not present');
     } else if (!writeErr) {
       failures++;
       console.error('batches: FAIL anon key was able to insert a batch');

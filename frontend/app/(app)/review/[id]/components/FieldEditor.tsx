@@ -70,7 +70,7 @@ export default function FieldEditor({ check }: Props) {
         .eq('check_id', check.id)
         .maybeSingle();
       if (!match?.qb_txn_id) {
-        return { ok: false, message: 'No linked QuickBooks transaction — saved locally only.' };
+        return { ok: false, message: 'No linked QuickBooks transaction, saved locally only.' };
       }
 
       // Map check fields to update-transaction.ts payload
@@ -140,12 +140,12 @@ export default function FieldEditor({ check }: Props) {
       if (Object.keys(changed).length > 0) {
         const qb = await pushChangesToQB(changed);
         if (qb.ok) {
-          setStatusMessage({ type: 'success', text: `Saved — ${qb.message}` });
+          setStatusMessage({ type: 'success', text: `Saved, ${qb.message}` });
         } else {
-          setStatusMessage({ type: 'warning', text: `Saved locally — ${qb.message}` });
+          setStatusMessage({ type: 'warning', text: `Saved locally, ${qb.message}` });
         }
       } else {
-        setStatusMessage({ type: 'success', text: 'Saved — no changes detected.' });
+        setStatusMessage({ type: 'success', text: 'Saved, no changes detected.' });
       }
       router.refresh();
     } catch (error: any) {

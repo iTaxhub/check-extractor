@@ -79,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(503).json({
         error: 'retention_not_available',
         message:
-          'public.upload_retention_due() is missing — apply ' +
+          'public.upload_retention_due() is missing, apply ' +
           'supabase/migrations/035_history_reports_and_retention.sql.',
       });
     }

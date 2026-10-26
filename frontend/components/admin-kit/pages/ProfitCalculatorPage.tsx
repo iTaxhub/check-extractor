@@ -26,7 +26,7 @@ const DENSE_CALC = '[&_td]:px-3 [&_td]:py-2 [&_th]:px-3 [&_th]:py-2';
 /* ─── Editable model ───────────────────────────────────────────────────────
    Kyriq sells three monthly tiers to accounting firms, each with a cheque
    allowance and the same per-cheque overage rate. Revenue is therefore
-   subscription + overage, and the real COGS is per-cheque OCR/Gemini spend —
+   subscription + overage, and the real COGS is per-cheque OCR/Gemini spend -
    not a per-seat AI cost. Every field below is editable so the owner can model
    a price that has not shipped; Stripe remains the source of truth for what is
    actually billed. */
@@ -59,7 +59,7 @@ const DEFAULTS: CalcInputs = {
 
 /* ─── Custom services / add-ons (extra revenue beyond subscriptions) ───────
    Seeded EMPTY on purpose. Kyriq's published plans (lib/pricing.ts) and the
-   landing page list no paid add-on — priority support and onboarding
+   landing page list no paid add-on, priority support and onboarding
    assistance are bundled into the Professional and Firm tiers, not sold. The
    table stays because modelling a service you are considering is useful; it is
    not pre-filled with a product Kyriq does not sell. */
@@ -277,7 +277,7 @@ export default function ProfitCalculatorPage() {
     <div className="space-y-4">
       <PageHeader
         title="Profit Calculator"
-        description="Kyriq's three tiers, their cheque allowances and the $0.20 overage. Firm counts come from live subscriptions; cheque volume and OCR cost are assumptions — tweak any field to model a scenario."
+        description="Kyriq's three tiers, their cheque allowances and the $0.20 overage. Firm counts come from live subscriptions; cheque volume and OCR cost are assumptions, tweak any field to model a scenario."
         actions={
           <button
             onClick={() => setInputs(liveDefaults)}
@@ -302,7 +302,7 @@ export default function ProfitCalculatorPage() {
         />
         <Kpi
           label="Break-even firms"
-          value={breakEvenFirms !== null ? formatNumber(breakEvenFirms) : "—"}
+          value={breakEvenFirms !== null ? formatNumber(breakEvenFirms) : "-"}
           sub={breakEvenFirms !== null ? "at this tier mix" : "raise price / cut cheque cost"}
           highlight={breakEvenFirms !== null && now.firms >= breakEvenFirms ? "emerald" : undefined}
         />
@@ -369,8 +369,8 @@ export default function ProfitCalculatorPage() {
           </Table>
         </div>
         <p className="px-4 py-2.5 text-[11px] text-ink-faint border-t border-glass-hairline">
-          <span className="text-ink-soft">Assumption</span> — cheques/firm is seeded at each tier&apos;s allowance (so no overage until you say otherwise):
-          Kyriq does not record per-firm cheque volume against a plan. <span className="text-ink-soft">Assumption</span> — admin-metrics reports
+          <span className="text-ink-soft">Assumption</span>, cheques/firm is seeded at each tier&apos;s allowance (so no overage until you say otherwise):
+          Kyriq does not record per-firm cheque volume against a plan. <span className="text-ink-soft">Assumption</span>, admin-metrics reports
           subscription counts but not the tier, so live firms all land on Professional; move them between rows.
         </p>
       </TableShell>
@@ -408,7 +408,7 @@ export default function ProfitCalculatorPage() {
             ))}
           </div>
           <p className="text-[11px] text-ink-faint">
-            <span className="text-ink-soft">Assumption</span> — OCR cost per cheque is not measured: Kyriq records no
+            <span className="text-ink-soft">Assumption</span>, OCR cost per cheque is not measured: Kyriq records no
             Gemini/Tesseract spend in the database. The default is a placeholder, not a reading.
           </p>
         </div>
@@ -429,7 +429,7 @@ export default function ProfitCalculatorPage() {
               <RechartsTooltip content={<ChartTooltip />} />
               <Legend wrapperStyle={LEGEND_STYLE} />
               {/* Profit is semantic here — this chart's whole job is "are we in the
-                  black" — so it takes --success, not a categorical slot. Revenue is
+                  black", so it takes --success, not a categorical slot. Revenue is
                   the brand line; Cumulative takes the neutral series rather than
                   amber (which means "needs attention" everywhere else) and rather
                   than a second indigo, which would not read apart from Revenue at
@@ -448,7 +448,7 @@ export default function ProfitCalculatorPage() {
           <div>
             <p className="text-sm font-semibold text-ink-strong">Services &amp; add-ons</p>
             <p className="text-xs text-ink-soft mt-0.5">
-              Empty by default — Kyriq sells no paid add-on today. Add one to model it.
+              Empty by default, Kyriq sells no paid add-on today. Add one to model it.
             </p>
           </div>
           <p className="text-sm font-bold text-success-text tabular-nums">
@@ -531,7 +531,7 @@ export default function ProfitCalculatorPage() {
             <Plus size={13} /> Add service
           </button>
           <p className="text-[11px] text-ink-faint">
-            One-time vs monthly only labels the income stream — both are modelled as that month&apos;s inflow, scale with firm growth, and each buyer adds one Stripe charge.
+            One-time vs monthly only labels the income stream, both are modelled as that month&apos;s inflow, scale with firm growth, and each buyer adds one Stripe charge.
           </p>
         </div>
       </TableShell>

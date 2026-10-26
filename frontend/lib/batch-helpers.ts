@@ -63,7 +63,7 @@ export async function loadBatchCounts(
       throw new BatchError(
         503,
         'migration_not_applied',
-        'public.batch_counts() is missing — apply supabase/migrations/032_batches.sql.'
+        'public.batch_counts() is missing, apply supabase/migrations/032_batches.sql.'
       );
     }
     throw new BatchError(500, 'counts_failed', error.message);
@@ -98,7 +98,7 @@ export async function loadBatch(
       throw new BatchError(
         503,
         'migration_not_applied',
-        'The batches table is missing — apply supabase/migrations/032_batches.sql.'
+        'The batches table is missing, apply supabase/migrations/032_batches.sql.'
       );
     }
     throw new BatchError(500, 'read_failed', error.message);

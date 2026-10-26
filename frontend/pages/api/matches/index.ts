@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     /* Trust boundary: page/limit arrive from the query string. A NaN would make
        `range()` throw, and a negative offset would silently return nothing.
-       The ceiling is 2000, matching the grid's largest per-page option — the
+       The ceiling is 2000, matching the grid's largest per-page option, the
        up-to-200-record view must never be capped below what the UI offers. */
     const pageNum = Math.max(1, Math.floor(Number(page)) || 1);
     const pageSize = Math.min(2000, Math.max(1, Math.floor(Number(limit)) || 50));
@@ -95,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     /* Status counts for the tabs and chips. Scoped by exactly the same filters
        as the list above (minus status/search), or the tabs would claim counts
-       for rows the list cannot show — and, with batchId, would contradict the
+       for rows the list cannot show, and, with batchId, would contradict the
        stepper's batch_counts(). */
     let countQuery = supabase
       .from('matches')
