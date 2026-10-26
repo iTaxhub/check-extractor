@@ -252,6 +252,23 @@
       <button id="btn-bulk-approve" class="btn-sm btn-outline" disabled>Approve clean matches (0)</button>
       <button id="btn-match-filter-toggle" class="btn-sm btn-ghost" title="Search, filter and sort">Search &amp; filter</button>
     </div>
+    <!-- Auto-approve rules: when a cheque best-matches a QB transaction that is
+         already cleared in QuickBooks, these decide whether Kyriq marks it
+         approved on its own. Saved per user (chrome.storage.sync). -->
+    <details id="auto-approve-rules" class="checks-filter-bar auto-rules">
+      <summary>Auto-approve rules <span id="auto-rules-summary" class="auto-rules-summary"></span></summary>
+      <label class="auto-rule-row"><input type="checkbox" id="ar-enabled"> Auto-approve cheques already cleared in QuickBooks</label>
+      <div class="auto-rule-group">
+        <span class="auto-rule-label">These must agree</span>
+        <label class="auto-rule-row"><input type="checkbox" id="ar-checkNumber"> Cheque number</label>
+        <label class="auto-rule-row"><input type="checkbox" id="ar-date"> Date</label>
+        <label class="auto-rule-row"><input type="checkbox" id="ar-payee"> Payee</label>
+        <label class="auto-rule-row"><select id="ar-match"><option value="any">Any one of them</option><option value="all">All of them</option></select></label>
+      </div>
+      <label class="auto-rule-row"><input type="checkbox" id="ar-exactAmount"> Amount must match to the cent</label>
+      <label class="auto-rule-row">Minimum match score <input type="number" id="ar-minScore" min="0" max="100" step="5"></label>
+      <div class="auto-rule-actions"><button id="ar-reset" class="btn-sm btn-ghost">Reset to default</button><button id="ar-save" class="btn-sm btn-primary">Save &amp; re-match</button></div>
+    </details>
     <!-- Matches search filter (hidden by default, toggled by Filter btn) -->
     <div id="matches-filter-bar" class="checks-filter-bar" style="display:none;">
       <div class="checks-search-wrap">
