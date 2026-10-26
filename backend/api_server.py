@@ -2437,7 +2437,9 @@ def list_jobs(request: Request, limit: int = 50, offset: int = 0, status: str = 
                 checks_data = []
                 if db_job.get("checks_data"):
                     try:
-                        checks_data = json.loads(db_job["checks_data"])
+                        # The backend writes a JSON string; the Next.js status/fields routes write an array.
+                        raw = db_job["checks_data"]
+                        checks_data = json.loads(raw) if isinstance(raw, str) else raw
                     except:
                         pass
                 
