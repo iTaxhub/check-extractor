@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { createAuthenticatedClient, createServiceClient } from '@/lib/supabase/api';
+import { patchJobCheck, withManualFields } from '@/lib/check-sync';
 
 /**
  * Update Check Extraction Data
@@ -65,65 +66,35 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to update check', details: error.message });
     }
 
-    // Log the manual edit in audit trail
-    try {
-      const auditLogs = [];
-      
-      if (checkNumber !== undefined) {
-        auditLogs.push({
-          check_id: id,
-          action: 'updated',
-          field: 'check_number',
-          new_value: checkNumber,
-          user_id: null, // TODO: Add user authentication
-        });
-      }
-      if (date !== undefined) {
-        auditLogs.push({
-          check_id: id,
-          action: 'updated',
-          field: 'check_date',
-          new_value: date,
-          user_id: null,
-        });
-      }
-      if (amount !== undefined) {
-        auditLogs.push({
-          check_id: id,
-          action: 'updated',
-          field: 'amount',
-          new_value: amount.toString(),
-          user_id: null,
-        });
-      }
-      if (payee !== undefined) {
-        auditLogs.push({
-          check_id: id,
-          action: 'updated',
-          field: 'payee',
-          new_value: payee,
-          user_id: null,
-        });
-      }
-      if (bankAccount !== undefined) {
-        auditLogs.push({
-          check_id: id,
-          action: 'updated',
-          field: 'bank_name',
-          new_value: bankAccount,
-          user_id: null,
-        });
-      }
-      if (memo !== undefined) {
-        auditLogs.push({
-          check_id: id,
-          action: 'updated',
-          field: 'memo',
-          new_value: memo,
-          user_id: null,
-        });
-      }
+    // Same edit in checks_data, so the dashboard, QB comparisons and the extension agree.
+    await patchJobCheck(createServiceClient(), data.tenant_id, data.job_id, data.check_id, (c) =>
+      withManualFields(c, {
+        checkNumber: checkNumber,
+        checkDate: date,
+        amount: amount !== undefined ? parseFloat(amount) : undefined,
+        payee: payee,
+        bankName: bankAccount,
+        memo: memo,
+      })
+    ).catch(() => false);
 
+    // Log the manual edit in audit trail (tenant_id is required by the audit_logs RLS policy)
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const edited: [string, unknown][] = [
+        ['check_number', checkNumber], ['check_date', date], ['amount', amount],
+        ['payee', payee], ['bank_name', bankAccount], ['memo', memo],
+      ];
+      const auditLogs = edited
+        .filter(([, v]) => v !== undefined)
+        .map(([field, v]) => ({
+          tenant_id: data.tenant_id,
+          check_id: id,
+          action: 'updated',
+          field,
+          new_value: v == null ? null : String(v),
+          user_id: user?.id ?? null,
+        }));
       if (auditLogs.length > 0) {
         await supabase.from('audit_logs').insert(auditLogs);
       }

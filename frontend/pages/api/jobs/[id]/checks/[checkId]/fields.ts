@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { createAuthenticatedClient, createServiceClient } from '@/lib/supabase/api';
 
 /**
  * PATCH /api/jobs/[id]/checks/[checkId]/fields
@@ -26,54 +26,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { amount, payee, check_date, check_number, memo } = req.body || {};
 
+  // The same edit, as flat columns on the checks table (source 'manual').
+  const flatUpdates: Record<string, any> = {};
+  if (amount !== undefined)       { flatUpdates.amount       = amount === null || amount === '' ? null : parseFloat(amount); flatUpdates.amount_source = 'manual'; }
+  if (payee !== undefined)        { flatUpdates.payee        = payee || null;        flatUpdates.payee_source = 'manual'; }
+  if (check_date !== undefined)   { flatUpdates.check_date   = check_date || null;   flatUpdates.check_date_source = 'manual'; }
+  if (check_number !== undefined) { flatUpdates.check_number = check_number || null; flatUpdates.check_number_source = 'manual'; }
+  if (memo !== undefined)         { flatUpdates.memo         = memo || null; }
+  if (Object.keys(flatUpdates).length === 0) {
+    return res.status(400).json({ error: 'No fields provided to update' });
+  }
+
   try {
     const supabase = createAuthenticatedClient(req);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
+    // Service client for writes (RLS silently dropped them); every query is scoped to the
+    // caller's tenant by hand, and checks rows by job too, since check_id restarts per job.
+    const db = createServiceClient();
+    const { data: profile } = await db.from('user_profiles').select('tenant_id').eq('id', user.id).maybeSingle();
+    const tenantId: string | undefined = profile?.tenant_id;
+    if (!tenantId) return res.status(403).json({ error: 'No tenant for this user' });
+
     // Fetch the job row — try job_id TEXT column first; only attempt integer PK if jobId is purely numeric.
     // IMPORTANT: live DB uses INTEGER primary key. Passing a hex string like "0396c0e1" to
     // .eq('id', ...) causes: "invalid input syntax for type integer" from PostgreSQL.
-    let { data: job } = await supabase
+    let { data: job } = await db
       .from('check_jobs')
       .select('id, job_id, checks_data')
       .eq('job_id', jobId)
+      .eq('tenant_id', tenantId)
       .maybeSingle();
 
     if (!job && /^\d+$/.test(jobId)) {
-      const { data: jobById, error: jobByIdErr } = await supabase
+      const { data: jobById, error: jobByIdErr } = await db
         .from('check_jobs')
         .select('id, job_id, checks_data')
         .eq('id', parseInt(jobId, 10))
+        .eq('tenant_id', tenantId)
         .maybeSingle();
       if (jobByIdErr) return res.status(500).json({ error: jobByIdErr.message });
       job = jobById;
     }
 
-    if (!job) {
-      // Job not in check_jobs — try to update the flattened checks table flat columns directly
-      console.warn(`check_jobs row not found for job_id="${jobId}"; attempting direct checks table update`);
-      const flatUpdates: Record<string, any> = {};
-      if (amount !== undefined)       flatUpdates.amount       = parseFloat(amount);
-      if (payee !== undefined)        flatUpdates.payee        = payee;
-      if (check_date !== undefined)   flatUpdates.check_date   = check_date;
-      if (check_number !== undefined) flatUpdates.check_number = check_number;
-      if (memo !== undefined)         flatUpdates.memo         = memo;
-
-      if (Object.keys(flatUpdates).length === 0) {
-        return res.status(400).json({ error: 'No fields provided to update' });
-      }
-
-      const { error: flatErr } = await supabase
-        .from('checks')
-        .update(flatUpdates)
-        .eq('check_id', checkId);
-
-      if (flatErr) {
-        return res.status(500).json({ error: `Job not in database and checks table update failed: ${flatErr.message}` });
-      }
-      return res.status(200).json({ success: true, message: 'Check fields updated (via checks table)' });
-    }
+    if (!job) return res.status(404).json({ error: `Job "${jobId}" not found` });
 
     // check_jobs only has checks_data (no 'checks' column)
     const checksData: any[] = Array.isArray(job.checks_data)
@@ -103,15 +100,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     check.extraction = ext;
     checksData[checkIdx] = check;
 
-    const { error: patchErr } = await supabase
+    const { error: patchErr } = await db
       .from('check_jobs')
       .update({ [checksCol]: checksData, updated_at: new Date().toISOString() })
-      .eq('id', job.id);
+      .eq('id', job.id)
+      .eq('tenant_id', tenantId);
 
     if (patchErr) {
       console.error('Failed to patch checks_data:', patchErr);
       return res.status(500).json({ error: patchErr.message });
     }
+
+    // Mirror to the flattened checks table (review page, reconcile, matching read it).
+    const { error: flatErr } = await db
+      .from('checks')
+      .update(flatUpdates)
+      .eq('tenant_id', tenantId)
+      .eq('job_id', job.job_id)
+      .eq('check_id', checkId);
+    if (flatErr) console.warn('checks mirror skipped:', flatErr.message);
 
     // Best-effort audit log — check_id must be UUID; put text check_id + field changes in metadata
     try {
@@ -119,9 +126,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .filter(([, v]) => v !== undefined)
         .reduce((acc, [k, v]) => ({ ...acc, [k]: String(v) }), {} as Record<string, string>);
       if (Object.keys(editedFields).length > 0) {
-        const { data: profile } = await supabase.from('user_profiles').select('tenant_id').eq('id', user.id).maybeSingle();
-        await supabase.from('audit_logs').insert({
-          tenant_id: profile?.tenant_id,
+        await db.from('audit_logs').insert({
+          tenant_id: tenantId,
           action: 'updated',
           entity_type: 'check',
           user_id: user.id,

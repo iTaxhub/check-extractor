@@ -43,8 +43,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Service client for writes — auth already verified above. RLS on check_jobs / checks /
     // matches silently drops writes from the anon+JWT client, which is why approvals were
-    // not persisting on refresh.
+    // not persisting on refresh. Because it bypasses RLS, EVERY query below is scoped to the
+    // caller's tenant by hand: check_id restarts at check_0001 in every job, so an unscoped
+    // write by check_id alone reaches other jobs and other firms.
     const db = createServiceClient();
+    const { data: profile } = await db.from('user_profiles').select('tenant_id').eq('id', user.id).maybeSingle();
+    const tenantId: string | undefined = profile?.tenant_id;
+    if (!tenantId) return res.status(403).json({ error: 'No tenant for this user' });
 
     // Fetch job — try job_id TEXT column first; only attempt integer PK if jobId is purely numeric.
     // IMPORTANT: live DB uses INTEGER primary key. Passing a hex string like "0396c0e1" to
@@ -53,6 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('check_jobs')
       .select('id, job_id, checks_data')
       .eq('job_id', jobId)
+      .eq('tenant_id', tenantId)
       .maybeSingle();
 
     if (!job && /^\d+$/.test(jobId)) {
@@ -60,23 +66,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('check_jobs')
         .select('id, job_id, checks_data')
         .eq('id', parseInt(jobId, 10))
+        .eq('tenant_id', tenantId)
         .maybeSingle();
       if (jobByIdErr) return res.status(500).json({ error: jobByIdErr.message });
       job = jobById;
     }
 
-    // When job is not persisted in check_jobs (e.g. Python-only in-memory job), still attempt QB
-    // clear (clearQBTransactionServer only needs qb_entries, not check_jobs) and update the
-    // flattened checks table by check_id as a fallback persistence layer.
+    // Job not in this tenant's check_jobs (another firm's, or never persisted): nothing of ours
+    // to update. QB clear still runs: clearQBTransactionServer uses the caller's RLS client.
     if (!job) {
-      console.warn(`check_jobs row not found for job_id="${jobId}"; attempting QB clear + checks table update only`);
-
-      try {
-        const mappedStatus = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : null;
-        if (mappedStatus) {
-          await db.from('checks').update({ status: mappedStatus }).eq('check_id', checkId);
-        }
-      } catch (_) { /* non-critical */ }
+      console.warn(`check_jobs row not found for job_id="${jobId}" in tenant; QB clear only`);
 
       let qbSync: QBSync = { status: 'skipped' };
       if (status === 'approved' && qbEntryId && typeof qbEntryId === 'string') {
@@ -115,46 +114,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { error: patchErr } = await db
       .from('check_jobs')
       .update({ [checksCol]: checksData, updated_at: new Date().toISOString() })
-      .eq('id', job.id);
+      .eq('id', job.id)
+      .eq('tenant_id', tenantId);
 
     if (patchErr) {
       console.error('Failed to patch check status:', patchErr);
       return res.status(500).json({ error: patchErr.message });
     }
 
-    // Keep checks table and matches table in sync so the web-app match page
-    // reflects the extension's approval without requiring a full re-sync.
-    const terminalStatus = ['approved', 'rejected'].includes(status) ? status : null;
-    if (terminalStatus) {
-      try {
-        await db
-          .from('checks')
-          .update({ status: terminalStatus })
-          .eq('check_id', checkId);
+    // Keep the flattened checks table and matches in sync (every status, including the
+    // extension's undo to pending_review) so the web app agrees with the extension.
+    // Scoped to this tenant + job: check_id alone is not unique.
+    try {
+      const { data: checkRow } = await db
+        .from('checks')
+        .update({ status })
+        .eq('tenant_id', tenantId)
+        .eq('job_id', job.job_id)
+        .eq('check_id', checkId)
+        .select('id')
+        .maybeSingle();
 
-        // If a matches row exists for this check, approve it too so the web app
-        // match page stops showing the "Approve" button.
-        const { data: checkRow } = await db
-          .from('checks')
-          .select('id')
-          .eq('check_id', checkId)
-          .maybeSingle();
-        if (checkRow?.id) {
-          await db
-            .from('matches')
-            .update({ status: terminalStatus, approved_at: terminalStatus === 'approved' ? new Date().toISOString() : null })
-            .eq('check_id', checkRow.id)
-            .neq('status', terminalStatus);
-        }
-      } catch (_) {
-        // Non-critical — check_jobs update already succeeded
+      if (checkRow?.id) {
+        const terminal = ['approved', 'rejected'].includes(status);
+        const q = db
+          .from('matches')
+          .update(terminal
+            ? { status, approved_by: status === 'approved' ? user.id : null, approved_at: status === 'approved' ? new Date().toISOString() : null }
+            // Undo: same revert value matches/[id]/undo-approval.ts uses for a non-95% match.
+            : { status: 'pending', approved_by: null, approved_at: null })
+          .eq('tenant_id', tenantId)
+          .eq('check_id', checkRow.id);
+        await (terminal ? q.neq('status', status) : q.in('status', ['approved', 'rejected']));
       }
+    } catch (_) {
+      // Non-critical — check_jobs update already succeeded
     }
 
     // Best-effort audit log — check_id must be UUID; use metadata for text check_id
     try {
       await db.from('audit_logs').insert({
-        tenant_id: (await db.from('user_profiles').select('tenant_id').eq('id', user.id).maybeSingle()).data?.tenant_id,
+        tenant_id: tenantId,
         action: status,
         entity_type: 'check',
         user_id: user.id,
