@@ -32,6 +32,9 @@ export type { InputProps, TextareaProps, SelectProps, FieldProps } from './input
 
 export { Dialog, Sheet, dialogPanelVariants, sheetPanelVariants } from './dialog';
 export type { DialogProps, SheetProps } from './dialog';
+export { ConfirmDialog } from './confirm-dialog';
+export { Thumb } from './thumb';
+export type { ConfirmDialogProps } from './confirm-dialog';
 
 export { Tabs, TabPanel, tabsListVariants, tabTriggerVariants } from './tabs';
 export type { TabsProps, TabItem } from './tabs';

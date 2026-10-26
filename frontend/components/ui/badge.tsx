@@ -83,11 +83,13 @@ export const StatusPill = React.forwardRef<HTMLSpanElement, StatusPillProps>(
       ref={ref}
       tone={STATUS_TONES[status]}
       size={size}
-      className={cn('capitalize', className)}
+      className={className}
       {...props}
     >
       {icon ? <span className="shrink-0">{icon}</span> : null}
-      {label ?? status}
+      {/* Sentence case. `capitalize` title-cased every word of a label too
+          ("Missing In Cheques"). */}
+      {label ?? status.charAt(0).toUpperCase() + status.slice(1)}
     </Badge>
   )
 );

@@ -10,8 +10,8 @@ import { IconButton } from './button';
 /**
  * Dialog and Sheet.
  *
- * In and out are asymmetric: a dialog arrives like an object (460ms spring
- * from scale(0.86)) and dismisses instantly (180ms). Entrances are CSS
+ * In and out are asymmetric: a dialog settles in (220ms, a short rise from
+ * scale(0.97); a bottom sheet on phones) and dismisses instantly. Entrances are CSS
  * keyframes, never a framer-motion tween — rAF is frozen in a hidden
  * document, so a JS tween from `opacity: 0` can leave content permanently
  * invisible if the tab was backgrounded at mount.
@@ -53,7 +53,9 @@ export const dialogPanelVariants = cva(
   // edge is unrecoverable, because useDismiss locks body scroll. Bounding the
   // panel and scrolling the body region instead keeps the header on screen
   // however long the content is.
-  'relative flex max-h-[90vh] w-full flex-col glass-modal rounded-modal text-ink-strong animate-dialog-pop',
+  // Phones get a bottom sheet (square bottom corners, slides up); larger screens a centred card.
+  'relative flex max-h-[90vh] w-full flex-col overflow-hidden glass-modal rounded-modal text-ink-strong ' +
+    'animate-dialog-pop max-sm:max-h-[92vh] max-sm:rounded-b-none max-sm:animate-sheet-up',
   {
     variants: {
       size: {
@@ -130,47 +132,25 @@ export function Dialog({
   if (!open || !mounted) return null;
 
   return createPortal(
+    // data-skin: a portal lands on <body>, outside the layout that sets the
+    // skin, so without this every dialog fell back to the un-skinned look.
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      data-skin="glass"
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={typeof title === 'string' ? title : undefined}
     >
-      {/* Plain scrim. No blur here — the panel already blurs. */}
-      <div
-        className="absolute inset-0 bg-ink-strong/45 animate-glass-fade"
-        onClick={onClose}
-        aria-hidden
-      />
+      <div className="overlay-scrim absolute inset-0 animate-glass-fade" onClick={onClose} aria-hidden />
       <div className={cn(dialogPanelVariants({ size }), className)}>
-        {(title || !hideClose) && (
-          <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-5 pb-4">
-            <div className="min-w-0">
-              {title ? (
-                <h2 className="font-heading text-lg font-semibold text-ink-strong">{title}</h2>
-              ) : null}
-              {description ? (
-                <p className="mt-1 text-sm text-ink-body">{description}</p>
-              ) : null}
-            </div>
-            {!hideClose && (
-              <IconButton aria-label="Close" size="icon-sm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </IconButton>
-            )}
-          </div>
-        )}
+        <OverlayHeader title={title} description={description} hideClose={hideClose} onClose={onClose} divided={!!children} />
         {/* min-h-0 so this region, not the panel, is what shrinks and scrolls:
             a flex child's default min-height is its content, which would push
             the panel past max-h and reintroduce the overflow. */}
         {children ? (
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 text-[15px] leading-[1.45] text-ink-body">{children}</div>
         ) : null}
-        {footer ? (
-          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-glass-hairline px-6 py-4">
-            {footer}
-          </div>
-        ) : null}
+        {footer ? <OverlayFooter>{footer}</OverlayFooter> : null}
       </div>
     </div>,
     document.body
@@ -196,36 +176,66 @@ export function Sheet({
 
   return createPortal(
     <div
+      data-skin="glass"
       className="fixed inset-0 z-50"
       role="dialog"
       aria-modal="true"
       aria-label={typeof title === 'string' ? title : undefined}
     >
-      <div
-        className="absolute inset-0 bg-ink-strong/45 animate-glass-fade"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className={cn(sheetPanelVariants({ side }), className)}>
-        <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4">
-          <div className="min-w-0">
-            {title ? (
-              <h2 className="font-heading text-lg font-semibold text-ink-strong">{title}</h2>
-            ) : null}
-            {description ? <p className="mt-1 text-sm text-ink-body">{description}</p> : null}
-          </div>
-          {!hideClose && (
-            <IconButton aria-label="Close" size="icon-sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </IconButton>
-          )}
-        </div>
-        {children ? <div className="scroll-region max-h-[70vh] px-6 pb-5">{children}</div> : null}
-        {footer ? (
-          <div className="border-t border-glass-hairline px-6 py-4">{footer}</div>
+      <div className="overlay-scrim absolute inset-0 animate-glass-fade" onClick={onClose} aria-hidden />
+      <div className={cn(sheetPanelVariants({ side }), 'flex flex-col overflow-hidden', className)}>
+        {side !== 'left' && side !== 'right' ? (
+          // Grabber: the platform's cue that a bottom sheet can be dismissed.
+          <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-ink-strong/15" aria-hidden />
         ) : null}
+        <OverlayHeader title={title} description={description} hideClose={hideClose} onClose={onClose} divided={!!children} />
+        {children ? (
+          <div className="scroll-region min-h-0 flex-1 px-6 py-5 text-[15px] leading-[1.45] text-ink-body max-h-[70vh]">{children}</div>
+        ) : null}
+        {footer ? <OverlayFooter>{footer}</OverlayFooter> : null}
       </div>
     </div>,
     document.body
+  );
+}
+
+/** Title + description + close. Apple sheet header: 17px headline, 13px subhead, hairline under it. */
+function OverlayHeader({
+  title,
+  description,
+  hideClose,
+  onClose,
+  divided,
+}: {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  hideClose?: boolean;
+  onClose: () => void;
+  divided: boolean;
+}) {
+  if (!title && !description && hideClose) return null;
+  return (
+    <div className={cn('flex shrink-0 items-start justify-between gap-4 px-6 pt-5 pb-4', divided && 'border-b border-glass-hairline')}>
+      <div className="min-w-0">
+        {title ? (
+          <h2 className="font-heading text-[17px] font-semibold leading-[22px] tracking-[-0.012em] text-ink-strong">{title}</h2>
+        ) : null}
+        {description ? <p className="mt-1 text-[13px] leading-[18px] text-ink-soft">{description}</p> : null}
+      </div>
+      {!hideClose && (
+        <IconButton aria-label="Close" size="icon-sm" onClick={onClose} className="-mr-2 -mt-1">
+          <X className="h-4 w-4" />
+        </IconButton>
+      )}
+    </div>
+  );
+}
+
+/** Actions bar: frosted, right-aligned, stacks full-width on phones. */
+function OverlayFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-glass-hairline bg-white/40 px-6 py-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3 max-sm:[&>*]:w-full max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]">
+      {children}
+    </div>
   );
 }

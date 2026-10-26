@@ -34,6 +34,7 @@ import {
   Th,
   Thead,
   Tr,
+  Thumb,
   friendlyError,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -1077,20 +1078,12 @@ function UploadPageInner() {
                   className="group overflow-hidden"
                 >
                   <div className="relative aspect-[3/4] overflow-hidden bg-surface-sunken">
-                    <img
+                    <Thumb
                       src={`/api/page-image/${analyzeResult.job_id}/${page.page_number}`}
                       alt={`Page ${page.page_number}`}
-                      className="h-full w-full object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                      }}
+                      className="absolute inset-0"
+                      icon={<FileText size={36} aria-hidden />}
                     />
-                    {/* `hidden` is removed by the onError handler above; `flex`
-                        then takes over, which is why both are present. */}
-                    <div className="absolute inset-0 hidden flex items-center justify-center text-ink-faint">
-                      <FileText size={36} aria-hidden />
-                    </div>
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-quick ease-settle group-hover:bg-ink-strong/5 group-hover:opacity-100">
                       <span className="glass-card rounded-full p-1.5">
                         <Eye size={14} className="text-ink-strong" aria-hidden />
@@ -1142,14 +1135,12 @@ function UploadPageInner() {
                         onClick={() => setSelectedPage(page.page_number)}
                       >
                         <Td>
-                          <div className="h-16 w-12 overflow-hidden rounded-input bg-surface-sunken">
-                            <img
-                              src={`/api/page-image/${analyzeResult.job_id}/${page.page_number}`}
-                              alt={`Page ${page.page_number}`}
-                              className="h-full w-full object-contain"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                            />
-                          </div>
+                          <Thumb
+                            src={`/api/page-image/${analyzeResult.job_id}/${page.page_number}`}
+                            alt={`Page ${page.page_number}`}
+                            className="h-16 w-12 rounded-input"
+                            icon={<FileText size={16} aria-hidden />}
+                          />
                         </Td>
                         <Td className="font-medium">Page {page.page_number}</Td>
                         <Td numeric>
@@ -1193,13 +1184,10 @@ function UploadPageInner() {
                     className="group overflow-hidden"
                   >
                     <div className="relative aspect-[2/1] overflow-hidden bg-surface-sunken">
-                      <img
+                      <Thumb
                         src={`/api/check-image/${analyzeResult.job_id}/${check.check_id}?w=480`}
                         alt={`Cheque ${check.check_id}`}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        className="absolute inset-0"
                       />
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-quick ease-settle group-hover:bg-ink-strong/5 group-hover:opacity-100">
                         <span className="glass-card rounded-full p-1.5">

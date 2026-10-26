@@ -30,12 +30,14 @@ import { VisibleColumns } from '../hooks/useComparisonState';
  *    everything else stays reachable through the Columns control.
  */
 
-/* The ONE place this grid's row metrics are declared. */
+/* The ONE place this grid's row metrics are declared. Cells never wrap: a
+   date stacked as "Feb / 1, / 2026" and a clipped "Missing In Chec" pill were
+   the table squeezing columns to fit; it now grows and TableScroll scrolls. */
 const DENSE_GRID = [
-  'text-[11px]',
-  '[&_tbody_tr]:h-[22px]',
-  '[&_td]:px-1.5 [&_td]:py-0.5',
-  '[&_th]:px-1.5 [&_th]:py-1.5',
+  'min-w-max text-[12px]',
+  '[&_tbody_tr]:h-[30px]',
+  '[&_td]:whitespace-nowrap [&_td]:px-2.5 [&_td]:py-1',
+  '[&_th]:whitespace-nowrap [&_th]:px-2.5 [&_th]:py-2',
 ].join(' ');
 
 interface ComparisonTableProps {

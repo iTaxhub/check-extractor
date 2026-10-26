@@ -827,151 +827,201 @@
 }
 
 /* ===========================================================================
-   Ledger skin — the signed-in app and auth. Set by data-skin="ledger" on
-   the (app) and (auth) layouts; the landing page keeps the glass look.
-   Editorial finance, not bubbly SaaS: paper canvas, hairlines over shadows,
-   tight radii, ink-black primary action, indigo kept for focus and selection
-   only, a serif for page titles, tabular numbers everywhere.
+   Glass skin — the signed-in app and auth. Set by data-skin="glass" on the
+   (app) and (auth) layouts, and on every portalled overlay (dialog.tsx), so a
+   dialog wears the same material as the page it opened from.
+
+   Apple-style liquid glass over the ambient mesh: translucent layered
+   materials with a bright top edge, one type scale, one radius ladder, one
+   motion curve. The brand colours are unchanged — indigo for action and
+   focus, emerald for success, the logo navy for the shell.
+   Replaces the flat "ledger" skin, which painted every surface opaque paper.
    =========================================================================== */
-[data-skin='ledger'] {
-  /* Palette is the logo's: indigo #6366f1, emerald #10b981, and the app
-     tile's navy #1e1b4b. Neutrals are cooled toward that navy. */
-  --paper: 230 25% 97.5%;
-  --app-bg: var(--paper);
-  --surface-sunken: 230 20% 94.5%;
+[data-skin='glass'] {
+  /* Materials. Thin -> regular -> thick, like the platform. The mesh behind
+     is what makes them read as glass, so it is a touch richer here. */
+  --mesh-base: #f3f4fb;
+  --mesh-a: rgba(99, 102, 241, 0.26);
+  --mesh-b: rgba(16, 185, 129, 0.16);
+
+  --glass-card-bg: rgba(255, 255, 255, 0.64);      /* regular */
+  --glass-panel-bg: rgba(255, 255, 255, 0.5);      /* thin, nested */
+  --glass-modal-bg: rgba(255, 255, 255, 0.8);      /* thick */
+  --glass-chrome-bg: rgba(255, 255, 255, 0.58);
+  --glass-toast-bg: rgba(255, 255, 255, 0.78);
+  --glass-selected-bg: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-hairline: rgba(30, 27, 75, 0.08);
+  --glass-fallback-bg: rgba(250, 250, 255, 0.95);
+  --glass-opaque-bg: rgba(255, 255, 255, 0.98);
+  --surface-sunken: 232 30% 94%;
+
+  /* The liquid edge: a bright inner top line plus a soft sheen that fades
+     out by mid-panel. Layered over each material's own tint. */
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 46%);
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+
+  /* Shadows: contact + ambient, tinted with the logo navy, never black. */
+  --shadow-glass: var(--bevel), 0 1px 2px rgba(30, 27, 75, 0.05), 0 8px 24px -10px rgba(30, 27, 75, 0.14);
+  --shadow-glass-hover: var(--bevel), 0 1px 2px rgba(30, 27, 75, 0.06), 0 16px 36px -12px rgba(30, 27, 75, 0.2);
+  --shadow-glass-panel: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --shadow-glass-modal: var(--bevel), 0 2px 6px rgba(30, 27, 75, 0.06), 0 32px 80px -20px rgba(30, 27, 75, 0.35);
+  --shadow-glass-sheet: var(--bevel), 0 -16px 48px -16px rgba(30, 27, 75, 0.3);
+  --shadow-glass-toast: var(--bevel), 0 18px 44px -14px rgba(30, 27, 75, 0.32);
+  --shadow-glass-selected: var(--bevel), 0 0 0 1.5px hsl(var(--brand) / 0.7), 0 12px 28px -12px hsl(var(--brand) / 0.35);
+  --shadow-brand-glow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(49, 46, 129, 0.3), 0 6px 16px -6px rgba(79, 70, 229, 0.5);
+  --shadow-danger-glow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(127, 29, 29, 0.3), 0 6px 16px -6px rgba(220, 38, 38, 0.45);
+  --shadow-inner-track: inset 0 1px 2px rgba(30, 27, 75, 0.08), inset 0 0 0 1px rgba(30, 27, 75, 0.05);
+
+  /* Radius ladder: control 10, tile 14, card 16, sheet 22, pill = capsule. */
+  --radius-input: 10px;
+  --radius-btn: 10px;
+  --radius-pill: 9999px;
+  --radius-tile: 14px;
+  --radius-card: 16px;
+  --radius-modal: 22px;
+
+  /* Control heights (min-h-btn / min-h-tap / min-h-input). 36 / 32 / 36 on a
+     mouse; touch keeps the 44px target below. */
+  --h-btn: 2.25rem;
+  --h-tap: 2rem;
+  --h-input: 2.25rem;
+
+  /* Shell: the logo navy as dark glass, not a flat slab. */
+  --shell-bg: rgba(27, 24, 74, 0.84);
+  --shell-bg-fallback: rgb(27, 24, 74);
+  --shell-solid: 244 51% 19%;
+  --shell-text: 230 40% 97%;
+  --shell-text-muted: 234 30% 80%;
+  --shell-active-text: 0 0% 100%;
+  --glass-border-dark: rgba(255, 255, 255, 0.09);
+  --glass-hairline-dark: rgba(255, 255, 255, 0.08);
+
   --ink-strong: 244 40% 12%;
   --ink: 244 40% 12%;
-  --ink-body: 235 14% 30%;
-  --ink-soft: 235 10% 38%;
-  --ink-faint: var(--ink-soft);
+  --ink-body: 235 16% 28%;
+  --ink-soft: 235 11% 38%;
 
-  --glass-card-bg: hsl(0 0% 100%);
-  --glass-panel-bg: hsl(var(--paper));
-  --glass-modal-bg: hsl(0 0% 100%);
-  --glass-chrome-bg: hsl(var(--paper));
-  --glass-toast-bg: hsl(0 0% 100%);
-  --glass-selected-bg: hsl(0 0% 100%);
-  --glass-border: hsl(var(--ink-strong) / 0.16);
-  --glass-hairline: hsl(var(--ink-strong) / 0.12);
+  /* Motion: one curve, short. */
+  --dur-tap: 120ms;
+  --dur-quick: 180ms;
+  --dur-settle: 220ms;
 
-  --shadow-glass: 0 1px 0 rgba(30, 27, 75, 0.03);
-  --shadow-glass-hover: 0 1px 0 rgba(30, 27, 75, 0.04), 0 6px 16px -8px rgba(30, 27, 75, 0.14);
-  --shadow-glass-panel: none;
-  --shadow-glass-modal: 0 1px 0 rgba(30, 27, 75, 0.04), 0 24px 48px -16px rgba(30, 27, 75, 0.24);
-  --shadow-glass-sheet: 0 -12px 40px -12px rgba(30, 27, 75, 0.22);
-  --shadow-glass-toast: 0 12px 32px -12px rgba(30, 27, 75, 0.24);
-  --shadow-glass-selected: 0 0 0 1px hsl(var(--brand-deep));
-  --shadow-brand-glow: none;
-  --shadow-danger-glow: none;
-  --shadow-inner-track: inset 0 0 0 1px rgba(30, 27, 75, 0.06);
-
-  --radius-input: 6px;
-  --radius-btn: 6px;
-  --radius-tile: 8px;
-  --radius-card: 10px;
-  --radius-modal: 12px;
-
-  /* Shell: the app tile's navy, solid, no blur, no glow. */
-  --shell-bg: hsl(244 47% 20%);
-  --shell-bg-fallback: hsl(244 47% 20%);
-  --shell-solid: 244 47% 20%;
-  --shell-text: 230 40% 97%;
-  --shell-text-muted: 234 30% 78%;
-  --shell-active-text: 0 0% 100%;
-  --glass-border-dark: rgba(255, 255, 255, 0.07);
-  --glass-hairline-dark: rgba(255, 255, 255, 0.07);
-
-  --font-heading-weight: 600;
-  background-color: hsl(var(--paper));
-  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  font-feature-settings: 'cv11' 1, 'ss01' 1;
 }
 
-/* Surfaces: opaque paper, no frosted blur. */
-[data-skin='ledger'] :is(.glass-card, .glass-chrome, .glass-modal, .glass-toast, .glass-shell, .glass-surface, .glass-veil) {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-[data-skin='ledger'] .glass-shell { box-shadow: none; }
-[data-skin='ledger'] .glass-selected { border-color: hsl(var(--brand-deep)); }
-[data-skin='ledger'] .hover-lift:hover { transform: none; }
-
-/* Page titles: an editorial serif; everything else stays the grotesk. */
-[data-skin='ledger'] h1 {
-  font-family: var(--font-serif), Georgia, 'Times New Roman', serif;
-  font-weight: 400;
-  letter-spacing: -0.012em;
+@media (pointer: coarse) {
+  [data-skin='glass'] { --h-btn: 2.75rem; --h-tap: 2.75rem; --h-input: 2.75rem; }
 }
 
-/* Buttons: squared-off, flat. Primary is the logo indigo (deep enough for
-   white text at AA), with no gradient and no glow. */
-[data-skin='ledger'] .btn { border-radius: var(--radius-btn); letter-spacing: -0.005em; }
-[data-skin='ledger'] .btn-primary,
-[data-skin='ledger'] .btn-primary:hover {
-  background: hsl(var(--brand-dark));
-  border-color: hsl(var(--brand-dark));
-  box-shadow: none;
+/* Materials pick up the sheen and a stronger, saturated blur. */
+[data-skin='glass'] .glass-card,
+[data-skin='glass'] .glass-surface {
+  background-image: var(--glass-sheen);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
 }
-[data-skin='ledger'] .btn-primary:hover { background: hsl(var(--brand-deep)); }
-[data-skin='ledger'] .btn-destructive,
-[data-skin='ledger'] .btn-destructive:hover {
-  background: hsl(var(--error-text));
-  border-color: hsl(var(--error-text));
-  box-shadow: none;
+[data-skin='glass'] .glass-modal,
+[data-skin='glass'] .glass-toast {
+  background-image: var(--glass-sheen);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  backdrop-filter: blur(40px) saturate(190%);
 }
+[data-skin='glass'] .glass-chrome {
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+}
+[data-skin='glass'] .glass-shell {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 30%);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.06), 12px 0 40px -24px rgba(30, 27, 75, 0.5);
+}
+[data-skin='glass'] .glass-selected { border-color: hsl(var(--brand) / 0.7); }
 
-/* Sidebar: the logo's emerald marks the active row instead of a glow. */
-[data-skin='ledger'] .sidebar-item.active {
-  background-image: none;
-  background-color: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 2px 0 0 hsl(var(--emerald));
-}
-
-/* Titles stay small: the work on the page is the table, not the heading. */
-[data-skin='ledger'] h1 { font-size: 1.625rem; line-height: 1.15; }
-/* KPI figures are figures: the grotesk's tabular numerals line up across
-   tiles, a serif display face made zero look like the letter O. */
-[data-skin='ledger'] .kpi-value {
-  font-weight: 600;
+/* ---- Type scale (SF-style). One step per role; tracking tightens as size grows. ---- */
+[data-skin='glass'] h1 { font-size: 1.75rem; line-height: 2.125rem; font-weight: 650; letter-spacing: -0.022em; }
+[data-skin='glass'] h2 { letter-spacing: -0.018em; }
+[data-skin='glass'] h3 { letter-spacing: -0.012em; }
+[data-skin='glass'] .kpi-value {
+  font-weight: 650;
   font-size: 1.75rem;
   line-height: 1.1;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.022em;
+  font-variant-numeric: tabular-nums;
 }
-/* Labels in sentence case. Tracked all-caps on every label and column
-   header was the loudest "generated UI" tell, and it is slower to read. */
-[data-skin='ledger'] .text-eyebrow {
+/* Labels in sentence case: tracked all-caps everywhere reads as generated UI. */
+[data-skin='glass'] .text-eyebrow {
   font-size: 0.75rem;
   letter-spacing: 0;
   text-transform: none;
   font-weight: 500;
 }
-/* Tables: a solid header band, zebra rows and hairline rules, so a long
-   register can be read across without a ruler. */
-[data-skin='ledger'] thead,
-[data-skin='ledger'] thead th {
-  background-color: hsl(var(--surface-sunken));
-}
-[data-skin='ledger'] thead th { color: hsl(var(--ink-soft)); font-weight: 600; }
-[data-skin='ledger'] tbody tr:nth-child(even):not(:hover):not([aria-selected='true']) {
-  background-color: hsl(var(--surface-sunken) / 0.45);
-}
-[data-skin='ledger'] td { border-color: var(--glass-hairline); }
-[data-skin='ledger'] .kpi-icon { color: hsl(var(--ink-soft)); }
 
-/* Tables: status lives in the accent rule and the pill, not a tint across
-   every cell — a page of pink rows reads as an alarm, not a ledger. */
-[data-skin='ledger'] tr:is([class*='bg-error-bg'], [class*='bg-warning-bg'], [class*='bg-success-bg']):not(:hover):not([aria-selected='true']) {
+/* ---- Buttons: capsule-soft rectangles, solid brand with a lit top edge. ---- */
+[data-skin='glass'] .btn { border-radius: var(--radius-btn); letter-spacing: -0.006em; font-weight: 590; }
+[data-skin='glass'] .btn-primary {
+  background-image: linear-gradient(180deg, hsl(var(--brand)) 0%, hsl(var(--brand-dark)) 100%);
+  border-color: hsl(var(--brand-deep) / 0.6);
+}
+[data-skin='glass'] .btn-primary:hover {
+  background-image: linear-gradient(180deg, hsl(var(--brand-dark)) 0%, hsl(var(--brand-deep)) 100%);
+}
+[data-skin='glass'] .btn-destructive {
+  background-image: linear-gradient(180deg, hsl(var(--error-dark)) 0%, hsl(var(--error-text)) 100%);
+}
+
+/* ---- Sidebar: emerald rule on the active row, a soft lit plate behind it. ---- */
+[data-skin='glass'] .sidebar-item.active {
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+  box-shadow: inset 2px 0 0 hsl(var(--emerald)), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Tables: translucent header band, hairlines, a status rule not a tint. ---- */
+[data-skin='glass'] thead,
+[data-skin='glass'] thead th {
+  background-color: rgba(246, 247, 253, 0.82);
+}
+[data-skin='glass'] thead th {
+  color: hsl(var(--ink-soft));
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+[data-skin='glass'] td { border-color: var(--glass-hairline); }
+[data-skin='glass'] tbody tr { transition: background-color var(--dur-quick) var(--ease-settle); }
+[data-skin='glass'] tbody tr:hover { background-color: hsl(var(--brand) / 0.045); }
+[data-skin='glass'] tr:is([class*='bg-error-bg'], [class*='bg-warning-bg'], [class*='bg-success-bg']):not(:hover):not([aria-selected='true']) {
   background-color: transparent;
 }
-[data-skin='ledger'] tbody tr:hover { background-color: hsl(var(--surface-sunken)); }
-[data-skin='ledger'] tbody tr[aria-selected='true'] {
-  background-color: hsl(var(--brand) / 0.12);
-  box-shadow: inset 2px 0 0 hsl(var(--brand-deep));
+[data-skin='glass'] tbody tr[aria-selected='true'] {
+  background-color: hsl(var(--brand) / 0.09);
+  box-shadow: inset 3px 0 0 hsl(var(--brand));
 }
-[data-skin='ledger'] tbody tr[aria-selected='true']:hover {
-  background-color: hsl(var(--brand) / 0.18);
+[data-skin='glass'] tbody tr[aria-selected='true']:hover { background-color: hsl(var(--brand) / 0.13); }
+[data-skin='glass'] .kpi-icon { color: hsl(var(--ink-soft)); }
+
+/* Segmented controls: the chosen segment is a raised glass chip. */
+[data-skin='glass'] .glass-track [aria-pressed='true'],
+[data-skin='glass'] .glass-track [aria-selected='true'] {
+  background-color: rgba(255, 255, 255, 0.96);
+  color: hsl(var(--ink-strong));
+  box-shadow: 0 1px 2px rgba(30, 27, 75, 0.1), 0 2px 8px -2px rgba(30, 27, 75, 0.12);
 }
-/* Segmented controls: the chosen segment matches the primary action. */
-[data-skin='ledger'] [aria-pressed='true'].bg-brand {
-  background-color: hsl(var(--brand-dark));
-  box-shadow: none;
+
+/* Form fields: a quiet glass well with a brand focus ring. */
+[data-skin='glass'] :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea) {
+  border-radius: var(--radius-input);
+}
+
+/* Overlays: the scrim blurs lightly so the page recedes, like a sheet. */
+[data-skin='glass'] .overlay-scrim {
+  background: rgba(17, 15, 52, 0.32);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(6px) saturate(120%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-skin='glass'] :is(.glass-card, .glass-surface, .glass-modal, .glass-toast, .glass-chrome) { background-image: none; }
+  [data-skin='glass'] .overlay-scrim { background: rgba(17, 15, 52, 0.5); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }

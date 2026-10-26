@@ -6,7 +6,7 @@ import {
   AlertTriangle, Pencil, CheckCircle2, Repeat, HelpCircle, Columns,
 } from 'lucide-react';
 import {
-  GlassPanel, StatusPill, Badge, Input, Textarea, Field,
+  GlassPanel, StatusPill, Badge, Input, Textarea, Field, ConfirmDialog,
   type StatusKey,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -162,10 +162,10 @@ export default function MatchRow({
 
   const mapped = MATCH_STATUS[status] || MATCH_STATUS.pending;
 
+  const [confirmCreate, setConfirmCreate] = useState(false);
   async function handleCreateInQB() {
-    if (!window.confirm('Create this check as a new transaction in QuickBooks?')) return;
     setIsCreatingInQB(true);
-    try { await onCreateInQB(); } finally { setIsCreatingInQB(false); }
+    try { await onCreateInQB(); } finally { setIsCreatingInQB(false); setConfirmCreate(false); }
   }
 
   return (
@@ -180,6 +180,20 @@ export default function MatchRow({
       )}
       data-selected={isSelected ? '' : undefined}
     >
+      <ConfirmDialog
+        open={confirmCreate}
+        onCancel={() => setConfirmCreate(false)}
+        onConfirm={handleCreateInQB}
+        loading={isCreatingInQB}
+        title="Create this cheque in QuickBooks?"
+        description="Adds a new cheque transaction to the connected company."
+        details={[
+          ['Cheque #', check?.check_number || '—'],
+          ['Payee', check?.payee || '—'],
+          ['Amount', check?.amount != null ? `$${Number(check.amount).toFixed(2)}` : '—'],
+        ]}
+        confirmLabel="Create in QuickBooks"
+      />
       {/*
         Main row. The five-column template and the row height are unchanged from
         pre-redesign at `lg` and up, which is every desktop width this product is
@@ -280,7 +294,7 @@ export default function MatchRow({
               <button type="button" className={ROW_BTN_PRIMARY} onClick={onSearchQB}>
                 <Search className="h-3 w-3" aria-hidden /> Find in QB
               </button>
-              <button type="button" className={ROW_BTN_QUIET} disabled={isCreatingInQB} onClick={handleCreateInQB}>
+              <button type="button" className={ROW_BTN_QUIET} disabled={isCreatingInQB} onClick={() => setConfirmCreate(true)}>
                 <Plus className="h-3 w-3" aria-hidden /> {isCreatingInQB ? 'Creating…' : 'Create in QB'}
               </button>
             </>

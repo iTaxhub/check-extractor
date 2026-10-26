@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, X } from 'lucide-react';
-import { Button, StatusPill } from '@/components/ui';
+import { Button, ConfirmDialog, StatusPill } from '@/components/ui';
 
 interface Props {
   checkId: string;
@@ -14,10 +14,9 @@ export default function ApprovalActions({ checkId, currentStatus }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState<'approve' | 'reject' | null>(null);
 
   const act = async (action: 'approve' | 'reject') => {
-    if (!confirm(action === 'approve' ? 'Approve this check?' : 'Reject this check?')) return;
-
     setLoading(true);
     setError(null);
     try {
@@ -34,9 +33,10 @@ export default function ApprovalActions({ checkId, currentStatus }: Props) {
 
       router.push(action === 'approve' ? '/export' : '/dashboard');
     } catch (e: any) {
-      setError(e?.message || `Failed to ${action} check`);
+      setError(e?.message || `Failed to ${action} cheque`);
     } finally {
       setLoading(false);
+      setAsking(null);
     }
   };
 
@@ -52,7 +52,7 @@ export default function ApprovalActions({ checkId, currentStatus }: Props) {
           size="sm"
           icon={<X size={18} />}
           disabled={loading}
-          onClick={() => act('reject')}
+          onClick={() => setAsking('reject')}
         >
           Reject
         </Button>
@@ -60,7 +60,7 @@ export default function ApprovalActions({ checkId, currentStatus }: Props) {
           size="sm"
           icon={<Check size={18} />}
           loading={loading}
-          onClick={() => act('approve')}
+          onClick={() => setAsking('approve')}
         >
           Approve
         </Button>
@@ -68,6 +68,20 @@ export default function ApprovalActions({ checkId, currentStatus }: Props) {
       {error && (
         <p role="alert" className="text-xs font-medium text-error-text">{error}</p>
       )}
+      <ConfirmDialog
+        open={asking !== null}
+        onCancel={() => setAsking(null)}
+        onConfirm={() => { if (asking) void act(asking); }}
+        loading={loading}
+        tone={asking === 'reject' ? 'destructive' : 'success'}
+        title={asking === 'reject' ? 'Reject this cheque?' : 'Approve this cheque?'}
+        description={
+          asking === 'reject'
+            ? 'It stays in Kyriq, marked rejected, and is left out of exports.'
+            : 'It is marked approved and becomes ready to export.'
+        }
+        confirmLabel={asking === 'reject' ? 'Reject' : 'Approve'}
+      />
     </div>
   );
 }
