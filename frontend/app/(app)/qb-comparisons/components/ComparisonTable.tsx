@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ChevronUp, ChevronDown, CheckCircle, Loader2, Trash2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, CheckCircle, Loader2, Trash2, Wrench } from 'lucide-react';
 import {
   Badge,
   StatusPill,
@@ -15,7 +15,7 @@ import {
   Tr,
   type StatusKey,
 } from '@/components/ui';
-import { ComparisonRow, SortField, SortDirection, formatCurrency, formatDate, parseAmount, DateFormat } from '../utils/comparisonUtils';
+import { ComparisonRow, SortField, SortDirection, formatCurrency, formatDate, parseAmount, DateFormat, isApproved } from '../utils/comparisonUtils';
 import { VisibleColumns } from '../hooks/useComparisonState';
 import { useSpelling } from '@/hooks/useSpelling';
 
@@ -63,6 +63,10 @@ interface ComparisonTableProps {
   vouchingId: string | null;
   onDeleteQBEntry?: (entryId: string) => void;
   deletingQBEntry?: string | null;
+  onApprove?: (row: ComparisonRow) => void;
+  approvingId?: string | null;
+  onFix?: (row: ComparisonRow) => void;
+  fixingId?: string | null;
   /** Rendered inside the shell, below the scroll region. */
   footer?: React.ReactNode;
   /** First load: skeleton rows in the real grid, never a false "no records". */
@@ -125,6 +129,10 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   vouchingId,
   onDeleteQBEntry,
   deletingQBEntry,
+  onApprove,
+  approvingId,
+  onFix,
+  fixingId,
   footer,
   loading,
 }) => {
@@ -204,7 +212,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
               {v.currency && <Th>Currency</Th>}
               {v.pdfName && <Th>Document</Th>}
               {v.source && <Th>Found in</Th>}
-              {v.actions && <Th className="text-right">Review</Th>}
+              {v.actions && <Th className="text-right">Actions</Th>}
             </tr>
           </Thead>
 
@@ -363,6 +371,42 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                     {v.actions && (
                       <Td className="whitespace-nowrap text-right">
                         <span className="inline-flex items-center gap-2">
+                          {isApproved(row) && (
+                            <Badge size="sm" tone="success">
+                              <CheckCircle size={10} aria-hidden />
+                              Approved
+                            </Badge>
+                          )}
+                          {onApprove && row.matchStatus === 'matched' && !isApproved(row) &&
+                            row.extractionData?.status !== 'rejected' && row.extractionData?.job_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onApprove(row);
+                              }}
+                              disabled={approvingId === row.id}
+                              className="press rounded-input bg-brand px-2 py-0.5 font-semibold text-white hover:bg-brand-dark disabled:opacity-disabled"
+                              title={t('Approve this cheque against its QuickBooks transaction')}
+                            >
+                              {approvingId === row.id ? <Loader2 size={10} className="animate-spin" /> : 'Approve'}
+                            </button>
+                          )}
+                          {onFix && row.matchStatus === 'mismatch' && row.qbData && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onFix(row);
+                              }}
+                              disabled={fixingId === row.id}
+                              className="press inline-flex items-center gap-1 rounded-input border border-glass-hairline bg-surface px-2 py-0.5 font-semibold text-brand-dark hover:bg-brand/[0.06] disabled:opacity-disabled"
+                              title={t('Fix in QB: overwrite the QuickBooks amount, date and cheque # with the values read from the cheque')}
+                            >
+                              {fixingId === row.id ? <Loader2 size={10} className="animate-spin" /> : <Wrench size={10} aria-hidden />}
+                              Fix in QB
+                            </button>
+                          )}
                           {row.vouched ? (
                             <>
                               <span className="inline-flex items-center gap-0.5 font-semibold text-success-text">
@@ -391,9 +435,19 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                               }}
                               disabled={vouchingId === row.id}
                               className="font-medium text-ink-soft underline hover:text-ink-strong disabled:opacity-disabled"
-                              title="Mark this issue as acceptable/resolved"
+                              title={
+                                row.matchStatus === 'missing-in-qb'
+                                  ? t("This check isn't in QuickBooks: create it as a Deposit or Purchase, or mark it resolved in Kyriq only")
+                                  : 'Mark this issue as acceptable/resolved'
+                              }
                             >
-                              {vouchingId === row.id ? <Loader2 size={8} className="animate-spin" /> : 'Vouch'}
+                              {vouchingId === row.id ? (
+                                <Loader2 size={8} className="animate-spin" />
+                              ) : row.matchStatus === 'missing-in-qb' ? (
+                                'Add to QB…'
+                              ) : (
+                                'Vouch'
+                              )}
                             </button>
                           ) : null}
                           <button

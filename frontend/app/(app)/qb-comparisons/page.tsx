@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Wrench } from 'lucide-react';
-import { Badge, Button, Dialog, ErrorState, Toast, friendlyError } from '@/components/ui';
-import { EvidencePanel } from './components/EvidencePanel';
-import { applyFixesToQB, computeCorrections } from './utils/fixDiscrepancy';
+import { Settings, Loader2, AlertCircle, RefreshCw, Upload, Wrench, CheckCircle } from 'lucide-react';
+import { Badge, Button, ConfirmDialog, Dialog, ErrorState, Toast, friendlyError } from '@/components/ui';
+import { applyFixToQB, applyFixesToQB, computeCorrections } from './utils/fixDiscrepancy';
 import { QBCompanySwitcher } from '@/components/QBCompanySwitcher';
 import Link from 'next/link';
 import { useComparisonData } from './hooks/useComparisonData';
@@ -24,7 +23,10 @@ import {
   filterByDateRange, 
   filterByQBSource, 
   sortRows,
-  ComparisonRow 
+  formatCurrency,
+  isApproved,
+  isCleanMatch,
+  ComparisonRow
 } from './utils/comparisonUtils';
 import { exportToCSV, exportToExcel } from './utils/exportUtils';
 import { createClient } from '@/lib/supabase/client';
@@ -101,8 +103,11 @@ export default function QBComparisonsPage() {
   const [fixingAll, setFixingAll] = useState(false);
   const [fixAllProgress, setFixAllProgress] = useState<{ done: number; total: number } | null>(null);
   const [showFixAllConfirm, setShowFixAllConfirm] = useState(false);
-  // Row whose evidence shows beside the grid (separate from the review dialog).
-  const [evidenceRow, setEvidenceRow] = useState<ComparisonRow | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [fixingId, setFixingId] = useState<string | null>(null);
+  const [approvingAll, setApprovingAll] = useState(false);
+  const [approveAllProgress, setApproveAllProgress] = useState<{ done: number; total: number } | null>(null);
+  const [showApproveAllConfirm, setShowApproveAllConfirm] = useState(false);
 
   const showToast = useCallback((type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ type, message });
@@ -464,7 +469,9 @@ export default function QBComparisonsPage() {
       );
     }
 
-    if (filterStatus !== 'all') {
+    if (filterStatus === 'cleared') {
+      rows = rows.filter(isApproved);
+    } else if (filterStatus !== 'all') {
       rows = rows.filter(row => row.matchStatus === filterStatus);
     }
 
@@ -534,6 +541,7 @@ export default function QBComparisonsPage() {
       mismatched,
       missingInQB,
       missingInExtraction: missingInExt,
+      cleared: comparisonData.filter(isApproved).length,
     };
   }, [comparisonData]);
 
@@ -555,6 +563,61 @@ export default function QBComparisonsPage() {
     ).length,
     [comparisonData]
   );
+
+  // Rows in the Matched set that are safe to bulk-approve (exact amount + check #).
+  const cleanMatches = useMemo(() => comparisonData.filter(isCleanMatch), [comparisonData]);
+
+  const approveRow = (row: ComparisonRow) =>
+    handleApproveCheck(row.extractionData!.check_id, row.extractionData?.job_id, row.qbData?.id, row.extractionData);
+
+  const handleApproveRow = async (row: ComparisonRow) => {
+    setApprovingId(row.id);
+    try {
+      await approveRow(row);
+    } catch (e) {
+      showToast('error', friendlyError(e));
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleApproveAllMatched = async () => {
+    const rows = cleanMatches;
+    setApprovingAll(true);
+    setApproveAllProgress({ done: 0, total: rows.length });
+    let ok = 0;
+    let failed = 0;
+    for (const row of rows) {
+      try {
+        await approveRow(row);
+        ok++;
+      } catch (e) {
+        console.warn('Approve-all failed for', row.id, e);
+        failed++;
+      }
+      setApproveAllProgress({ done: ok + failed, total: rows.length });
+    }
+    showToast(failed ? 'warning' : 'success', `${ok} approved${failed ? ` · ${failed} failed` : ''}`);
+    setApprovingAll(false);
+    setApproveAllProgress(null);
+    setShowApproveAllConfirm(false);
+  };
+
+  const handleFixRow = async (row: ComparisonRow) => {
+    setFixingId(row.id);
+    try {
+      const result = await applyFixToQB(row);
+      if (result.skipped) showToast('warning', result.reason || 'Nothing to fix');
+      else if (result.ok) {
+        showToast('success', `Fixed #${row.checkNumber} in QuickBooks ✓`);
+        await refreshData();
+      } else showToast('error', result.reason || 'Fix failed');
+    } catch (e) {
+      showToast('error', friendlyError(e));
+    } finally {
+      setFixingId(null);
+    }
+  };
 
   const handleExportCSV = () => {
     exportToCSV(comparisonData, visibleColumns);
@@ -844,6 +907,19 @@ export default function QBComparisonsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+            {cleanMatches.length > 0 && (
+              <Button
+                size="sm"
+                onClick={() => setShowApproveAllConfirm(true)}
+                loading={approvingAll}
+                icon={<CheckCircle size={14} />}
+                title={t('Approve every matched cheque whose cheque # and amount match QuickBooks exactly')}
+              >
+                {approvingAll && approveAllProgress
+                  ? `Approving ${approveAllProgress.done}/${approveAllProgress.total}…`
+                  : `Approve all matched (${cleanMatches.length})`}
+              </Button>
+            )}
             {fixableCount > 0 && (
               <Button
                 size="sm"
@@ -954,6 +1030,7 @@ export default function QBComparisonsPage() {
             mismatched={statistics.mismatched}
             missingInQB={statistics.missingInQB}
             missingInExtraction={statistics.missingInExtraction}
+            cleared={statistics.cleared}
             filterStatus={filterStatus}
             onSelectStatus={(status) => {
               setFilterStatus(status);
@@ -965,8 +1042,7 @@ export default function QBComparisonsPage() {
 
       {/* The grid, full width, with the selected row's evidence beside it on
           wide screens. Pagination rides inside the table shell. */}
-      <div className="flex min-h-0 flex-1 gap-3 p-4">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col p-4">
         <ComparisonTable
           data={comparisonData}
           sortField={sortField}
@@ -974,15 +1050,13 @@ export default function QBComparisonsPage() {
           visibleColumns={visibleColumns}
           dateFormat={dateFormat}
           onSort={handleSort}
-          onRowClick={(row) => {
-            setEvidenceRow(row);
-            // Below xl the evidence panel is hidden, so open the review dialog.
-            if (typeof window !== 'undefined' && !window.matchMedia('(min-width: 1280px)').matches) {
-              setSelectedRow(row);
-            }
-          }}
+          onRowClick={setSelectedRow}
           onReview={setSelectedRow}
-          selectedId={evidenceRow?.id ?? null}
+          selectedId={selectedRow?.id ?? null}
+          onApprove={handleApproveRow}
+          approvingId={approvingId}
+          onFix={handleFixRow}
+          fixingId={fixingId}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
           onVouch={handleVouch}
@@ -1005,14 +1079,20 @@ export default function QBComparisonsPage() {
             />
           }
         />
-        </div>
-        <EvidencePanel
-          row={evidenceRow ? comparisonData.find((r) => r.id === evidenceRow.id) ?? null : null}
-          dateFormat={dateFormat}
-          onReview={setSelectedRow}
-          onClose={() => setEvidenceRow(null)}
-        />
       </div>
+
+      <ConfirmDialog
+        open={showApproveAllConfirm}
+        onCancel={() => !approvingAll && setShowApproveAllConfirm(false)}
+        onConfirm={handleApproveAllMatched}
+        loading={approvingAll}
+        tone="success"
+        title={`Approve ${cleanMatches.length} matched ${t(cleanMatches.length === 1 ? 'cheque' : 'cheques')}?`}
+        description={t('Each cheque has the same cheque # and exact amount as its QuickBooks transaction.')}
+        details={cleanMatches.slice(0, 12).map((r) => [`#${r.checkNumber}`, `${formatCurrency(r.amount)} · ${r.payee || '-'}`] as [string, string])
+          .concat(cleanMatches.length > 12 ? [['…', `and ${cleanMatches.length - 12} more`]] : [])}
+        confirmLabel={approvingAll && approveAllProgress ? `Approving ${approveAllProgress.done}/${approveAllProgress.total}…` : 'Approve all'}
+      />
 
       <DetailModal
         row={selectedRow}
@@ -1062,8 +1142,7 @@ export default function QBComparisonsPage() {
         }
       >
         <p className="mb-4 text-sm text-ink-body">
-          Would you like to create this check in QuickBooks before vouching, or just mark it as
-          resolved in Kyriq?
+          {t("This cheque isn't in QuickBooks yet. Create it there as a Deposit or Purchase, or just mark it resolved in Kyriq.")}
         </p>
         <div className="space-y-2">
           {VOUCH_TARGETS.map((target) => (
