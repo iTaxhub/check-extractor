@@ -397,6 +397,13 @@ chrome.runtime.onMessage.addListener((msg) => {
       return;
     }
 
+    // Realtime change in matches/checks/check_jobs (SW already debounced and
+    // invalidated its cache). Refetch quietly; never blocks the UI.
+    case 'KYRIQ_DATA_CHANGED': {
+      backgroundRefresh(true);
+      return;
+    }
+
     case 'QB_OAUTH_COMPLETE': {
       handleQBOAuthComplete(msg);
       return;
@@ -414,6 +421,17 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
+function backgroundRefresh(force) {
+  if (!session || currentView !== 'main' || document.hidden || _loginInProgress) return;
+  loadChecksIntoMatches({ force }).catch(() => {});
+  _cachedChecks = null; _cachedHistory = null;
+  if (currentTab === 'cheques') loadChecks(force);
+  else if (currentTab === 'history') loadHistory(true);
+}
+// Fallback when realtime is down or the SW slept: refresh a visible panel every
+// 60s. GET_CHECKS is served from the SW's 30s cache, so this is cheap.
+setInterval(() => backgroundRefresh(false), 60000);
+
 async function handleQBOAuthComplete(msg) {
   dbg(`QB OAuth completed${msg.company ? ' for ' + msg.company : ''} — auto-refreshing connections`, 'success');
   const infoEl = $('#qb-connect-info');
@@ -430,24 +448,11 @@ async function handleQBOAuthComplete(msg) {
       dbg('QB_OAUTH_COMPLETE: no connections found yet — user may need to click refresh', 'warn');
       return;
     }
-    renderCompanySelect();
-    showView('main');
-    showLoading('Syncing QuickBooks transactions...');
-    const pullRes = await sendMsg({ type: 'PULL_QB_TXNS' }).catch(() => ({}));
     hideLoading();
-    if (pullRes?.endpointMissing) {
-      switchTab('matches');
-      showQBEndpointMissingBanner(pullRes.error);
-      dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
-      return;
-    }
-    if (pullRes?.reconnectNeeded) {
-      switchTab('matches');
-      showQBReconnectBanner(pullRes.error);
-      dbg('QB token expired on OAuth complete — reconnect required', 'error');
-      return;
-    }
-    await loadChecksIntoMatches();
+    renderCompanySelect();
+    const sync = loadChecksIntoMatches({ pull: true, force: true });
+    showView('main');
+    await sync;
     dbg('QB auto-connect flow complete', 'success');
   } catch (e) {
     hideLoading();
@@ -460,7 +465,8 @@ let _sidepanelPort = null;
 function openSidepanelPort() {
   try {
     _sidepanelPort = chrome.runtime.connect({ name: 'kyriq-sidepanel' });
-    _sidepanelPort.onDisconnect.addListener(() => { _sidepanelPort = null; });
+    // Reconnect when the SW restarts: the port wakes it and re-opens realtime.
+    _sidepanelPort.onDisconnect.addListener(() => { _sidepanelPort = null; setTimeout(openSidepanelPort, 1000); });
   } catch (e) {
     // Service worker not ready yet — retry once.
     setTimeout(() => {
@@ -638,63 +644,39 @@ function setUserChip(email, user) {
 async function postLoginFlow() {
   if (_loginInProgress) { dbg('postLoginFlow: already in progress — skipping'); return; }
   _loginInProgress = true;
+  // Only the (fast) connections lookup blocks; everything after renders from
+  // cache and syncs behind a non-blocking banner.
   showLoading('Loading workspace...');
   dbg('postLoginFlow: fetching connections');
   try {
     const res = await sendMsg({ type: 'GET_CONNECTIONS' });
     connections = res?.connections || [];
     dbg(`Connections: ${connections.length}`);
+    hideLoading();
 
     if (connections.length === 0) {
-      hideLoading();
       showView('qb-connect');
     } else {
       // Rows left inactive by a disconnect stay disconnected; never re-activate
       // them behind the user's back.
       if (!connections.some(c => c.is_active)) {
         dbg('No active QB connection: showing connect screen', 'warn');
-        hideLoading();
         showView('qb-connect');
         return;
       }
       renderCompanySelect();
+      // Start the sync before showView so switchTab's own load joins it.
+      const sync = loadChecksIntoMatches({ pull: true });
       showView('main');
       setQbStatus('connected');
       refreshUsageMeter();
-      // Pull QB transactions first so matching has data, then load checks
-      showLoading('Syncing QuickBooks transactions...');
-      try {
-        const pullRes = await sendMsg({ type: 'PULL_QB_TXNS' });
-        if (pullRes?.endpointMissing) {
-          hideLoading();
-          switchTab('matches');
-          showQBEndpointMissingBanner(pullRes.error);
-          dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
-          return;
-        }
-        if (pullRes?.reconnectNeeded) {
-          hideLoading();
-          switchTab('matches');
-          showQBReconnectBanner(pullRes.error);
-          dbg('QB token expired on login — reconnect required', 'error');
-          return;
-        }
-        _cachedQB = null; // Invalidate QB Data cache so tab shows fresh data
-        dbg(`QB auto-sync: ${pullRes?.count || 0} transactions`);
-        if (pullRes?.partialErrors?.length) {
-          dbg(`QB auto-sync partial errors: ${pullRes.partialErrors.map(e => `${e.type}(${e.status})`).join(', ')}`, 'warn');
-        }
-      } catch (e) {
-        dbg(`QB auto-sync failed (non-fatal): ${e.message}`, 'warn');
-      }
-      await loadChecksIntoMatches();
       // Pre-load docs for filter dropdown (non-blocking)
       sendMsg({ type: 'GET_DOCUMENTS' }).then(r => {
         if (r?.documents?.length) { _cachedDocs = r.documents; populateDocFilter(r.documents); }
       });
       // Pre-load account list for account selector
       populateAccountSelect();
-      hideLoading();
+      await sync;
     }
   } catch (e) {
     dbg(`postLoginFlow error: ${e.message}`, 'error');
@@ -705,34 +687,78 @@ async function postLoginFlow() {
   }
 }
 
+// Last matches per user + QuickBooks company, so the list paints instantly on open.
+function matchCacheKey() {
+  const realm = connections.find(c => c.is_active)?.realm_id || '';
+  return `kyriqMatchCache:${session?.user?.id || ''}:${realm}`;
+}
+
+// Surfaces a QB pull failure; returns true when the pull was unusable.
+function handlePullResult(pullRes, where) {
+  if (!pullRes) return false;
+  if (pullRes.endpointMissing) {
+    showQBEndpointMissingBanner(pullRes.error);
+    dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
+    return true;
+  }
+  if (pullRes.reconnectNeeded) {
+    showQBReconnectBanner(pullRes.error);
+    dbg(`QB token expired (${where}) — reconnect required`, 'error');
+    return true;
+  }
+  _cachedQB = null; // QB Data tab shows fresh data next time
+  dbg(`QB sync (${where}): ${pullRes.count || 0} transactions`);
+  if (pullRes.partialErrors?.length) {
+    dbg(`QB sync partial errors: ${pullRes.partialErrors.map(e => `${e.type}(${e.status})`).join(', ')}`, 'warn');
+  }
+  return false;
+}
+
 // ── Load checks from DB → extractedChecks → run matching ──
+// Paints cached matches first, then fetches cheques (and, with pull, QB
+// transactions) in parallel and re-matches in place. Never blocks the UI.
 // Single-flight guarded: concurrent callers share the same in-flight promise.
-async function loadChecksIntoMatches() {
+// Resolves to the PULL_QB_TXNS result (or null).
+async function loadChecksIntoMatches({ pull = false, force = false } = {}) {
   if (_inflightChecksMatch) {
     dbg('loadChecksIntoMatches: reusing in-flight load');
     return _inflightChecksMatch;
   }
   _inflightChecksMatch = (async () => {
-    dbg('loadChecksIntoMatches: fetching DB checks');
-    updateMatchesBanner('loading');
-    const res = await sendMsg({ type: 'GET_CHECKS' });
+    const key = matchCacheKey();
+    if (!matches.length) {
+      const cached = (await chrome.storage.local.get(key).catch(() => ({})))[key];
+      if (cached?.matches?.length) {
+        extractedChecks = cached.checks || [];
+        matches = cached.matches;
+        dbg(`Painted ${matches.length} cached matches`);
+        renderMatches();
+      }
+    }
+    updateMatchesBanner('syncing', pull ? 'Syncing QuickBooks…' : 'Refreshing…');
+    const [res, pullRes] = await Promise.all([
+      sendMsg({ type: 'GET_CHECKS', force }).catch(e => ({ checks: [], error: e?.message })),
+      pull ? sendMsg({ type: 'PULL_QB_TXNS' }).catch(e => ({ error: e?.message })) : null,
+    ]);
+    if (pull && handlePullResult(pullRes, 'load') && currentTab !== 'matches') switchTab('matches');
     const dbChecks = res?.checks || [];
     if (!dbChecks.length) {
-      dbg('loadChecksIntoMatches: no checks in DB yet');
-      updateMatchesBanner('empty');
+      // A failed fetch keeps whatever is on screen; an empty DB clears it.
+      if (res?.error) { dbg(`GET_CHECKS failed: ${res.error}`, 'warn'); updateMatchesBanner('loaded', extractedChecks.length); }
+      else { extractedChecks = []; matches = []; updateMatchesBanner('empty'); chrome.storage.local.remove(key).catch(() => {}); }
       renderMatches();
-      return;
+      return pullRes;
     }
     extractedChecks = dbChecks;
     dbg(`loadChecksIntoMatches: ${extractedChecks.length} checks loaded`);
+    updateMatchesBanner('syncing', `Matching ${extractedChecks.length} cheques…`);
+    const matchRes = await sendMsg({ type: 'RUN_MATCHING', checks: extractedChecks }).catch(() => null);
     updateMatchesBanner('loaded', extractedChecks.length);
-    // Run matching algorithm
-    showLoading(`Matching ${extractedChecks.length} cheques…`);
-    const matchRes = await sendMsg({ type: 'RUN_MATCHING', checks: extractedChecks });
-    hideLoading();
     if (matchRes?.matches) {
       matches = matchRes.matches;
       dbg(`Matching done: ${matches.length} results`, 'success');
+      // Only cache what belongs to the company that was active when we started.
+      if (key === matchCacheKey()) chrome.storage.local.set({ [key]: { checks: extractedChecks, matches, at: Date.now() } }).catch(() => {});
       // Add accounts seen in matches; never drop the full QB list populateAccountSelect() loaded.
       const matchAccounts = [...new Set(matches.filter(m => m.qbTxn?.account).map(m => m.qbTxn.account))];
       const sel = $('#account-select');
@@ -751,6 +777,7 @@ async function loadChecksIntoMatches() {
     }
     renderMatches();
     await autoApproveCleared();
+    return pullRes;
   })().finally(() => { _inflightChecksMatch = null; });
   return _inflightChecksMatch;
 }
@@ -758,8 +785,8 @@ async function loadChecksIntoMatches() {
 function updateMatchesBanner(state, count) {
   const banner = $('#match-banner');
   if (!banner) return;
-  if (state === 'loading') {
-    banner.textContent = 'Loading cheques from database…';
+  if (state === 'syncing') {
+    banner.textContent = count || 'Syncing…';
     banner.style.display = '';
   } else if (state === 'empty') {
     banner.style.display = 'none';
@@ -1167,10 +1194,12 @@ function bindMatchEvents() {
       else if (action === 'search') {
         const query = prompt('Search QB transactions:', match.check?.payee || '');
         if (!query) return;
-        showLoading('Searching QB...');
+        // Inline spinner on the button itself; the rest of the panel stays usable.
+        const label = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Searching…';
         dbg(`Searching QB: "${query}"`);
-        const res = await sendMsg({ type: 'SEARCH_QB', query });
-        hideLoading();
+        const res = await sendMsg({ type: 'SEARCH_QB', query }).catch(() => null);
+        btn.disabled = false; btn.textContent = label;
         if (res?.results?.length) {
           match.qbTxn = res.results[0];
           match.status = 'pending';
@@ -1275,21 +1304,26 @@ async function approveAndClear(idx) {
   const jobId   = match.check?.job_id;
   const label   = match.check?.payee || match.qbTxn?.payee || `match[${idx}]`;
   dbg(`▶ Approve & Clear — ${label} (${match.qbTxn?.intuit_id || 'no qb id'})`);
+  // Optimistic: the row and counts flip now; a failure puts them back.
+  const prevStatus = match.status;
+  match.status = 'approved';
+  renderMatches();
+  const rollback = () => { if (match.status === 'approved') { match.status = prevStatus; renderMatches(); } };
   try {
     const res = await sendMsg({ type: 'APPROVE_AND_CLEAR', qbTxn: match.qbTxn, check: match.check || null, checkId, jobId });
       if (!res) {
+        rollback();
         dbg('SW: no response (timeout or crash)', 'error');
         showErrorDialog('QB Approve Failed', 'The extension service worker did not respond. Try reloading the extension.', null);
         return false;
       }
       if (res.error || !res.success) {
+        rollback();
         const reason = res.error || res.persistError || res.warning || 'Approval could not be saved.';
         dbg(`SW error: ${reason}`, 'error');
         showErrorDialog('QB Approve Failed', reason, res.qbRaw || null);
         return false;
       }
-      match.status = 'approved';
-      renderMatches();
       switch (res.qbStatus) {
         case 'already_cleared':
           dbg('QB already cleared ✓', 'success'); showQBConfirmation(res); break;
@@ -1309,6 +1343,7 @@ async function approveAndClear(idx) {
       }
       return true;
   } catch (e) {
+    rollback();
     dbg(`SW exception: ${e?.message}`, 'error');
     showErrorDialog('QB Approve Failed', e?.message || 'Could not complete approval.', null);
     return false;
@@ -1729,15 +1764,23 @@ async function startAndPoll(file, opts = {}) {
   setUploadStatus('loading', 'Reading cheques', 'This usually takes under a minute.');
 
   // ── Poll until complete ──
-  let attempts = 0;
   let pollMisses = 0;
   // Big statements (hundreds of cheques) take several minutes; keep
   // following for 15 and say so after 4 rather than giving up.
-  const MAX_POLLS = 450;
-
-  _pollTimer = setInterval(async () => {
-    attempts++;
-    if (attempts > MAX_POLLS) {
+  // Backoff 1s -> 5s. setTimeout chain: the body stops polling by setting
+  // _pollTimer = null (or a newer poll replaces it); the page's timers die
+  // with the panel, so a closed panel stops polling too.
+  const startedAt = Date.now();
+  const MAX_MS = 15 * 60 * 1000;
+  let delay = 1000;
+  const schedule = () => { _pollTimer = setTimeout(tick, delay); delay = Math.min(5000, Math.round(delay * 1.5)); };
+  const tick = async () => {
+    const me = _pollTimer;
+    await pollOnce();
+    if (_pollTimer === me) schedule();
+  };
+  const pollOnce = async () => {
+    if (Date.now() - startedAt > MAX_MS) {
       clearInterval(_pollTimer); _pollTimer = null;
       appendLog('⚠ Timed out waiting for extraction', 'err');
       setUploadStatus('warn', 'Still processing',
@@ -1772,7 +1815,7 @@ async function startAndPoll(file, opts = {}) {
       const raw = job.extraction_progress;
       const pct = typeof raw === 'number' ? Math.round(raw <= 1 ? raw * 100 : raw) : null;
       setUploadStatus('loading', 'Reading cheques',
-        pct != null ? `${pct}% done` : (attempts > 120 ? 'Large documents take a few minutes. You can leave this open.' : 'This usually takes under a minute.'));
+        pct != null ? `${pct}% done` : (Date.now() - startedAt > 4 * 60 * 1000 ? 'Large documents take a few minutes. You can leave this open.' : 'This usually takes under a minute.'));
       return;
     }
 
@@ -1827,7 +1870,8 @@ async function startAndPoll(file, opts = {}) {
     // Refresh docs cache so the new file appears in the Docs dropdown immediately
     _cachedDocs = null;
     loadDocuments(true).catch(() => {});
-  }, 2000);
+  };
+  schedule();
 }
 
 function renderExtracted() {
@@ -2047,8 +2091,9 @@ async function loadChecks(force = false) {
   _inflightChecks = (async () => {
     dbg('loadChecks' + (force ? ' (force)' : ''));
     const list = $('#checks-list');
-    if (list) list.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div>';
-    const res = await sendMsg({ type: 'GET_CHECKS' });
+    // Keep rows on screen during a refresh; placeholder only when empty.
+    if (list && !list.children.length) list.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div>';
+    const res = await sendMsg({ type: 'GET_CHECKS', force });
     const checks = res?.checks || [];
     dbg(`Checks: ${checks.length}`);
     _cachedChecks = checks;
@@ -2316,7 +2361,7 @@ async function loadHistory(force = false) {
   dbg('loadHistory' + (force ? ' (force)' : ''));
   if (_cachedHistory !== null && !force) { renderHistoryList(_cachedHistory); return; }
   const list = $('#history-list');
-  list.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div>';
+  if (!list.children.length) list.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div>';
   const res = await sendMsg({ type: 'GET_HISTORY' });
   const hist = res?.history || [];
   dbg(`History: ${hist.length}`);
@@ -2508,13 +2553,11 @@ function bindEvents() {
     dbg(`Connections after refresh: ${connections.length}`);
     if (connections.length > 0) {
       renderCompanySelect();
+      const sync = loadChecksIntoMatches({ pull: true, force: true });
       showView('main');
       setQbStatus('connected');
       refreshUsageMeter();
-      showLoading('Syncing QuickBooks transactions...');
-      try { await sendMsg({ type: 'PULL_QB_TXNS' }); } catch (_) {}
-      await loadChecksIntoMatches();
-      hideLoading();
+      await sync;
     } else {
       alert('No QuickBooks companies found yet. Please complete the OAuth flow in the browser tab that opened.');
     }
@@ -2615,50 +2658,25 @@ function bindEvents() {
       return;
     }
     dbg(`Switch company: ${realmId}`);
-    showLoading('Switching company...');
+    updateMatchesBanner('syncing', 'Switching company…');
     const switchRes = await sendMsg({ type: 'SWITCH_COMPANY', realmId });
-    if (switchRes?.error) {
-      hideLoading();
-      dbg(`Switch company failed: ${switchRes.error}`, 'error');
-      alert(`Company switch failed: ${switchRes.error}`);
+    if (!switchRes || switchRes.error) {
+      renderCompanySelect(); // put the selection back
+      updateMatchesBanner('loaded', extractedChecks.length);
+      dbg(`Switch company failed: ${switchRes?.error}`, 'error');
+      showWarningBanner(`Company switch failed: ${switchRes?.error || 'no response'}`);
       return;
     }
-    // Clear all stale cache for previous company
+    connections.forEach(c => { c.is_active = c.realm_id === realmId; });
+    setSpelling(connections.find(c => c.is_active)?.country);
+    // Clear all stale cache for previous company; the new one's cached
+    // matches (if any) paint immediately inside loadChecksIntoMatches.
     _cachedDocs = null; _cachedChecks = null; _cachedHistory = null;
+    if (_inflightChecksMatch) await _inflightChecksMatch.catch(() => {}); // previous company's load
     matches = []; extractedChecks = [];
     renderMatches();
-    // Pull QB transactions for the new company
-    showLoading('Syncing QB data for new company...');
-    const pullRes = await sendMsg({ type: 'PULL_QB_TXNS' });
-    if (pullRes?.endpointMissing) {
-      hideLoading();
-      switchTab('matches');
-      showQBEndpointMissingBanner(pullRes.error);
-      dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
-      return;
-    }
-    if (pullRes?.reconnectNeeded) {
-      hideLoading();
-      switchTab('matches');
-      showQBReconnectBanner(pullRes.error);
-      dbg('QB token expired on company switch — reconnect required', 'error');
-      return;
-    }
-    dbg(`QB sync: ${pullRes?.count || 0} txns pulled`);
-    // Reload checks and run matching
-    showLoading('Loading cheques...');
-    const chkRes = await sendMsg({ type: 'GET_CHECKS' });
-    if (chkRes?.checks?.length) {
-      extractedChecks = chkRes.checks;
-      _cachedChecks = chkRes.checks;
-      showLoading(`Matching ${extractedChecks.length} cheques...`);
-      const matchRes = await sendMsg({ type: 'RUN_MATCHING', checks: extractedChecks });
-      if (matchRes?.matches) { matches = matchRes.matches; }
-    }
-    renderMatches();
-    hideLoading();
+    await loadChecksIntoMatches({ pull: true, force: true });
     dbg(`Company switch complete: ${realmId}`, 'success');
-    await autoApproveCleared();
   });
 
   // ── Sync QB ──
@@ -2666,24 +2684,11 @@ function bindEvents() {
     const syncBtn = $('#btn-sync');
     syncBtn.classList.add('spinning');
     dbg('Syncing QB transactions...');
-    showLoading('Syncing QB transactions...');
-    const pullRes = await sendMsg({ type: 'PULL_QB_TXNS' });
-    hideLoading();
+    // Cheques + QB pull run in parallel and the list re-matches in place.
+    if (_inflightChecksMatch) await _inflightChecksMatch.catch(() => {}); // don't join a pull-less refresh
+    const pullRes = await loadChecksIntoMatches({ pull: true, force: true });
     syncBtn.classList.remove('spinning');
-    if (pullRes?.endpointMissing) {
-      switchTab('matches');
-      showQBEndpointMissingBanner(pullRes.error);
-      dbg('QB refresh endpoint missing — frontend deploy needed', 'error');
-      return;
-    }
-    if (pullRes?.reconnectNeeded) {
-      switchTab('matches');
-      showQBReconnectBanner(pullRes.error);
-      dbg('QB token expired — reconnect required', 'error');
-      return;
-    }
-    // Invalidate QB Data cache so tab shows fresh results
-    _cachedQB = null;
+    if (!pullRes || pullRes.endpointMissing || pullRes.reconnectNeeded) return;
     const syncCount = pullRes?.count || 0;
     const partialErrs = pullRes?.partialErrors || [];
     dbg(`Sync done: ${syncCount} txns`);
@@ -2700,25 +2705,6 @@ function bindEvents() {
 
     // Refresh QB Data tab if user is currently viewing it (tab id is 'qb', not 'qbdata')
     if (currentTab === 'qb') loadQBTransactions(true);
-
-    // If no checks in memory yet, load from DB first
-    if (!extractedChecks.length) {
-      showLoading('Loading cheques from database…');
-      const chkRes = await sendMsg({ type: 'GET_CHECKS' });
-      if (chkRes?.checks?.length) { extractedChecks = chkRes.checks; }
-      hideLoading();
-    }
-    if (extractedChecks.length > 0) {
-      showLoading(`Matching ${extractedChecks.length} cheques…`);
-      const matchRes = await sendMsg({ type: 'RUN_MATCHING', checks: extractedChecks });
-      hideLoading();
-      if (matchRes?.matches) {
-        matches = matchRes.matches;
-        dbg(`Matches: ${matches.length}`, 'success');
-      }
-    }
-    renderMatches();
-    await autoApproveCleared();
   });
 
   // ── Upload zone ──
@@ -2761,19 +2747,12 @@ function bindEvents() {
   // ── Match extracted ──
   $('#btn-match-extracted').addEventListener('click', async () => {
     if (!extractedChecks.length) return;
-    showLoading('Pulling QB transactions...');
     dbg('Matching extracted checks against QB');
-    await sendMsg({ type: 'PULL_QB_TXNS' });
-    showLoading('Running matching algorithm...');
-    const res = await sendMsg({ type: 'RUN_MATCHING', checks: extractedChecks });
-    hideLoading();
-    if (res?.matches) {
-      matches = res.matches;
-      dbg(`Matches: ${matches.length}`, 'success');
-      switchTab('matches');
-      renderMatches();
-      await autoApproveCleared();
-    }
+    // force: the just-extracted cheques must be in the fetched set.
+    if (_inflightChecksMatch) await _inflightChecksMatch.catch(() => {});
+    const sync = loadChecksIntoMatches({ pull: true, force: true });
+    switchTab('matches');
+    await sync;
   });
 
   // ── Upload more ──
@@ -2874,6 +2853,7 @@ function bindEvents() {
   const reviewAction = async (status) => {
     if (!_reviewCheck) return;
     const btn = status === 'approved' ? $('#rm-approve') : status === 'rejected' ? $('#rm-reject') : $('#rm-undo');
+    const btnLabel = btn?.textContent;
     if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
 
     // For "approved" — if there is a linked QB txn, route through the full
@@ -2900,23 +2880,30 @@ function bindEvents() {
     // Fallback: no qbTxn, or rejected/undo — update Supabase status only.
     const undoStatus = status === 'pending_review' ? status : null;
     const newStatus = undoStatus || status;
-    const res = await sendMsg({ type: 'UPDATE_CHECK_STATUS', checkId: _reviewCheck.id, jobId: _reviewCheck.job_id, status: newStatus });
-    if (res?.success) {
-      if (_cachedChecks) {
-        const idx = _cachedChecks.findIndex(c => c.id === _reviewCheck.id);
-        if (idx !== -1) { _cachedChecks[idx].status = newStatus; }
-      }
-      _reviewCheck.status = newStatus;
-      hide('#review-modal');
+    // Optimistic: update the row and close the modal now, roll back on failure.
+    const check = _reviewCheck;
+    const cached = _cachedChecks?.find(c => c.id === check.id);
+    const linked = matches.find(m => m.check?.id === check.id);
+    const prev = { check: check.status, cached: cached?.status, match: linked?.status };
+    const apply = (s, ms) => {
+      check.status = s;
+      if (cached) cached.status = s;
+      if (linked && ms !== undefined) linked.status = ms;
       renderChecksList(_cachedChecks || []);
-      if (status === 'approved') { _cachedHistory = null; }
-    } else {
-      const origLabel = status === 'approved' ? '✅ Approve' : status === 'rejected' ? '❌ Reject' : '↩ Undo';
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = '' + (res?.error || 'Failed');
-        setTimeout(() => { btn.textContent = origLabel; }, 3000);
-      }
+      if (linked) renderMatches();
+    };
+    apply(newStatus, linked ? (newStatus === 'pending_review' ? (linked.score >= 95 ? 'matched' : 'pending') : newStatus) : undefined);
+    hide('#review-modal');
+    if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
+    if (status === 'approved') { _cachedHistory = null; }
+    const res = await sendMsg({ type: 'UPDATE_CHECK_STATUS', checkId: check.id, jobId: check.job_id, status: newStatus }).catch(e => ({ error: e?.message }));
+    if (!res?.success) {
+      check.status = prev.check;
+      if (cached) cached.status = prev.cached;
+      if (linked) linked.status = prev.match;
+      renderChecksList(_cachedChecks || []);
+      if (linked) renderMatches();
+      showWarningBanner(`Could not update the cheque: ${res?.error || 'save failed'}. Change undone.`);
       dbg(`reviewAction ${status} failed: ${res?.error}`, 'error');
     }
   };
@@ -3001,9 +2988,16 @@ function bindEvents() {
         fields: qbFields,
       });
     }
+    // Optimistic: the cheque fields show the edit now; rolled back below on failure.
+    const savedCheck = _reviewCheck;
+    const targets = [savedCheck, _cachedChecks?.find(c => c.id === savedCheck.id), _reviewMatch?.check].filter(Boolean);
+    const before = targets.map(t => Object.fromEntries(Object.keys(checkFields).map(k => [k, t[k]])));
+    targets.forEach(t => Object.assign(t, checkFields));
+    if (_reviewMatch) renderMatches();
+
     const [checkRes, qbRes] = await Promise.all([
-      sendMsg({ type: 'UPDATE_CHECK_FIELDS', checkId: _reviewCheck.id, jobId: _reviewCheck.job_id, fields: checkFields }),
-      qbSavePromise,
+      sendMsg({ type: 'UPDATE_CHECK_FIELDS', checkId: savedCheck.id, jobId: savedCheck.job_id, fields: checkFields }).catch(e => ({ error: e?.message })),
+      qbSavePromise.catch(e => ({ error: e?.message })),
     ]);
 
     btn.disabled = false; btn.textContent = 'Save Changes';
@@ -3011,14 +3005,12 @@ function bindEvents() {
     const qbOk   = !!qbRes?.success;
     const qbWarn = null; // SAVE_QB_TXN now fails outright instead of half-saving
 
+    if (!checkOk) {
+      targets.forEach((t, i) => Object.assign(t, before[i]));
+      if (_reviewMatch) renderMatches();
+      showWarningBanner(`Could not save the cheque: ${checkRes?.error || 'save failed'}. Change undone.`);
+    }
     if (checkOk) {
-      // At least the check fields saved — update memory caches
-      Object.assign(_reviewCheck, checkFields);
-      if (_cachedChecks) {
-        const idx = _cachedChecks.findIndex(c => c.id === _reviewCheck.id);
-        if (idx !== -1) Object.assign(_cachedChecks[idx], checkFields);
-      }
-      if (_reviewMatch?.check) Object.assign(_reviewMatch.check, checkFields);
       if (qbOk && _reviewMatch?.qbTxn) {
         Object.assign(_reviewMatch.qbTxn, { amount: qbFields.amount, txn_date: qbFields.txn_date, payee: qbFields.payee, doc_number: qbFields.doc_number });
         // The difference is gone in QuickBooks now: recompute so Approve unlocks
