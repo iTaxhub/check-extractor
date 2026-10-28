@@ -146,7 +146,8 @@ function SettingsPageContent() {
         if (error) {
             handledOAuthRef.current = true
             const errorMessages: Record<string, string> = {
-                token_exchange_failed: `QuickBooks rejected the connection. ${detail ? `Detail: ${decodeURIComponent(detail)}` : 'Check that your Redirect URI matches exactly what\'s in your QuickBooks app settings.'}`,
+                company_owned_by_other_firm: `${detail ? decodeURIComponent(detail) : 'This QuickBooks company'} is already connected to another Kyriq firm, and that firm's connection has been kept working. Ask its admin to invite you under Users instead of connecting it again.`,
+        token_exchange_failed: `QuickBooks rejected the connection. ${detail ? `Detail: ${decodeURIComponent(detail)}` : 'Check that your Redirect URI matches exactly what\'s in your QuickBooks app settings.'}`,
                 not_configured: 'QuickBooks credentials not found. Please configure your Client ID and Secret first.',
                 missing_params: 'QuickBooks callback was missing required parameters. Please try connecting again.',
                 invalid_state: 'Security check failed (state mismatch). Please try connecting again.',
