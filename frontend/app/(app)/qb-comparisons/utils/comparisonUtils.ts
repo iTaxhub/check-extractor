@@ -4,6 +4,8 @@ export interface CheckExtraction {
   pdf_name: string;
   page: number;
   checkNumber?: string;
+  /** Review state written by PATCH /api/jobs/{id}/checks/{checkId}/status. */
+  status?: string;
   extraction?: {
     checkNumber?: string | { value: string };
     checkDate?: string | { value: string };
@@ -52,6 +54,16 @@ export interface ComparisonRow {
   vouchedBy?: string;
   vouchedAt?: string;
 }
+
+export const isApproved = (row: ComparisonRow) => row.extractionData?.status === 'approved';
+
+/** Matched, exact amount (check # already matched by construction), not yet approved/rejected, approvable. */
+export const isCleanMatch = (row: ComparisonRow) =>
+  row.matchStatus === 'matched' &&
+  Boolean(row.extractionData?.job_id && row.extractionData?.check_id && row.qbData?.id) &&
+  !['approved', 'rejected'].includes(row.extractionData?.status || '') &&
+  (normalizeCheckNum(row.qbData!.checkNumber) || row.qbData!.checkNumber) === row.checkNumber &&
+  Math.abs(parseAmount(row.amount) - parseAmount(row.qbData!.amount)) < 0.005;
 
 export type SortField = 'checkNumber' | 'date' | 'amount' | 'payee' | 'matchStatus';
 export type SortDirection = 'asc' | 'desc';

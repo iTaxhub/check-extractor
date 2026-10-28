@@ -7,6 +7,7 @@ interface StatisticsPanelProps {
   mismatched: number;
   missingInQB: number;
   missingInExtraction: number;
+  cleared: number;
   /** Current match-status filter, so the active tab reads as selected. */
   filterStatus: string;
   /** Selecting a tab filters the grid by that status; "all" clears it. */
@@ -20,6 +21,7 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
   mismatched,
   missingInQB,
   missingInExtraction,
+  cleared,
   filterStatus,
   onSelectStatus,
 }) => {
@@ -30,6 +32,7 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
     { status: 'missing-in-qb', label: 'Missing in QB', value: missingInQB },
     { status: 'missing-in-extraction', label: t('Missing in cheques'), value: missingInExtraction },
     { status: 'matched', label: 'Matched', value: matched },
+    { status: 'cleared', label: 'Cleared', value: cleared },
   ];
 
   return (
