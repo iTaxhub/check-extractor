@@ -541,30 +541,29 @@ const VOICE_PROMPTS = [
 /** Kyriq IQ teaser. The working beta lives at /voice for signed-in firms, and is
  *  still called Voice there — Michael renamed the public-facing section only. */
 function VoiceSection() {
-  // White section. Left: two navy cards stacked (pitch + waitlist, then the
-  // voice prompts). Right: the artwork (Kyriq and QuickBooks reconciling side
-  // by side) as a framed image card the height of the stack.
+  // White section. On top: the artwork as a wide rectangle. Below it, side by
+  // side: the pitch + waitlist card and the voice-prompts card.
   const NAVY_CARD =
     'rounded-modal border border-white/10 bg-[rgb(14,15,44)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_30px_70px_-30px_rgba(30,27,75,0.55)]';
   return (
     <section id="voice" className="relative overflow-hidden bg-white px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
-      <div className="relative mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
-        <div className="relative order-first min-h-[280px] overflow-hidden rounded-modal shadow-[0_30px_70px_-30px_rgba(30,27,75,0.55)] ring-1 ring-ink-strong/5 sm:min-h-[380px] lg:order-last lg:min-h-0">
+      <div className="relative mx-auto flex max-w-7xl flex-col gap-6 lg:gap-8">
+        <div className="relative aspect-[16/9] overflow-hidden rounded-modal shadow-[0_30px_70px_-30px_rgba(30,27,75,0.55)] ring-1 ring-ink-strong/5 sm:aspect-[21/9] lg:aspect-[5/2]">
           <Image
             src="/landing/kyriq-iq-characters-user-v1.webp"
             alt="Kyriq and QuickBooks reconciling cheques side by side"
             fill
-            sizes="(min-width: 1024px) 45vw, 100vw"
+            sizes="(min-width: 1280px) 1280px, 100vw"
             className="object-cover object-center"
           />
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
         <div className={cn(NAVY_CARD, 'p-7 sm:p-10')}>
           <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 text-[11px] font-semibold uppercase tracking-eyebrow text-accentEmerald">
             <KyriqIconWhite size={15} /> <Mic className="h-3.5 w-3.5" aria-hidden /> Kyriq IQ · Coming soon
           </span>
-          <h2 className="mb-5 text-[clamp(2.25rem,4vw,3.5rem)] font-bold leading-[1.05] tracking-[-0.03em] text-white">
+          <h2 className="mb-5 text-[clamp(1.875rem,2.8vw,3rem)] font-bold leading-[1.05] tracking-[-0.03em] text-white">
             Ask. Review. Act, 
             <span className="bg-gradient-to-r from-brand-light to-accentEmerald bg-clip-text text-transparent">with your approval.</span>
           </h2>
@@ -578,21 +577,19 @@ function VoiceSection() {
           <WaitlistForm />
         </div>
 
-        <div>
-          <div className={cn(NAVY_CARD, 'p-4 sm:p-5')}>
-            <div className="mb-4 flex h-12 items-end justify-center gap-1" aria-hidden>
-              {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
-                <span key={i} className="w-1.5 animate-pulse rounded-full bg-gradient-to-t from-brand to-accentEmerald" style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
-              ))}
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {VOICE_PROMPTS.map((p) => (
-                <div key={p} className="flex items-start gap-3 rounded-input border border-white/[0.06] bg-white/[0.06] px-4 py-3 text-[13px] leading-relaxed text-white/90">
-                  <Mic className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accentEmerald" aria-hidden />
-                  &ldquo;{p}&rdquo;
-                </div>
-              ))}
-            </div>
+        <div className={cn(NAVY_CARD, 'flex flex-col justify-center p-5 sm:p-8')}>
+          <div className="mb-5 flex h-12 items-end justify-center gap-1" aria-hidden>
+            {[28, 44, 60, 36, 52, 64, 40, 56, 30, 48, 62, 34, 50, 26].map((h, i) => (
+              <span key={i} className="w-1.5 animate-pulse rounded-full bg-gradient-to-t from-brand to-accentEmerald" style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
+            ))}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            {VOICE_PROMPTS.map((p) => (
+              <div key={p} className="flex items-start gap-3 rounded-input border border-white/[0.06] bg-white/[0.06] px-4 py-3 text-[13px] leading-relaxed text-white/90">
+                <Mic className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accentEmerald" aria-hidden />
+                &ldquo;{p}&rdquo;
+              </div>
+            ))}
           </div>
         </div>
         </div>

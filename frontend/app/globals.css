@@ -302,6 +302,16 @@
     background-color: var(--mesh-base);
   }
 
+  /* One layout at every desktop width: rem tracks the viewport between 1280px
+     (13.5px, a typical laptop at 125% scaling) and 1920px (16px), so a laptop
+     shows the same composition as a large monitor instead of the same pixel
+     sizes in less room. Everything sized in rem (type, spacing, max-widths)
+     scales with it; phones and tablets keep 16px.
+     ponytail: px-sized arbitrary values do not scale; convert one if it stands out. */
+  @media (min-width: 1024px) {
+    html { font-size: clamp(13.5px, calc(8.5px + 0.390625vw), 16px); }
+  }
+
   body {
     background-color: transparent;
     color: hsl(var(--ink-strong));
