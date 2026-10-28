@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createAuthenticatedClient } from '@/lib/supabase/api';
+import { createAuthenticatedClient, createServiceClient } from '@/lib/supabase/api';
 import { qbFetch } from '@/lib/qb-http';
 
 /**
@@ -54,7 +54,7 @@ export default async function handler(
 
     let connQuery = supabase
       .from('qb_connections')
-      .select('access_token')
+      .select('access_token, realm_id')
       .eq('tenant_id', tenantId);
     if (realmId) connQuery = connQuery.eq('realm_id', realmId);
     const { data: doomed } = await connQuery;
@@ -68,6 +68,14 @@ export default async function handler(
     const clientSecret = integration?.qb_client_secret || process.env.QUICKBOOKS_CLIENT_SECRET;
     const tokens = new Set<string>((doomed || []).map((c: any) => c.access_token).filter(Boolean));
     if (legacyIsTarget && integration?.access_token) tokens.add(integration.access_token);
+    // The grant is per QuickBooks company, not per firm: revoking it while
+    // another firm still uses the company would disconnect that firm too.
+    // RLS hides other firms' rows, so ask with the service role.
+    let shared = createServiceClient().from('qb_connections').select('realm_id').neq('tenant_id', tenantId);
+    if (realmId) shared = shared.eq('realm_id', realmId);
+    else shared = shared.in('realm_id', (doomed || []).map((c: any) => c.realm_id).filter(Boolean));
+    const { data: sharedRows } = await shared;
+    if (sharedRows?.length) tokens.clear();
     if (clientId && clientSecret) {
       const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
       for (const token of tokens) {
