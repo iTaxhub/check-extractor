@@ -150,6 +150,15 @@ def _bind(page, rows, mode):
     return out
 
 
+def _uniform_cheques(rects):
+    """Two or more same-size, cheque-shaped images: a sheet of scanned cheques
+    even when the page text never says "check" (e.g. "SYNTHETIC TEST DATA")."""
+    ws = [r[2] - r[0] for r in rects]
+    hs = [r[3] - r[1] for r in rects]
+    same = max(ws) <= 1.1 * min(ws) and max(hs) <= 1.1 * min(hs)
+    return same and all(2.0 <= w / max(h, 1) <= 3.2 for w, h in zip(ws, hs))
+
+
 def cheque_boxes(page, px_width, px_height):
     """Pixel boxes + captions for a rendered page of px_width x px_height.
 
@@ -157,7 +166,8 @@ def cheque_boxes(page, px_width, px_height):
     caller can run the contour detector instead.
     """
     bound = bind_captions(page)
-    if not bound and len(page["image_rects"]) >= 2 and CHEQUE_PAGE_RE.search(page["text"]):
+    rects = page["image_rects"]
+    if not bound and len(rects) >= 2 and (CHEQUE_PAGE_RE.search(page["text"]) or _uniform_cheques(rects)):
         # Caption-less layout (the cheque image carries every field, e.g. the
         # Kyriq demo statement): the rects are still exact; OCR reads the fields.
         # ponytail: a lone image is a bank banner (BofA/BotW page 1), so a page
