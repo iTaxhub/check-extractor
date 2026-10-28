@@ -98,7 +98,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('check_id', checkId);
     }
 
-    return res.status(200).json({ success: true, qbTxnId: newTxn.Id });
+    return res.status(200).json({
+      success: true,
+      qbTxnId: newTxn.Id,
+      // The linked local row, so the client can patch the match in place.
+      qb_txn: savedTxn
+        ? {
+            id: savedTxn.id, txn_id: savedTxn.txn_id, txn_type: savedTxn.txn_type, txn_date: savedTxn.txn_date,
+            payee: savedTxn.payee, amount: savedTxn.amount, memo: savedTxn.memo, account: savedTxn.account,
+            doc_number: savedTxn.doc_number,
+          }
+        : null,
+    });
   } catch (error: any) {
     console.error('Create in QB error:', error);
     return res.status(500).json({ error: error.message });

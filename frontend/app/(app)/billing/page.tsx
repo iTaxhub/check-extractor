@@ -10,6 +10,8 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useSpelling } from '@/hooks/useSpelling';
+import { useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/lib/queries';
 
 /**
  * Billing & usage.
@@ -217,6 +219,7 @@ const whole = (n: number) => n.toLocaleString('en-US');
 
 export default function BillingPage() {
   const t = useSpelling();
+  const queryClient = useQueryClient();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [apiUsage, setApiUsage] = useState<ApiUsage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -262,17 +265,26 @@ export default function BillingPage() {
    * the only correct render. Migration 029 is not applied anywhere yet, so this
    * failure path is the LIKELY path today, not an edge case.
    */
+  // Same ['trial-status'] cache entry the top-bar TrialMeter reads, so opening
+  // billing reuses its answer instead of a second 6s round trip.
   const fetchTrial = useCallback(async () => {
     try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/usage/trial-status', {
-        headers: { Authorization: `Bearer ${session?.access_token || ''}` },
+      const body = await queryClient.fetchQuery({
+        queryKey: qk.trialStatus,
+        queryFn: async () => {
+          const supabase = createClient();
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch('/api/usage/trial-status', {
+            headers: { Authorization: `Bearer ${session?.access_token || ''}` },
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(body?.message || body?.error || `trial-status returned ${res.status}`);
+          }
+          return body;
+        },
+        staleTime: 30_000,
       });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(body?.message || body?.error || `trial-status returned ${res.status}`);
-      }
       setTrial(body as TrialStatus);
       setTrialError(null);
     } catch (e: any) {
@@ -281,7 +293,7 @@ export default function BillingPage() {
     } finally {
       setTrialLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   /** Bearer for the Next API routes, same transport as the trial meter. */
   const authHeaders = useCallback(async () => {

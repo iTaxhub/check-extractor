@@ -3,6 +3,7 @@ import { backendAuthHeaders } from '@/lib/backend-auth'
 import { createAuthenticatedClient } from '@/lib/supabase/api'
 
 const PYTHON_API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090'
+const SUMMARY_COLUMNS = 'job_id,status,pdf_name,total_pages,total_checks,created_at,completed_at,doc_kind,error_message'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const auth = await backendAuthHeaders(req, res)
@@ -13,7 +14,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const source = req.query.source as string || 'db'
+        // ?fields=summary: list views that never render cheques skip the heavy
+        // checks_data column (and the Python backend, which always returns it).
+        const summary = req.query.fields === 'summary'
+        const source = summary ? 'db' : (req.query.source as string || 'db')
         
         // If source=auto, fetch from Python backend which merges DB + memory
         if (source === 'auto' || source === 'memory') {
@@ -32,7 +36,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const response = await fetch(`${PYTHON_API}/api/jobs?${params.toString()}`, { headers: auth })
                 if (response.ok) {
                     const data = await response.json()
-                    console.log('✅ [/api/jobs] Fetched from Python backend:', data.jobs?.length || 0, 'jobs')
                     return res.status(200).json(data)
                 }
                 console.warn('⚠️ Python backend unavailable, falling back to DB')
@@ -51,65 +54,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(200).json({ jobs: [], total: 0 })
         }
 
-        // Get user info for debugging
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
-            console.error('❌ Failed to get user:', userError)
-            return res.status(200).json({ jobs: [], total: 0 })
-        }
-
-        // Get user's tenant_id
-        const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('tenant_id, email')
-            .eq('id', user.id)
-            .single()
-
-        console.log('🔍 [/api/jobs] User:', {
-            user_id: user.id,
-            email: user.email,
-            tenant_id: profile?.tenant_id,
-        })
-
-        // Query check_jobs with RLS filtering by tenant_id
+        // RLS on check_jobs scopes this to the caller's tenant; no extra
+        // getUser()/profile round trips needed.
         const limit = req.query.limit ? parseInt(String(req.query.limit)) : 100
         const offset = req.query.offset ? parseInt(String(req.query.offset)) : 0
-        
-        let query = supabase
-            .from('check_jobs')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1)
 
-        if (req.query.status) {
-            query = query.eq('status', String(req.query.status))
+        const run = (columns: string) => {
+            let query = supabase
+                .from('check_jobs')
+                .select(columns)
+                .order('created_at', { ascending: false })
+                .range(offset, offset + limit - 1)
+            if (req.query.status) query = query.eq('status', String(req.query.status))
+            return query
         }
 
-        const { data: jobs, error } = await query
-
-        console.log('📊 [/api/jobs] Query result:', {
-            user_id: user.id,
-            tenant_id: profile?.tenant_id,
-            jobs_count: jobs?.length || 0,
-            has_error: !!error,
-            job_ids: jobs?.map(j => j.job_id).slice(0, 5) || [],
-        })
+        let { data, error } = await run(summary ? SUMMARY_COLUMNS : '*')
+        // A database without migration 044 has no doc_kind column: degrade, don't blank the list.
+        if (error && summary) ({ data, error } = await run(SUMMARY_COLUMNS.replace(',doc_kind', '')))
+        const jobs = (data || []) as any[]
 
         if (error) {
-            console.error('❌ Jobs query error:', error)
+            console.error('Jobs query error:', error)
             // Return empty array instead of error for better UX
             return res.status(200).json({ jobs: [], total: 0 })
         }
 
-        // Log tenant_id for each job to verify RLS
-        if (jobs && jobs.length > 0) {
-            console.log('📋 [/api/jobs] Job tenant_ids:', jobs.map(j => ({
-                job_id: j.job_id,
-                tenant_id: j.tenant_id,
-                pdf_name: j.pdf_name,
-            })))
+        if (summary) {
+            return res.status(200).json({
+                jobs: jobs.map(({ error_message, ...j }) => ({ ...j, doc_kind: j.doc_kind ?? null, error: error_message })),
+            })
         }
-
         // Transform to match expected format
         const transformedJobs = (jobs || []).map(job => {
             // Parse checks_data if it's a JSON string
@@ -142,8 +117,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 completed_at: job.completed_at,
             };
         })
-
-        console.log('✅ [/api/jobs] Returning', transformedJobs.length, 'jobs to user', user.email)
 
         return res.status(200).json({ jobs: transformedJobs })
     } catch (error: any) {

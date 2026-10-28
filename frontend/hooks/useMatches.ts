@@ -1,25 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { createClient } from '@/lib/supabase/client';
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) return {};
-  return { Authorization: `Bearer ${session.access_token}` };
-}
-
-async function apiFetch(url: string, options: RequestInit = {}) {
-  const headers = await getAuthHeaders();
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...headers },
-    ...options,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-  return data;
-}
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, qk } from '@/lib/queries';
 
 function useDebounce(value: string, delay: number): string {
   const [debounced, setDebounced] = useState(value);
@@ -48,6 +31,26 @@ interface UseMatchesOptions {
   batchId?: string | null;
 }
 
+const one = (id: string) => new Set([id]);
+/** Row actions report failure through `error` (set by `optimistic`), not a throw. */
+const swallow = () => undefined;
+
+interface MatchesPage {
+  matches: any[];
+  total: number;
+  statusCounts: Record<string, number>;
+}
+
+/**
+ * The Review list, as a cached query keyed by
+ * ['matches', batchId, status, search, sort, page, limit].
+ *
+ * Every row action is optimistic: the cached page (rows AND statusCounts) is
+ * patched at once, the server's answer is applied on success, and the snapshot
+ * is restored on failure. Background refetches keep the current rows on screen
+ * (`isLoading` is true only before the first data arrives; `isRefreshing`
+ * covers the rest).
+ */
 export function useMatches({
   status = 'all',
   search = '',
@@ -56,14 +59,37 @@ export function useMatches({
   limit = 50,
   batchId = null,
 }: UseMatchesOptions = {}) {
-  const [matches, setMatches] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
-  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const qc = useQueryClient();
   const [isSyncing, setIsSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const searchDebounced = useDebounce(search, 350);
+
+  const queryKey = useMemo(
+    () => [...qk.matches, batchId, status, searchDebounced, sort, page, limit] as const,
+    [batchId, status, searchDebounced, sort, page, limit]
+  );
+
+  const query = useQuery({
+    queryKey,
+    queryFn: async (): Promise<MatchesPage> => {
+      const params = new URLSearchParams({ sort, page: String(page), limit: String(limit) });
+      if (status && status !== 'all') params.set('status', status);
+      if (searchDebounced) params.set('search', searchDebounced);
+      if (batchId) params.set('batchId', batchId);
+
+      const data = await apiFetch(`/api/matches?${params}`);
+      if (!Array.isArray(data.matches)) {
+        // A 200 is not proof of success: assert on the parsed shape.
+        throw new Error('Matches response did not contain a matches array');
+      }
+      return {
+        matches: data.matches,
+        total: typeof data.total === 'number' ? data.total : data.matches.length,
+        statusCounts: data.statusCounts || {},
+      };
+    },
+  });
 
   /**
    * Which statuses the current view is showing. `status` may be a union, so the
@@ -81,227 +107,242 @@ export function useMatches({
     [status, viewStatuses]
   );
 
-  const fetchMatches = useCallback(async () => {
-    setError(null);
-    setIsLoading(true);
-    try {
-      const params = new URLSearchParams({ sort, page: String(page), limit: String(limit) });
-      if (status && status !== 'all') params.set('status', status);
-      if (searchDebounced) params.set('search', searchDebounced);
-      if (batchId) params.set('batchId', batchId);
+  /** Patch rows by id; a status change moves statusCounts and may drop the row. */
+  const patchRows = useCallback(
+    (d: MatchesPage, ids: Set<string>, patch: Record<string, any>): MatchesPage => {
+      const counts = { ...d.statusCounts };
+      let removed = 0;
+      const matches = d.matches.flatMap((m) => {
+        if (!ids.has(m.id)) return [m];
+        const next = { ...m, ...patch };
+        if (next.status !== m.status) {
+          counts[m.status] = Math.max(0, (counts[m.status] || 0) - 1);
+          counts[next.status] = (counts[next.status] || 0) + 1;
+        }
+        if (!showsStatus(next.status)) {
+          removed++;
+          return [];
+        }
+        return [next];
+      });
+      return { matches, statusCounts: counts, total: Math.max(0, d.total - removed) };
+    },
+    [showsStatus]
+  );
 
-      const data = await apiFetch(`/api/matches?${params}`);
-      if (!Array.isArray(data.matches)) {
-        // A 200 is not proof of success: assert on the parsed shape.
-        throw new Error('Matches response did not contain a matches array');
+  /**
+   * Snapshot → optimistic patch → request → apply the server's answer, or roll
+   * back. Other cached pages/filters are marked stale (not refetched now).
+   */
+  const optimistic = useCallback(
+    async <T,>(
+      apply: ((d: MatchesPage) => MatchesPage) | null,
+      run: () => Promise<T>,
+      settle?: (res: T, d: MatchesPage) => MatchesPage
+    ): Promise<T> => {
+      setActionError(null);
+      await qc.cancelQueries({ queryKey });
+      const snapshot = qc.getQueryData<MatchesPage>(queryKey);
+      if (snapshot && apply) qc.setQueryData(queryKey, apply(snapshot));
+      try {
+        const res = await run();
+        if (settle) qc.setQueryData<MatchesPage>(queryKey, (d) => (d ? settle(res, d) : d));
+        qc.invalidateQueries({ queryKey: qk.matches, refetchType: 'none' });
+        return res;
+      } catch (e: any) {
+        if (snapshot) qc.setQueryData(queryKey, snapshot);
+        setActionError(e?.message || 'Request failed');
+        throw e;
       }
-      setMatches(data.matches || []);
-      setTotal(typeof data.total === 'number' ? data.total : (data.matches || []).length);
-      setStatusCounts(data.statusCounts || {});
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [status, searchDebounced, sort, page, limit, batchId]);
+    },
+    [qc, queryKey]
+  );
 
-  useEffect(() => {
-    fetchMatches();
-  }, [fetchMatches]);
-
-  const updateLocal = useCallback((matchId: string, patch: any) => {
-    setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, ...patch } : m)));
-  }, []);
-
-  const removeLocal = useCallback((matchId: string) => {
-    setMatches((prev) => prev.filter((m) => m.id !== matchId));
-  }, []);
+  const fetchMatches = useCallback(async () => {
+    setActionError(null);
+    await query.refetch();
+  }, [query]);
 
   const syncQB = useCallback(async () => {
     setIsSyncing(true);
-    setError(null);
+    setActionError(null);
     try {
       await apiFetch('/api/matches/sync-qb', { method: 'POST' });
-      await fetchMatches();
+      await qc.invalidateQueries({ queryKey: qk.matches });
     } catch (e: any) {
-      setError(e.message);
+      setActionError(e.message);
     } finally {
       setIsSyncing(false);
     }
-  }, [fetchMatches]);
+  }, [qc]);
 
   const approveSingle = useCallback(
-    async (matchId: string) => {
-      updateLocal(matchId, { status: 'approved' });
-      try {
-        await apiFetch(`/api/matches/${matchId}/approve`, { method: 'POST' });
-        if (!showsStatus('approved')) removeLocal(matchId);
-      } catch (e: any) {
-        setError(e.message);
-        await fetchMatches();
-      }
-    },
-    [updateLocal, removeLocal, fetchMatches, showsStatus]
+    (matchId: string) =>
+      optimistic(
+        (d) => patchRows(d, one(matchId), { status: 'approved', approved_at: new Date().toISOString() }),
+        () => apiFetch(`/api/matches/${matchId}/approve`, { method: 'POST' }),
+        (res, d) => patchRows(d, one(matchId), { status: res.status || 'approved', approved_at: res.approved_at, approved_by: res.approved_by })
+      ).then(swallow, swallow),
+    [optimistic, patchRows]
   );
 
   const bulkApprove = useCallback(
     async (body: any = {}) => {
-      setError(null);
+      // Same selection rule as the server: matched/pending rows, by id or by threshold.
+      const ids: string[] | undefined = body.matchIds;
+      const min = typeof body.minConfidence === 'number' ? body.minConfidence : 95;
       try {
-        const result = await apiFetch('/api/matches/bulk-approve', {
-          method: 'POST',
-          // The batch this hook is reading is the batch it may approve. Sent
-          // from here rather than left to each caller, so a new call site
-          // cannot forget it and quietly approve another batch's matches.
-          body: JSON.stringify({ ...(batchId ? { batchId } : {}), ...body }),
-        });
-        await fetchMatches();
+        const result = await optimistic(
+          (d) =>
+            patchRows(
+              d,
+              new Set(
+                d.matches
+                  .filter((m) => (m.status === 'matched' || m.status === 'pending') &&
+                    (ids?.length ? ids.includes(m.id) : (m.confidence_score ?? 0) >= min))
+                  .map((m) => m.id)
+              ),
+              { status: 'approved', approved_at: new Date().toISOString() }
+            ),
+          () =>
+            apiFetch('/api/matches/bulk-approve', {
+              method: 'POST',
+              // The batch this hook is reading is the batch it may approve. Sent
+              // from here rather than left to each caller, so a new call site
+              // cannot forget it and quietly approve another batch's matches.
+              body: JSON.stringify({ ...(batchId ? { batchId } : {}), ...body }),
+            })
+        );
+        // Rows on other pages changed too: refetch in the background (the
+        // current rows stay on screen while it runs).
+        qc.invalidateQueries({ queryKey: qk.matches });
         return result;
-      } catch (e: any) {
-        setError(e.message);
+      } catch {
+        return undefined;
       }
     },
-    [fetchMatches, batchId]
+    [optimistic, patchRows, batchId, qc]
   );
 
   const flagMatch = useCallback(
-    async (matchId: string, reason: string = '') => {
-      updateLocal(matchId, { status: 'flagged', flagged_reason: reason });
-      try {
-        await apiFetch(`/api/matches/${matchId}/flag`, {
-          method: 'POST',
-          body: JSON.stringify({ reason }),
-        });
-        if (!showsStatus('flagged')) removeLocal(matchId);
-      } catch (e: any) {
-        setError(e.message);
-        await fetchMatches();
-      }
-    },
-    [updateLocal, removeLocal, fetchMatches, showsStatus]
+    (matchId: string, reason: string = '') =>
+      optimistic(
+        (d) => patchRows(d, one(matchId), { status: 'flagged', flagged_reason: reason }),
+        () => apiFetch(`/api/matches/${matchId}/flag`, { method: 'POST', body: JSON.stringify({ reason }) })
+      ).then(swallow, swallow),
+    [optimistic, patchRows]
   );
 
   const addNote = useCallback(
-    async (matchId: string, note: string) => {
-      updateLocal(matchId, { notes: note });
-      try {
-        await apiFetch(`/api/matches/${matchId}/note`, {
-          method: 'POST',
-          body: JSON.stringify({ note }),
-        });
-      } catch (e: any) {
-        setError(e.message);
-        await fetchMatches();
-      }
-    },
-    [updateLocal, fetchMatches]
+    (matchId: string, note: string) =>
+      optimistic(
+        (d) => patchRows(d, one(matchId), { notes: note }),
+        () => apiFetch(`/api/matches/${matchId}/note`, { method: 'POST', body: JSON.stringify({ note }) })
+      ).then(swallow, swallow),
+    [optimistic, patchRows]
   );
 
   const resolveDiscrepancy = useCallback(
-    async (matchId: string, resolution: string, amount: number | null, notes: string) => {
-      updateLocal(matchId, { status: 'matched', resolution, resolution_notes: notes });
-      try {
-        await apiFetch(`/api/matches/${matchId}/resolve-discrepancy`, {
-          method: 'POST',
-          body: JSON.stringify({ resolution, amount, notes }),
-        });
-        if (!showsStatus('matched')) removeLocal(matchId);
-      } catch (e: any) {
-        setError(e.message);
-        await fetchMatches();
-      }
-    },
-    [updateLocal, removeLocal, fetchMatches, showsStatus]
+    (matchId: string, resolution: string, amount: number | null, notes: string) =>
+      optimistic(
+        (d) => patchRows(d, one(matchId), { status: 'matched', resolution, resolution_notes: notes }),
+        () =>
+          apiFetch(`/api/matches/${matchId}/resolve-discrepancy`, {
+            method: 'POST',
+            body: JSON.stringify({ resolution, amount, notes }),
+          }),
+        (res, d) => (res?.status ? patchRows(d, one(matchId), { status: res.status }) : d)
+      ).then(swallow, swallow),
+    [optimistic, patchRows]
   );
 
   const remapMatch = useCallback(
-    async (matchId: string, qbTxnId: string) => {
-      setError(null);
-      try {
-        const updated = await apiFetch(`/api/matches/${matchId}/remap`, {
-          method: 'POST',
-          body: JSON.stringify({ qbTxnId }),
-        });
-        await fetchMatches();
-        return updated;
-      } catch (e: any) {
-        setError(e.message);
-      }
-    },
-    [fetchMatches]
+    (matchId: string, qbTxnId: string) =>
+      optimistic(
+        null,
+        () => apiFetch(`/api/matches/${matchId}/remap`, { method: 'POST', body: JSON.stringify({ qbTxnId }) }),
+        // The server re-scores, so its answer is what the row becomes.
+        (res, d) => {
+          const fields = { ...(res || {}) };
+          delete fields.success;
+          return Object.keys(fields).length ? patchRows(d, one(matchId), fields) : d;
+        }
+      ).catch(swallow),
+    [optimistic, patchRows]
   );
 
   const undoApproval = useCallback(
-    async (matchId: string) => {
-      updateLocal(matchId, { status: 'matched', approved_at: null, approved_by: null });
-      try {
-        await apiFetch(`/api/matches/${matchId}/undo-approval`, { method: 'POST' });
-        if (!showsStatus('matched')) removeLocal(matchId);
-      } catch (e: any) {
-        setError(e.message);
-        await fetchMatches();
-      }
-    },
-    [updateLocal, removeLocal, fetchMatches, showsStatus]
+    (matchId: string) =>
+      optimistic(
+        (d) => patchRows(d, one(matchId), { status: 'matched', approved_at: null, approved_by: null }),
+        () => apiFetch(`/api/matches/${matchId}/undo-approval`, { method: 'POST' }),
+        (res, d) => (res?.status ? patchRows(d, one(matchId), { status: res.status }) : d)
+      ).then(swallow, swallow),
+    [optimistic, patchRows]
   );
 
   const createInQB = useCallback(
-    async (checkId: string) => {
-      setError(null);
-      try {
-        const result = await apiFetch('/api/matches/create-in-qb', {
-          method: 'POST',
-          body: JSON.stringify({ checkId }),
-        });
-        await fetchMatches();
-        return result;
-      } catch (e: any) {
-        setError(e.message);
-        throw e;
-      }
+    (checkId: string) => {
+      const ids = (d: MatchesPage) => new Set(d.matches.filter((m) => m.check?.id === checkId).map((m) => m.id));
+      // Rethrows: the caller shows its own failure state.
+      return optimistic(
+        (d) => patchRows(d, ids(d), { status: 'approved', confidence_score: 100, resolution: 'created_in_qb' }),
+        () => apiFetch('/api/matches/create-in-qb', { method: 'POST', body: JSON.stringify({ checkId }) }),
+        (res, d) => (res?.qb_txn ? patchRows(d, ids(d), { qb_txn: res.qb_txn }) : d)
+      );
     },
-    [fetchMatches]
+    [optimistic, patchRows]
   );
 
   const updateQBTransaction = useCallback(
     async (qbTxnId: string, fields: { txnDate?: string; docNumber?: string; memo?: string }) => {
-      setError(null);
+      setActionError(null);
       try {
         const result = await apiFetch('/api/qbo/update-transaction', {
           method: 'PATCH',
           body: JSON.stringify({ qbTxnId, fields }),
         });
-        // Optimistically patch the local qb_txn data on the matching match row.
-        setMatches((prev) =>
-          prev.map((m) => {
-            if (!m.qb_txn || m.qb_txn.id !== qbTxnId) return m;
-            return {
-              ...m,
-              qb_txn: {
-                ...m.qb_txn,
-                ...(fields.txnDate   ? { txn_date: fields.txnDate }   : {}),
-                ...(fields.docNumber ? { doc_number: fields.docNumber } : {}),
-                ...(fields.memo      ? { memo: fields.memo }           : {}),
-              },
-            };
-          })
+        // Patch the local qb_txn data on the matching match row.
+        qc.setQueryData<MatchesPage>(queryKey, (d) =>
+          d && {
+            ...d,
+            matches: d.matches.map((m) =>
+              !m.qb_txn || m.qb_txn.id !== qbTxnId
+                ? m
+                : {
+                    ...m,
+                    qb_txn: {
+                      ...m.qb_txn,
+                      ...(fields.txnDate   ? { txn_date: fields.txnDate }   : {}),
+                      ...(fields.docNumber ? { doc_number: fields.docNumber } : {}),
+                      ...(fields.memo      ? { memo: fields.memo }           : {}),
+                    },
+                  }
+            ),
+          }
         );
         return result;
       } catch (e: any) {
-        setError(e.message);
+        setActionError(e.message);
         throw e;
       }
     },
-    []
+    [qc, queryKey]
   );
 
+  const data = query.data;
+  const queryError = query.error ? (query.error as Error).message : null;
+
   return {
-    matches,
-    total,
-    statusCounts,
-    isLoading,
+    matches: data?.matches ?? [],
+    total: data?.total ?? 0,
+    statusCounts: data?.statusCounts ?? {},
+    /** True only until the first page arrives: never blanks a populated list. */
+    isLoading: query.isPending,
+    /** A background refetch over rows already on screen. */
+    isRefreshing: query.isFetching && !query.isPending,
     isSyncing,
-    error,
+    error: actionError ?? queryError,
     refresh: fetchMatches,
     syncQB,
     approveSingle,

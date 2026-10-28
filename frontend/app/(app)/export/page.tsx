@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useJobsSummary } from '@/lib/queries';
 import {
   Download, FileText, CheckCircle, FileSpreadsheet, Loader2, Upload,
 } from 'lucide-react';
@@ -45,40 +47,25 @@ const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090';
 
 export default function ExportPage() {
   const t = useSpelling();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [formats, setFormats] = useState<ExportFormat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // Summary list (no checks_data): this page never renders cheques.
+  const jobsQ = useJobsSummary<Job>();
+  const formatsQ = useQuery({
+    queryKey: ['export-formats'],
+    queryFn: async () => ((await (await fetch(`${BACKEND}/api/export-formats`)).json()).formats || []) as ExportFormat[],
+    staleTime: Infinity,
+  });
+  const jobs = useMemo(
+    () => (jobsQ.data || []).filter((j) => j.status === 'complete' && (j.checks?.length || j.total_checks > 0)),
+    [jobsQ.data]
+  );
+  const formats = formatsQ.data || [];
+  const loading = jobsQ.isPending || formatsQ.isPending;
+  const failed = jobsQ.error || formatsQ.error;
+  const loadError = failed ? (failed as Error).message || 'Could not reach the extraction service.' : null;
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
   const [selectedFormat, setSelectedFormat] = useState('csv');
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportHistory, setExportHistory] = useState<{ jobId: string; format: string; time: string; checks: number }[]>([]);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [jobsRes, fmtRes] = await Promise.all([
-        fetch('/api/jobs'),
-        fetch(`${BACKEND}/api/export-formats`),
-      ]);
-      const jobsData = await jobsRes.json();
-      const fmtData = await fmtRes.json();
-
-      const completed = (jobsData.jobs || [])
-        .filter((j: Job) => j.status === 'complete' && (j.checks?.length || j.total_checks > 0))
-        .sort((a: Job, b: Job) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      setJobs(completed);
-      setFormats(fmtData.formats || []);
-      setLoadError(null);
-    } catch (e: any) {
-      console.error('Failed to fetch export data:', e);
-      setLoadError(e?.message || 'Could not reach the extraction service.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
 
   const toggleJob = (id: string) => {
     setSelectedJobs(prev => {
@@ -116,8 +103,11 @@ export default function ExportPage() {
     selectedJobs.forEach(id => handleExport(id, selectedFormat));
   };
 
+  // The summary list carries no checks, so total_checks is the count here.
   const extractedCount = (job: Job) =>
-    (job.checks || []).filter((c: any) => c.extraction && Object.keys(c.extraction).length > 0).length;
+    job.checks
+      ? job.checks.filter((c: any) => c.extraction && Object.keys(c.extraction).length > 0).length
+      : job.total_checks || 0;
 
   const fmtDate = (d: string) => {
     if (!d) return '-';

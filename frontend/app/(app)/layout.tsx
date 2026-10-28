@@ -10,6 +10,17 @@ import SuperAdminLink from '@/components/SuperAdminLink';
 import { NAV_GROUPS, activeNavHref } from '@/lib/shell-nav';
 import { SUPPORT_MAILTO } from '@/lib/support';
 import { LifeBuoy } from 'lucide-react';
+import { useState } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { makeAppQueryClient, qk } from '@/lib/queries';
+import { useRealtimeInvalidate } from '@/hooks/useRealtimeTable';
+
+/** App-wide live refresh: job rows and QB connections, one socket topic each. */
+function LiveSync() {
+  useRealtimeInvalidate('check_jobs', undefined, [qk.jobs]);
+  useRealtimeInvalidate('qb_connections', undefined, [qk.qbConnections]);
+  return null;
+}
 
 /**
  * The app shell.
@@ -34,6 +45,8 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  // One cache per browser tab, created once (not per render).
+  const [queryClient] = useState(makeAppQueryClient);
 
   // The longest href that matches is the one row that gets `active`; otherwise
   // /settings and /settings/team would both be highlighted at once.
@@ -41,6 +54,8 @@ export default function AppLayout({
 
   // Route protection is handled by proxy.ts
   return (
+    <QueryClientProvider client={queryClient}>
+    <LiveSync />
     <QBProviderWrapper>
       {/* No background of its own: the shell and the pages sit over the
           ambient mesh mounted in app/layout.tsx. Glass needs something to
@@ -118,5 +133,6 @@ export default function AppLayout({
         </main>
       </div>
     </QBProviderWrapper>
+    </QueryClientProvider>
   );
 }

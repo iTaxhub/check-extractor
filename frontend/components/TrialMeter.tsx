@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
 import { useSpelling } from '@/hooks/useSpelling';
+import { useTrialStatus, type TrialStatus } from '@/lib/queries';
 
 /**
  * The trial meter (CHECKLIST section 6).
@@ -25,17 +24,6 @@ import { useSpelling } from '@/hooks/useSpelling';
  * carries no backdrop-filter of its own.
  */
 
-interface TrialStatus {
-  subscriptionStatus: string | null;
-  daysRemaining: number | null;
-  checksRemaining: number | null;
-  trialCheckLimit: number | null;
-  trialChecksUsed: number;
-  processingAllowed: boolean;
-  blockReason: string | null;
-  isComped: boolean;
-}
-
 /** Narrow the parsed body. A 200 is not proof the shape is usable. */
 function parseStatus(body: any): TrialStatus | null {
   if (!body || typeof body !== 'object') return null;
@@ -46,33 +34,9 @@ function parseStatus(body: any): TrialStatus | null {
 
 export default function TrialMeter() {
   const t = useSpelling();
-  const [status, setStatus] = useState<TrialStatus | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
-
-        const res = await fetch('/api/usage/trial-status', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok) return;
-
-        const parsed = parseStatus(await res.json());
-        if (!cancelled && parsed) setStatus(parsed);
-      } catch {
-        // A meter is informational. It never blocks the bar it lives in.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Shared ['trial-status'] query: the billing page reads the same cache entry.
+  // A failed fetch leaves data undefined, and the meter simply renders nothing.
+  const status = parseStatus(useTrialStatus().data);
 
   // Only tenants actually on trial. Comped firms have no trial clock to show,
   // and a subscriber's allowance is a billing concern, not a countdown.

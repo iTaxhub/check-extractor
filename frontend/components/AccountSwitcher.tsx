@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useQBConnections } from '@/hooks/useQBConnections';
+import { apiFetch, qk, useQboAccounts } from '@/lib/queries';
 import { ChevronDown, Check, CreditCard, Landmark, Loader2, RefreshCw } from 'lucide-react';
 
 /**
@@ -79,32 +80,35 @@ const GROUPS = [
 
 export default function AccountSwitcher() {
   const { active: activeCompany } = useQBConnections();
-  const [accounts, setAccounts] = useState<QbAccount[]>([]);
   const [activeId, setActiveId] = useState('');
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async (refresh = false) => {
-    setLoading(true);
+  // ['qbo-accounts', realmId]: keyed by company, so a switch never shows the
+  // previous company's chart of accounts. A failure renders nothing rather than
+  // blocking the chrome it sits in.
+  const realmId = activeCompany?.realmId ?? null;
+  const accountsQ = useQboAccounts(realmId);
+  const accounts: QbAccount[] = useMemo(
+    () => (realmId && accountsQ.data?.accounts) || [],
+    [realmId, accountsQ.data]
+  );
+  const syncedAt: string | null = accountsQ.data?.syncedAt || null;
+  const loading = refreshing || (!!realmId && accountsQ.isFetching && !accountsQ.data);
+
+  const load = useCallback(async () => {
+    setRefreshing(true);
     try {
-      const { data: { session } } = await createClient().auth.getSession();
-      if (!session?.access_token) return;
-      const res = await fetch(`/api/qbo/accounts${refresh ? '?refresh=1' : ''}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (!res.ok) return;
-      const body = await res.json();
-      setAccounts(body.accounts || []);
-      setSyncedAt(body.syncedAt || null);
+      const body = await apiFetch('/api/qbo/accounts?refresh=1');
+      queryClient.setQueryData(qk.qboAccounts(realmId), body);
     } catch {
-      // A switcher that cannot reach the cache renders nothing rather than
-      // blocking the chrome it sits in.
+      /* keep the cached list */
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  }, [queryClient, realmId]);
 
   useEffect(() => {
     try {
@@ -113,17 +117,6 @@ export default function AccountSwitcher() {
       /* private window or blocked site data */
     }
   }, []);
-
-  // Reload when the company changes: a different company has a different chart
-  // of accounts, and keeping the old list would offer accounts that belong to
-  // somebody else's books.
-  useEffect(() => {
-    if (!activeCompany?.realmId) {
-      setAccounts([]);
-      return;
-    }
-    load(false);
-  }, [activeCompany?.realmId, load]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -263,7 +256,7 @@ export default function AccountSwitcher() {
           <div className="border-t border-glass-hairline p-2">
             <button
               type="button"
-              onClick={() => load(true)}
+              onClick={() => load()}
               disabled={loading}
               className="flex w-full items-center gap-2 rounded-input px-3 py-2 text-[13px] text-ink-body
                          press hover:bg-brand-wash disabled:opacity-disabled"

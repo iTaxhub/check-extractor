@@ -41,6 +41,8 @@ import {
   TOOLTIP_PROPS,
 } from '@/lib/charts';
 import { useSpelling } from '@/hooks/useSpelling';
+import { useJobsFull } from '@/lib/queries';
+import { PageSkeleton } from '../loading';
 
 // ── Types ──────────────────────────────────────────────────
 interface JobCheck {
@@ -120,28 +122,17 @@ const rateFill = (rate: number) =>
 
 export default function FirmDashboardPage() {
   const t = useSpelling();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Shared ['jobs','full'] cache: instant on revisit, live via check_jobs realtime.
+  const jobsQ = useJobsFull<Job>();
+  const jobs = useMemo(() => jobsQ.data ?? [], [jobsQ.data]);
+  const loading = jobsQ.isPending;
   const [searchQuery, setSearchQuery] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ count: number; error?: string } | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ count: number; total?: number; error?: string } | null>(null);
 
-  const fetchJobs = useCallback(async () => {
-    try {
-      const res = await fetch('/api/jobs');
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      setJobs((data.jobs || []).sort((a: Job, b: Job) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ));
-    } catch (e) {
-      console.error('Failed to fetch:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchJobs = useCallback(() => { jobsQ.refetch(); }, [jobsQ]);
 
   const handleQBOFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -192,7 +183,6 @@ export default function FirmDashboardPage() {
     }
   };
 
-  useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   // ── Derived Stats ──────────────────────────────────────
   const stats = useMemo(() => {
@@ -430,13 +420,7 @@ export default function FirmDashboardPage() {
     duplicate: { icon: Copy, className: 'bg-error-bg text-error-text' },
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-brand" />
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 p-5">

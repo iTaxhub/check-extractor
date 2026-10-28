@@ -1,7 +1,7 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
-import { Suspense, useState, useCallback } from 'react';
+import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DropzoneUpload from './components/DropzoneUpload';
 import MultiFileQueue, { type QueueRow } from './components/MultiFileQueue';
@@ -314,19 +314,42 @@ function UploadPageInner() {
     } as AnalyzeResult;
   }, []);
 
+  /** Live progress watchers; all torn down when the page unmounts. */
+  const progressStops = useRef(new Set<() => void>());
+  useEffect(() => {
+    const stops = progressStops.current;
+    return () => stops.forEach((stop) => stop());
+  }, []);
+
   const updateJob = useCallback((id: string, patch: Partial<JobEntry>) => {
     setJobEntries((prev) => prev.map((j) => (j.id === id ? { ...j, ...patch } : j)));
   }, []);
 
+  /**
+   * Live job status for one upload. A check_jobs realtime event (migration 052)
+   * triggers a read immediately; a slow 5s fallback poll covers a database
+   * without realtime. Both stop on analyzed/complete/error, on unmount, and
+   * after ~2 minutes; the fallback skips ticks while the tab is hidden.
+   */
   const pollJobProgress = useCallback(async (jobId: string, entryId: string) => {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090';
-    const maxPolls = 60; // Poll for up to 60 seconds
-    let pollCount = 0;
+    let stopped = false;
+    let inFlight = false;
     let lastStatus = '';
+    const supabase = createClient();
+    const deadline = Date.now() + 120_000;
+
+    const stop = () => {
+      if (stopped) return;
+      stopped = true;
+      clearInterval(timer);
+      supabase.removeChannel(channel);
+      progressStops.current.delete(stop);
+    };
 
     const poll = async () => {
-      if (pollCount >= maxPolls) return;
-      pollCount++;
+      if (stopped || inFlight) return;
+      if (Date.now() > deadline) return stop();
+      inFlight = true;
 
       try {
         const response = await fetch(`/api/jobs/${jobId}`);
@@ -384,20 +407,25 @@ function UploadPageInner() {
             lastStatus = newStatus;
           }
 
-          // If complete, stop polling
-          if (jobData.status === 'analyzed' || jobData.status === 'complete') {
-            return;
-          }
+          if (['analyzed', 'complete', 'error', 'failed'].includes(jobData.status)) stop();
         }
       } catch (err) {
         console.error('Progress poll error:', err);
+      } finally {
+        inFlight = false;
       }
-
-      // Continue polling every 500ms for faster updates
-      setTimeout(poll, 500);
     };
 
-    poll();
+    const channel = supabase
+      .channel(`upload-job:${jobId}:${entryId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'check_jobs', filter: `job_id=eq.${jobId}` }, () => void poll())
+      .subscribe();
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') void poll();
+    }, 5000);
+    progressStops.current.add(stop);
+
+    void poll();
   }, []);
 
   const analyzeOneFile = useCallback(async (file: File, entryId: string) => {

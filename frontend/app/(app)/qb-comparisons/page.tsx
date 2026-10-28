@@ -12,7 +12,7 @@ import { useBackgroundExtraction } from './hooks/useBackgroundExtraction';
 import { ComparisonControlsBar } from './components/ComparisonControlsBar';
 import { StatisticsPanel } from './components/StatisticsPanel';
 import { ComparisonTable } from './components/ComparisonTable';
-import { DetailModal } from './components/DetailModal';
+import dynamic from 'next/dynamic';
 import { ColumnSettings } from './components/ColumnSettings';
 import { HeaderOverflowMenu } from './components/HeaderOverflowMenu';
 import { Pagination } from './components/Pagination';
@@ -31,6 +31,9 @@ import {
 import { exportToCSV, exportToExcel } from './utils/exportUtils';
 import { createClient } from '@/lib/supabase/client';
 import { useSpelling } from '@/hooks/useSpelling';
+
+// Only opened on a row click: keep it out of the first-load bundle.
+const DetailModal = dynamic(() => import('./components/DetailModal').then((m) => m.DetailModal), { ssr: false });
 
 /** The three outcomes of vouching a cheque that QuickBooks does not have. */
 const VOUCH_TARGETS = [

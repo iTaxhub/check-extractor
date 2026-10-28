@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useSpelling } from '@/hooks/useSpelling';
 import type { BatchPayload } from '@/lib/batch-state';
 import { advanceStep, loadBatch } from '@/lib/reconcile-client';
+import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 
 /**
  * Step 2, Match — a progress screen that moves on by itself.
@@ -26,7 +27,11 @@ import { advanceStep, loadBatch } from '@/lib/reconcile-client';
  * matching page, because nothing on this page can run the matcher.
  */
 
-const POLL_MS = 4000;
+/**
+ * Fallback only: realtime on `matches` (this batch) and `batches` drives the
+ * ticks. Without migration 052 / realtime this still advances, just slower.
+ */
+const POLL_MS = 20_000;
 /** No progress for this long and matching is stuck, not slow. */
 const STALL_MS = 90_000;
 
@@ -102,6 +107,10 @@ export default function MatchProgress({
     };
     // `attempt` restarts polling after a stall retry.
   }, [tick, attempt]);
+
+  // Live: every match row written for this batch, or a batch row change, ticks.
+  useRealtimeTable('matches', `batch_id=eq.${batch.id}`, tick, 500);
+  useRealtimeTable('batches', `id=eq.${batch.id}`, tick, 300);
 
   return (
     <GlassCard className="space-y-4">
