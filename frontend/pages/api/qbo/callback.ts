@@ -201,6 +201,35 @@ export default async function handler(
       console.warn('⚠️ Could not fetch company name (non-critical):', compErr);
     }
 
+    // One QuickBooks company belongs to one Kyriq firm. Intuit keeps a single
+    // grant per company, so a second firm connecting it silently revoked the
+    // first firm's tokens ("Assign new admin ... will replace ..."). The fresh
+    // tokens go to the firm that already owns the company, so it keeps working,
+    // and this user is told to ask that firm for an invite instead.
+    const { data: owners } = await serviceClient
+      .from('qb_connections')
+      .select('tenant_id')
+      .eq('realm_id', realmId)
+      .neq('tenant_id', tenantId)
+      .limit(1);
+    const ownerTenant = owners?.[0]?.tenant_id;
+    if (ownerTenant) {
+      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+      await serviceClient
+        .from('qb_connections')
+        .update({ access_token: tokens.access_token, refresh_token: tokens.refresh_token, token_expires_at: expiresAt, status: 'connected', status_detail: null, status_checked_at: new Date().toISOString() })
+        .eq('tenant_id', ownerTenant)
+        .eq('realm_id', realmId);
+      await serviceClient
+        .from('integrations')
+        .update({ access_token: tokens.access_token, refresh_token: tokens.refresh_token, expires_at: expiresAt, updated_at: new Date().toISOString() })
+        .eq('tenant_id', ownerTenant)
+        .eq('provider', 'quickbooks')
+        .eq('realm_id', realmId);
+      console.warn('QuickBooks company already owned by another firm; tokens handed to the owner', { realmId });
+      return res.redirect(errRedirect('company_owned_by_other_firm', companyName || String(realmId)));
+    }
+
     // Update existing integration row (preserves credentials) or insert new one
     const tokenData = {
       realm_id: realmId,

@@ -3,15 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button, GlassCard, GlassPanel } from '@/components/ui';
 
 function QBOAuthCompleteContent() {
   const searchParams = useSearchParams();
   const company = searchParams?.get('company') || '';
+  const error = searchParams?.get('error') || '';
+  const detail = searchParams?.get('detail') || '';
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
+    if (error) return; // keep the tab open so the message can be read
     // Count down then close the tab
     const timer = setInterval(() => {
       setCountdown(prev => {
@@ -24,7 +27,25 @@ function QBOAuthCompleteContent() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [error]);
+
+  if (error) {
+    const message = error === 'company_owned_by_other_firm'
+      ? `${detail || 'This QuickBooks company'} is already connected to another Kyriq firm, and that connection has been kept working. Ask that firm's admin to invite you under Users, then sign in to Kyriq with the invited email.`
+      : `QuickBooks didn't connect (${error}${detail ? `: ${detail}` : ''}). Close this tab and try again from the side panel.`;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <GlassCard padding="none" reveal className="w-full max-w-[460px] px-10 py-12">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-warning-bg">
+            <AlertTriangle className="h-9 w-9 text-warning-text" aria-hidden />
+          </div>
+          <h1 className="text-2xl font-bold text-ink-strong mb-3">Not connected</h1>
+          <p className="text-sm text-ink-body mb-6">{message}</p>
+          <Button size="sm" onClick={() => window.close()}>Close Tab</Button>
+        </GlassCard>
+      </div>
+    );
+  }
 
   return (
     // Transparent over the ambient mesh mounted in app/layout.tsx. This page
