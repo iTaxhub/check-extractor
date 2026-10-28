@@ -7,6 +7,10 @@ const CONFIG_CACHE_TTL = 3600000; // 1 hour in ms
 
 // In-memory checks cache — avoids round-tripping 1000+ check objects through sendMessage
 let _swChecksCache = null;
+// When GET_CHECKS last hit /api/jobs (~3MB). Within 30s the cache is served;
+// realtime changes and explicit refreshes (msg.force) reset it.
+let _swChecksAt = 0;
+const CHECKS_TTL = 30000;
 // check_id restarts at check_0001 in every job, so match on the job too when we know it.
 function findCachedCheck(checkId, jobId) {
   return (_swChecksCache || []).find(c => (c.id === checkId || c.check_id === checkId) && (!jobId || c.job_id === jobId));
@@ -247,10 +251,12 @@ chrome.runtime.onConnect.addListener((port) => {
   _sidepanelPorts.add(port);
   _sidepanelOpen = true;
   broadcastOverlayState();
+  startRealtime();
   port.onDisconnect.addListener(() => {
     _sidepanelPorts.delete(port);
     _sidepanelOpen = _sidepanelPorts.size > 0;
     broadcastOverlayState();
+    if (!_sidepanelOpen) stopRealtime();
   });
 });
 
@@ -258,6 +264,7 @@ async function saveSession(session) {
   const prevSignedIn = _lastBroadcastSignedIn;
   const signedIn = !!session;
   await chrome.storage.local.set({ session });
+  if (session?.access_token) { realtimeSetToken(session.access_token); startRealtime(); }
   if (prevSignedIn !== signedIn) {
     _lastBroadcastSignedIn = signedIn;
     chrome.runtime.sendMessage({ type: 'SESSION_CHANGED', signedIn }).catch(() => {});
@@ -269,8 +276,12 @@ async function saveSession(session) {
 // or approvals (tenant data in local storage outlives the session).
 async function resetAccountCaches() {
   _swChecksCache = null;
+  _swChecksAt = 0;
   _tenantIdCache = null;
-  await chrome.storage.local.remove(['kyriqChecksCache', 'kyriqApproved', 'configCache']).catch(() => {});
+  stopRealtime();
+  const all = await chrome.storage.local.get(null).catch(() => ({}));
+  const matchCaches = Object.keys(all).filter(k => k.startsWith('kyriqMatchCache:'));
+  await chrome.storage.local.remove(['kyriqChecksCache', 'kyriqApproved', 'configCache', ...matchCaches]).catch(() => {});
 }
 
 async function clearSessionAndNotify() {
@@ -1410,6 +1421,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const bootstrap = getBootstrapConfig();
           const backendUrl = bootstrap.backendUrl?.replace(/\/$/, '') || '';
           if (!backendUrl) return { checks: [] };
+          // ponytail: still the full /api/jobs payload; a lighter summary route
+          // would cut the 3MB, until then the 30s cache absorbs repeat calls.
+          if (!msg.force && _swChecksCache && Date.now() - _swChecksAt < CHECKS_TTL) {
+            log('GET_CHECKS: served from cache');
+            return { checks: _swChecksCache, cached: true };
+          }
           try {
             // /api/jobs can take 5-30s on Railway cold starts and returns ~3MB.
             // Use an explicit 60s AbortController so the SW gets a real timeout
@@ -1483,6 +1500,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
             log('GET_CHECKS result', { count: checks.length });
             _swChecksCache = checks;
+            _swChecksAt = Date.now();
             chrome.storage.local.set({ kyriqChecksCache: checks }).catch(() => {});
             return { checks };
           } catch (e) {
@@ -2594,10 +2612,87 @@ async function updateBadge() {
   }
 }
 
+// ═════════════════════════════════════════════════════════════
+//  Live updates — Supabase Realtime over a raw Phoenix websocket
+//  (no supabase-js vendored; MV3 forbids remote code). Open only while the
+//  side panel is open. One channel per table so a table missing from the
+//  realtime publication (checks / check_jobs until the migration lands)
+//  fails its own join silently without taking down `matches`.
+// ═════════════════════════════════════════════════════════════
+const RT_TABLES = ['matches', 'checks', 'check_jobs'];
+let _rt = null, _rtRef = 0, _rtHb = null, _rtDebounce = null, _rtRetry = null;
+
+function rtSend(topic, event, payload) {
+  if (_rt?.readyState !== WebSocket.OPEN) return;
+  _rt.send(JSON.stringify({ topic, event, payload, ref: String(++_rtRef) }));
+}
+
+async function startRealtime() {
+  if (!_sidepanelOpen || (_rt && _rt.readyState <= WebSocket.OPEN)) return;
+  const s = await getSession();
+  if (!s?.access_token) return;
+  const tid = await getTenantId(s.user.id).catch(() => null);
+  if (!tid || !_sidepanelOpen || (_rt && _rt.readyState <= WebSocket.OPEN)) return;
+  const cfg = getBootstrapConfig();
+  let ws;
+  try {
+    const host = new URL(cfg.supabaseUrl).host;
+    ws = new WebSocket(`wss://${host}/realtime/v1/websocket?apikey=${encodeURIComponent(cfg.supabaseAnonKey)}&vsn=1.0.0`);
+  } catch (e) { logErr('realtime: connect failed', e); return; }
+  _rt = ws;
+  ws.onopen = () => {
+    for (const table of RT_TABLES) {
+      rtSend(`realtime:kyriq-${table}`, 'phx_join', {
+        config: {
+          broadcast: { self: false }, presence: { key: '' },
+          postgres_changes: [{ event: '*', schema: 'public', table, filter: `tenant_id=eq.${tid}` }],
+        },
+        access_token: s.access_token,
+      });
+    }
+    clearInterval(_rtHb);
+    _rtHb = setInterval(() => rtSend('phoenix', 'heartbeat', {}), 25000);
+    log('realtime: connected');
+  };
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.event === 'postgres_changes') onRealtimeChange();
+    // phx_reply {status:'error'} / system errors (table not in publication)
+    // are ignored on purpose: the 60s panel refresh covers those tables.
+  };
+  ws.onerror = () => {};
+  ws.onclose = () => {
+    if (_rt !== ws) return;
+    _rt = null; clearInterval(_rtHb); _rtHb = null;
+    if (_sidepanelOpen) { clearTimeout(_rtRetry); _rtRetry = setTimeout(startRealtime, 5000); }
+  };
+}
+
+function stopRealtime() {
+  clearTimeout(_rtRetry); clearInterval(_rtHb); _rtHb = null;
+  const ws = _rt; _rt = null;
+  try { ws?.close(); } catch {}
+}
+
+function realtimeSetToken(token) {
+  for (const table of RT_TABLES) rtSend(`realtime:kyriq-${table}`, 'access_token', { access_token: token });
+}
+
+function onRealtimeChange() {
+  clearTimeout(_rtDebounce);
+  _rtDebounce = setTimeout(() => {
+    _swChecksAt = 0; // next GET_CHECKS refetches
+    chrome.runtime.sendMessage({ type: 'KYRIQ_DATA_CHANGED' }).catch(() => {});
+  }, 500);
+}
+
 // Update badge periodically
 chrome.alarms.create('updateBadge', { periodInMinutes: 5 });
+// Wake-up check: re-open the realtime socket if the SW slept while the panel stayed open.
+chrome.alarms.create('kyriqRealtime', { periodInMinutes: 1 });
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'updateBadge') updateBadge();
+  if (alarm.name === 'kyriqRealtime') startRealtime();
 });
 
 // Update on install
