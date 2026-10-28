@@ -25,6 +25,7 @@ import {
   Thead,
   Tr,
 } from '@/components/ui';
+import { PageSkeleton } from '../loading';
 
 // ── Types ──────────────────────────────────────────────────
 interface JobCheck {
@@ -88,11 +89,7 @@ function confTone(conf: number) {
 // ── Wrapper with Suspense ──────────────────────────────────
 export default function ReconciliationPage() {
   return (
-    <Suspense fallback={
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-brand" />
-      </div>
-    }>
+    <Suspense fallback={<PageSkeleton />}>
       <ReconciliationContent />
     </Suspense>
   );
@@ -206,13 +203,7 @@ function ReconciliationContent() {
     return <Badge tone="error" size="sm"><X size={10} /> Mismatch</Badge>;
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-brand" />
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 p-5">

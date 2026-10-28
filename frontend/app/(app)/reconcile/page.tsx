@@ -19,7 +19,7 @@ import {
 import { useQBConnections } from '@/hooks/useQBConnections';
 import { useSpelling } from '@/hooks/useSpelling';
 import { cn } from '@/lib/utils';
-import ReviewStep from '@/components/review/ReviewStep';
+import dynamic from 'next/dynamic';
 import StartBatchCard from '@/components/reconcile/StartBatchCard';
 import {
   EMPTY_COUNTS,
@@ -31,7 +31,11 @@ import { advanceStep, loadBatch, loadResume, type ResumeState } from '@/lib/reco
 import Stepper from '@/components/reconcile/Stepper';
 import MatchProgress from '@/components/reconcile/MatchProgress';
 import ConnectQuickBooksCard from '@/components/reconcile/ConnectQuickBooksCard';
-import ApprovePanel from '@/components/reconcile/ApprovePanel';
+
+// Steps 3 and 4 are the heavy ones (grid, modals); load them only when reached.
+const stepFallback = () => <Skeleton className="h-64 w-full rounded-card" />;
+const ReviewStep = dynamic(() => import('@/components/review/ReviewStep'), { ssr: false, loading: stepFallback });
+const ApprovePanel = dynamic(() => import('@/components/reconcile/ApprovePanel'), { ssr: false, loading: stepFallback });
 
 /**
  * /reconcile — the one route for a reconciliation run (CHECKLIST section 3).

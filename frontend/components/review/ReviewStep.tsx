@@ -11,7 +11,7 @@ import { useRealtimeMatches } from '@/hooks/useRealtimeMatches';
 import { useQBConnections } from '@/hooks/useQBConnections';
 import { useSpelling } from '@/hooks/useSpelling';
 import MatchRow from '@/components/MatchRow';
-import SearchQBModal from '@/components/SearchQBModal';
+import dynamic from 'next/dynamic';
 import SideBySideModal, {
   SideBySideEvidence, issueLabel, formatMoney, formatDate,
 } from '@/components/review/SideBySideModal';
@@ -20,6 +20,9 @@ import { Button, GlassCard, GlassPanel, Select, Skeleton, Tabs } from '@/compone
 import { Pagination } from '@/app/(app)/qb-comparisons/components/Pagination';
 import { NEEDS_ATTENTION_STATUSES } from '@/lib/batch-state';
 import { cn } from '@/lib/utils';
+
+// Opened only when a reviewer remaps a row: out of the first-load bundle.
+const SearchQBModal = dynamic(() => import('@/components/SearchQBModal'), { ssr: false });
 
 /**
  * The Review step — CHECKLIST section 3.
@@ -189,6 +192,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(100);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkPending, setBulkPending] = useState(false);
   const [searchModal, setSearchModal] = useState<{ check: any; matchId: string } | null>(null);
   const [sideBySide, setSideBySide] = useState<any | null>(null);
   /** The row whose evidence shows beside the queue at xl. Falls back to the
@@ -226,7 +230,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
   }, [chip, activeTab]);
 
   const {
-    matches, total, statusCounts, isLoading, isSyncing, error,
+    matches, total, statusCounts, isLoading, isRefreshing, isSyncing, error,
     refresh, syncQB, approveSingle, bulkApprove, flagMatch,
     addNote, resolveDiscrepancy, remapMatch, undoApproval, createInQB, updateQBTransaction,
   } = useMatches({
@@ -285,9 +289,15 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
   /** Two modes, unchanged: no selection auto-approves at the user's chosen
    *  confidence threshold, a selection approves exactly those ids. */
   const handleBulkApprove = async () => {
-    if (selected.size === 0) await bulkApprove({ minConfidence });
-    else await bulkApprove({ matchIds: Array.from(selected) });
-    setSelected(new Set());
+    if (bulkPending) return; // one run at a time: no double-approve on a double click
+    setBulkPending(true);
+    try {
+      if (selected.size === 0) await bulkApprove({ minConfidence });
+      else await bulkApprove({ matchIds: Array.from(selected) });
+      setSelected(new Set());
+    } finally {
+      setBulkPending(false);
+    }
   };
 
   const handleRemapSelect = async (qbTxn: any) => {
@@ -357,6 +367,8 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
             variant="secondary"
             icon={<Check className="h-4 w-4" />}
             onClick={handleBulkApprove}
+            loading={bulkPending}
+            disabled={bulkPending}
           >
             {selected.size > 0
               ? `Approve ${selected.size} selected`
@@ -469,7 +481,9 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
               onClick={refresh}
               className="press ml-auto inline-flex items-center gap-1 text-xs text-ink-faint hover:text-ink-strong"
             >
-              <RefreshCw className="h-3 w-3" aria-hidden /> Refresh
+              {/* Background refetch over rows already shown: a small spin, never a skeleton. */}
+              <RefreshCw className={cn('h-3 w-3', isRefreshing && 'animate-spin')} aria-hidden />
+              {isRefreshing ? 'Updating…' : 'Refresh'}
             </button>
           </div>
         )}

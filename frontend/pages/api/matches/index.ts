@@ -90,27 +90,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     query = query.range(offset, offset + pageSize - 1);
 
-    const { data, count, error } = await query;
-    if (error) return res.status(500).json({ error: error.message });
-
     /* Status counts for the tabs and chips. Scoped by exactly the same filters
        as the list above (minus status/search), or the tabs would claim counts
        for rows the list cannot show, and, with batchId, would contradict the
-       stepper's batch_counts(). */
-    let countQuery = supabase
-      .from('matches')
-      .select('status')
-      .eq('tenant_id', tenantId)
-      .eq('realm_id', realmId);
-    if (batchFilter) countQuery = countQuery.eq('batch_id', batchFilter);
-    const { data: counts, error: countError } = await countQuery;
-    if (countError) return res.status(500).json({ error: countError.message });
+       stepper's batch_counts(). Independent of the list, so both run at once. */
+    const countStatuses = async (): Promise<Record<string, number>> => {
+      // GROUP BY in the database (migration 052). Missing RPC (migration not
+      // applied yet) falls back to counting the status column client-side.
+      const { data: grouped, error: rpcError } = await supabase.rpc('match_status_counts', {
+        p_tenant: tenantId,
+        p_realm: realmId,
+        p_batch: batchFilter,
+      });
+      if (!rpcError && Array.isArray(grouped)) {
+        const acc: Record<string, number> = { all: 0 };
+        for (const r of grouped as { status: string; n: number | string }[]) {
+          const n = Number(r.n) || 0;
+          acc[r.status] = n;
+          acc.all += n;
+        }
+        return acc;
+      }
+      let countQuery = supabase
+        .from('matches')
+        .select('status')
+        .eq('tenant_id', tenantId)
+        .eq('realm_id', realmId);
+      if (batchFilter) countQuery = countQuery.eq('batch_id', batchFilter);
+      const { data: counts, error: countError } = await countQuery;
+      if (countError) throw new Error(countError.message);
+      return (counts || []).reduce((acc: any, m: any) => {
+        acc[m.status] = (acc[m.status] || 0) + 1;
+        acc.all = (acc.all || 0) + 1;
+        return acc;
+      }, {});
+    };
 
-    const statusCounts: Record<string, number> = (counts || []).reduce((acc: any, m: any) => {
-      acc[m.status] = (acc[m.status] || 0) + 1;
-      acc.all = (acc.all || 0) + 1;
-      return acc;
-    }, {});
+    const [{ data, count, error }, statusCounts] = await Promise.all([query, countStatuses()]);
+    if (error) return res.status(500).json({ error: error.message });
 
     return res.status(200).json({
       matches: data,

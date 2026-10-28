@@ -41,7 +41,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (error) return res.status(500).json({ error: error.message });
 
     // Sync the parent check so the matching algorithm won't re-process it.
-    if (match.check_id) {
+    const syncCheck = async () => {
+      if (!match.check_id) return;
       const { data: checkRow } = await db
         .from('checks')
         .update({ status: 'approved' })
@@ -54,11 +55,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await patchJobCheck(db, tenantId, checkRow.job_id, checkRow.check_id, (c) => ({ ...c, status: 'approved' }))
           .catch(() => false);
       }
-    }
+    };
 
-    await audit(db, id as string, userId, 'approved', match.status, 'approved', { notes });
+    // Independent writes after the match row is committed: run them together.
+    await Promise.all([
+      syncCheck(),
+      audit(db, id as string, userId, 'approved', match.status, 'approved', { notes }),
+    ]);
 
-    return res.status(200).json({ success: true, status: 'approved' });
+    return res.status(200).json({ success: true, status: 'approved', approved_at: now, approved_by: userId });
   } catch (error: any) {
     console.error('Approve error:', error);
     return res.status(500).json({ error: error.message });

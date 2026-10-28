@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useState, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { authHeaders, qk } from '@/lib/queries';
 
 export interface QBConnection {
   id: string;
@@ -62,57 +63,64 @@ export function useOptionalQBConnections(): QBContextValue | null {
   return useContext(QBContext);
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) return {};
-  return { Authorization: `Bearer ${session.access_token}` };
+const getAuthHeaders = authHeaders;
+
+interface QBConnectionsData {
+  connections: QBConnection[];
+  active: QBConnection | null;
 }
 
+const EMPTY: QBConnectionsData = { connections: [], active: null };
+
+async function fetchConnections(): Promise<QBConnectionsData> {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch('/api/qb/connections', { headers });
+    if (!res.ok) {
+      // Not an error if user simply has no connections yet
+      if (res.status === 400 || res.status === 404) return EMPTY;
+      throw new Error('Failed to fetch connections');
+    }
+    const data = await res.json();
+    const normalise = (c: any): QBConnection => ({
+      ...c,
+      status: (c?.status as QbConnectionHealth) || 'connected',
+      accountCount: c?.accountCount ?? 0,
+      pendingCount: c?.pendingCount ?? 0,
+    });
+    return {
+      connections: (data.connections || []).map(normalise),
+      active: data.activeConnection ? normalise(data.activeConnection) : null,
+    };
+  } catch (err: any) {
+    // Silently handle — user may not have qb_connections table yet
+    console.warn('QB connections fetch:', err.message);
+    return EMPTY;
+  }
+}
+
+/**
+ * Backed by the ['qb-connections'] query, so every consumer (and the realtime
+ * invalidation in the app layout) shares one cached request.
+ */
 function useQBConnectionsInternal(): QBContextValue {
-  const [connections, setConnections] = useState<QBConnection[]>([]);
-  const [active, setActive] = useState<QBConnection | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const qc = useQueryClient();
+  const query = useQuery({ queryKey: qk.qbConnections, queryFn: fetchConnections });
+  const { connections, active } = query.data ?? EMPTY;
+  const isLoading = query.isPending;
   const [isSwitching, setIsSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch('/api/qb/connections', { headers });
-      if (!res.ok) {
-        // Not an error if user simply has no connections yet
-        if (res.status === 400 || res.status === 404) {
-          setConnections([]);
-          setActive(null);
-          return;
-        }
-        throw new Error('Failed to fetch connections');
-      }
-      const data = await res.json();
-      const normalise = (c: any): QBConnection => ({
-        ...c,
-        status: (c?.status as QbConnectionHealth) || 'connected',
-        accountCount: c?.accountCount ?? 0,
-        pendingCount: c?.pendingCount ?? 0,
-      });
-      setConnections((data.connections || []).map(normalise));
-      setActive(data.activeConnection ? normalise(data.activeConnection) : null);
-    } catch (err: any) {
-      // Silently handle — user may not have qb_connections table yet
-      console.warn('QB connections fetch:', err.message);
-      setConnections([]);
-      setActive(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const setData = useCallback(
+    (fn: (d: QBConnectionsData) => QBConnectionsData) =>
+      qc.setQueryData<QBConnectionsData>(qk.qbConnections, (d) => fn(d ?? EMPTY)),
+    [qc]
+  );
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const refresh = useCallback(async () => {
+    setError(null);
+    await qc.invalidateQueries({ queryKey: qk.qbConnections });
+  }, [qc]);
 
   const switchCompany = useCallback(
     async (realmId: string) => {
@@ -138,10 +146,10 @@ function useQBConnectionsInternal(): QBContextValue {
         // pending count; /api/qb/switch answers with an identity only, so
         // adopting its payload here would blank all three.
         const next = connections.find((c) => c.realmId === realmId) ?? null;
-        setActive(next ? { ...next, isActive: true } : null);
-        setConnections((prev) =>
-          prev.map((c) => ({ ...c, isActive: c.realmId === realmId }))
-        );
+        setData((d) => ({
+          active: next ? { ...next, isActive: true } : null,
+          connections: d.connections.map((c) => ({ ...c, isActive: c.realmId === realmId })),
+        }));
         return next ?? undefined;
       } catch (err: any) {
         setError(err.message);
@@ -150,7 +158,7 @@ function useQBConnectionsInternal(): QBContextValue {
         setIsSwitching(false);
       }
     },
-    [active, connections]
+    [active, connections, setData]
   );
 
   const disconnect = useCallback(

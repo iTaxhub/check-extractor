@@ -25,6 +25,8 @@ import {
     type TabItem,
 } from '@/components/ui'
 import { useSpelling } from '@/hooks/useSpelling'
+import { useQueryClient } from '@tanstack/react-query'
+import { qk } from '@/lib/queries'
 
 const QBDataPreview = dynamic(() => import('@/components/QBDataPreview'), { ssr: false })
 
@@ -89,6 +91,7 @@ function CodeBlock({ children, className = '' }: { children: React.ReactNode; cl
 
 function SettingsPageContent() {
     const t = useSpelling()
+    const queryClient = useQueryClient()
     const [activeTab, setActiveTab] = useState('general')
     const [qboConnected, setQboConnected] = useState(false)
     const [qbConfigured, setQbConfigured] = useState(false)
@@ -460,8 +463,11 @@ function SettingsPageContent() {
                     icon: '✅'
                 })
                 await fetchIntegrationStatus()
-                // Reload page to ensure clean state
-                setTimeout(() => window.location.reload(), 1500)
+                // Refresh everything that depended on the connection, in place
+                // (was a full window reload).
+                for (const queryKey of [qk.qbConnections, ['qbo-accounts'], ['quickbooks-entries'], qk.matches]) {
+                    queryClient.invalidateQueries({ queryKey })
+                }
             }
         } catch (error) {
             console.error('Failed to disconnect QBO:', error)

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { PageKind } from '@/lib/document-kind'
+import { useRealtimeTable } from '@/hooks/useRealtimeTable'
 
 export interface CheckResult {
     check_id: string
@@ -224,12 +225,19 @@ export function useCheckProcessing(jobId: string, selectedMethods?: string[]) {
         }
     }, [jobId])
 
+    // Realtime on this job's check_jobs row and its checks rows asks for a poll
+    // right away; the interval below is only the fallback.
+    const [liveTick, setLiveTick] = useState(0)
+    const bump = useCallback(() => setLiveTick((n) => n + 1), [])
+    useRealtimeTable(jobId && !isComplete ? 'check_jobs' : null, `job_id=eq.${jobId}`, bump, 150)
+    useRealtimeTable(jobId && !isComplete ? 'checks' : null, `job_id=eq.${jobId}`, bump, 300)
+
     useEffect(() => {
         if (!jobId) return
 
         let stopped = false
         let pollCount = 0
-        
+
         const doPoll = async () => {
             if (stopped) return
             pollCount++
@@ -243,17 +251,22 @@ export function useCheckProcessing(jobId: string, selectedMethods?: string[]) {
                 }
             }
         }
-        
-        const interval = setInterval(doPoll, 1000) // Poll every 1s for fast completion detection
 
-        // Initial poll
+        // ponytail: 3s fallback (was 1s) — realtime carries the status changes;
+        // the poll still feeds extraction_progress, which only the backend's
+        // memory has. Skipped while the tab is hidden.
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') void doPoll()
+        }, 3000)
+
+        // Initial poll (and an immediate one on every realtime signal)
         doPoll()
 
         return () => {
             stopped = true
             clearInterval(interval)
         }
-    }, [jobId, poll])
+    }, [jobId, poll, liveTick])
 
     return {
         stages,

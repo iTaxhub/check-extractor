@@ -7,7 +7,8 @@ import {
   Loader2, AlertCircle, RefreshCw, CheckCircle,
   ImageIcon, ExternalLink, RotateCcw,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { qk, useJobsFull } from '@/lib/queries';
 import { hasExtractedValues } from '@/lib/cheque-values';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import {
@@ -104,11 +105,24 @@ function fmtDate(iso?: string): string {
 // ── Component ──────────────────────────────────────────────
 export default function DashboardPage() {
   const t = useSpelling();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  // Shared ['jobs','full'] query. check_jobs realtime (app layout) invalidates
+  // it; the poll only runs while something is still processing (and React
+  // Query pauses it while the tab is hidden).
+  const jobsQuery = useJobsFull<Job>({
+    refetchInterval: (list) =>
+      list?.some((j) => !['complete', 'error', 'failed'].includes(j.status)) ? 10_000 : false,
+  });
+  const jobs = useMemo(() => jobsQuery.data ?? [], [jobsQuery.data]);
+  const loading = jobsQuery.isPending;
   const [error, setError] = useState<string | null>(null);
   // Load failure is separate from action errors: it replaces the body, they don't.
-  const [loadError, setLoadError] = useState<unknown>(null);
+  const loadError: unknown = jobsQuery.data ? null : jobsQuery.error;
+  const fetchJobs = useCallback(() => { jobsQuery.refetch(); }, [jobsQuery]);
+  const setJobs = useCallback(
+    (fn: (prev: Job[]) => Job[]) => queryClient.setQueryData<Job[]>(qk.jobsFull, (prev) => fn(prev ?? [])),
+    [queryClient]
+  );
 
   // Selected job for detail view
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -210,56 +224,6 @@ export default function DashboardPage() {
       return next;
     });
   };
-
-  // Fetch jobs
-  const fetchJobs = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        setJobs([]);
-        setLoading(false);
-        return;
-      }
-
-      const res = await fetch('/api/jobs?source=auto', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to fetch jobs');
-      }
-      const data = await res.json();
-
-      const jobsList = (data.jobs || []).sort((a: Job, b: Job) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      setJobs(jobsList);
-      setLoadError(null);
-    } catch (e: any) {
-      console.error('[Dashboard] Error fetching jobs:', e);
-      // A failed fetch is not "no documents" — say so, with a retry.
-      setLoadError(e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchJobs();
-
-    // Auto-refresh every 10 seconds to show new uploads
-    const interval = setInterval(() => {
-      fetchJobs();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [fetchJobs]);
 
   // Keyboard navigation for check detail
   useEffect(() => {

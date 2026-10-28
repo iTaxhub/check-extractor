@@ -60,7 +60,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       newTxnId: qbTxnId,
     });
 
-    return res.status(200).json({ success: true });
+    // The changed fields, so the client can patch its row instead of refetching.
+    return res.status(200).json({
+      success: true,
+      status: newStatus,
+      confidence_score: result.score,
+      confidence_reasons: result.reasons,
+      discrepancy_amount: amtDiff > 0.01 ? amtDiff : null,
+      discrepancy_type: result.flags[0]?.type || null,
+      qb_txn: {
+        id: newTxn.id, txn_id: newTxn.txn_id, txn_type: newTxn.txn_type, txn_date: newTxn.txn_date,
+        payee: newTxn.payee, amount: newTxn.amount, memo: newTxn.memo, account: newTxn.account,
+        doc_number: newTxn.doc_number,
+      },
+    });
   } catch (error: any) {
     console.error('Remap error:', error);
     return res.status(500).json({ error: error.message });
