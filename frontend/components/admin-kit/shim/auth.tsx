@@ -15,9 +15,9 @@ export function useAuth() {
 
   useEffect(() => {
     let alive = true;
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       if (!alive) return;
-      setUser(data.user ?? null);
+      setUser(data.session?.user ?? null);
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
