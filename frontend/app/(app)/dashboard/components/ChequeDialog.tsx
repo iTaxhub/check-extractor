@@ -7,6 +7,7 @@ import {
   Badge, Button, Dialog, GlassPanel, IconButton, Input, Tabs,
   Table, TableScroll, TableShell, Tbody, Td, Th, Thead, Tr,
 } from '@/components/ui';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface Check {
   check_id: string;
@@ -73,6 +74,7 @@ function blankEdits(ext: any) {
 }
 
 export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigate, onExport, onReExtract, reExtracting }: Props) {
+  const t = useSpelling();
   const [viewMode, setViewMode] = useState<'image' | 'table' | 'pdf'>('image');
   const [imageZoom, setImageZoom] = useState(1);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -138,7 +140,7 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
       open
       onClose={onClose}
       size="full"
-      title={`Cheque ${selectedCheckIdx + 1} of ${job.checks.length}`}
+      title={t(`Cheque ${selectedCheckIdx + 1} of ${job.checks.length}`)}
       description={`${job.pdf_name} • Page ${selectedCheck.page}`}
       className="flex h-[90vh] flex-col"
     >
@@ -225,7 +227,7 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
 
           <div className="flex items-center gap-2">
             <Tabs
-              aria-label="Cheque view"
+              aria-label={t('Cheque view')}
               value={viewMode}
               onValueChange={(v) => setViewMode(v as typeof viewMode)}
               items={[
@@ -259,7 +261,7 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
 
             <div className="flex items-center gap-1">
               <IconButton
-                aria-label="Previous cheque"
+                aria-label={t('Previous cheque')}
                 size="icon-sm"
                 onClick={() => goTo(Math.max(0, selectedCheckIdx - 1))}
                 disabled={selectedCheckIdx === 0}
@@ -268,7 +270,7 @@ export default function ChequeDialog({ job, selectedCheckIdx, onClose, onNavigat
               </IconButton>
               <span className="nums text-xs text-ink-faint">{selectedCheckIdx + 1}/{job.checks.length}</span>
               <IconButton
-                aria-label="Next cheque"
+                aria-label={t('Next cheque')}
                 size="icon-sm"
                 onClick={() => goTo(Math.min(job.checks.length - 1, selectedCheckIdx + 1))}
                 disabled={selectedCheckIdx === job.checks.length - 1}

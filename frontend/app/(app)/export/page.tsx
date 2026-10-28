@@ -9,6 +9,7 @@ import {
 } from '@/components/ui';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * Export.
@@ -43,6 +44,7 @@ interface ExportFormat {
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090';
 
 export default function ExportPage() {
+  const t = useSpelling();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [formats, setFormats] = useState<ExportFormat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +145,7 @@ export default function ExportPage() {
         <EmptyState
           icon={<FileSpreadsheet aria-hidden />}
           title="No completed documents"
-          description="Upload and extract cheques to export them."
+          description={t('Upload and extract cheques to export them.')}
           action={
             <Link href="/upload" className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5')}>
               <Upload size={13} aria-hidden />
@@ -201,7 +203,7 @@ export default function ExportPage() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-ink-strong">{job.pdf_name}</div>
                     <div className="nums mt-0.5 text-[11px] text-ink-faint">
-                      {ext}/{job.total_checks} cheques extracted · {fmtDate(job.completed_at || job.created_at)}
+                      {ext}/{job.total_checks} {t('cheques extracted')} · {fmtDate(job.completed_at || job.created_at)}
                     </div>
                   </div>
                   <button
@@ -255,7 +257,7 @@ export default function ExportPage() {
             <dd className="nums font-medium text-ink-strong">{selectedJobs.size}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-ink-soft">Cheques</dt>
+            <dt className="text-ink-soft">{t('Cheques')}</dt>
             <dd className="nums font-medium text-ink-strong">{totalChecksSelected}</dd>
           </div>
           <div className="flex justify-between gap-2">
@@ -299,7 +301,7 @@ export default function ExportPage() {
                   {jobs.find(j => j.job_id === h.jobId)?.pdf_name || h.jobId}
                 </span>
                 <span className="nums shrink-0 text-[11px] text-ink-faint">
-                  {h.checks} cheques · {h.format.toUpperCase()} · {new Date(h.time).toLocaleTimeString()}
+                  {h.checks} {t('cheques')} · {h.format.toUpperCase()} · {new Date(h.time).toLocaleTimeString()}
                 </span>
               </li>
             ))}

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { LifeBuoy, Upload } from 'lucide-react';
 import { SUPPORT_MAILTO } from '@/lib/support';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * The app's top bar, and the home of BOTH switchers (CHECKLIST section 4).
@@ -32,6 +33,7 @@ const AccountSwitcher = dynamic(() => import('@/components/AccountSwitcher'), { 
 const TrialMeter = dynamic(() => import('@/components/TrialMeter'), { ssr: false });
 
 export default function ShellTopBar() {
+  const t = useSpelling();
   return (
     <header className="sticky top-0 z-40 glass-chrome border-b">
       {/* min-w-0 + flex-wrap: at 400px the two triggers wrap rather than
@@ -68,7 +70,7 @@ export default function ShellTopBar() {
 
         <Link
           href="/upload"
-          aria-label="Upload cheques"
+          aria-label={t('Upload cheques')}
           className="md:hidden shrink-0 rounded-input bg-primary-bg p-1.5 press"
         >
           <Upload aria-hidden className="h-4 w-4 text-primary-text" />

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui';
 import CheckImageViewer from '@/app/(app)/review/[id]/components/CheckImageViewer';
 import { cn } from '@/lib/utils';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * Side-by-side review: the scanned cheque on the left, the QuickBooks record it
@@ -117,13 +118,13 @@ export function issueLabel(match: any): string {
   return match.status ? match.status.charAt(0).toUpperCase() + match.status.slice(1) : 'Review';
 }
 
-/** The specific mismatch, in words. */
-export function mismatchSentences(match: any): string[] {
+/** The specific mismatch, in words. `t` spells check/cheque (useSpelling); never applied to the user's flag reason. */
+export function mismatchSentences(match: any, t: (text: string) => string = (s) => s): string[] {
   const { check, qb_txn, flagged_reason } = match || {};
   const d = diffs(match);
   const out: string[] = [];
-  if (d.amount) out.push(`Amount differs: cheque ${fmt(check?.amount)}, QuickBooks ${fmt(qb_txn?.amount)}.`);
-  if (d.number) out.push(`Cheque number differs: #${check?.check_number || '-'} against #${qb_txn?.doc_number || '-'}.`);
+  if (d.amount) out.push(t(`Amount differs: cheque ${fmt(check?.amount)}, QuickBooks ${fmt(qb_txn?.amount)}.`));
+  if (d.number) out.push(t(`Cheque number differs: #${check?.check_number || '-'} against #${qb_txn?.doc_number || '-'}.`));
   if (d.date) out.push(`Date differs: ${fmtDate(check?.check_date)} against ${fmtDate(qb_txn?.txn_date)}.`);
   if (flagged_reason) out.push(`Flagged: ${flagged_reason}.`);
   return out;
@@ -138,8 +139,9 @@ export { fmt as formatMoney, fmtDate as formatDate };
  */
 export function SideBySideEvidence({ match, stacked }: { match: any; stacked?: boolean }) {
   const { check, qb_txn, status, confidence_score, discrepancy_amount, notes } = match || {};
+  const t = useSpelling();
   const { amount: amountDiffers, number: numberDiffers, date: dateDiffers } = diffs(match);
-  const sentences = mismatchSentences(match);
+  const sentences = mismatchSentences(match, t);
 
   return (
       <div className={cn('grid gap-4', !stacked && 'scroll-region max-h-[72vh] lg:grid-cols-2')}>
@@ -151,7 +153,7 @@ export function SideBySideEvidence({ match, stacked }: { match: any; stacked?: b
               <FileWarning className="mx-auto mb-2 h-8 w-8 text-ink-faint" aria-hidden />
               <p className="text-sm font-semibold text-ink-strong">No scan on file</p>
               <p className="mt-1 text-xs text-ink-body">
-                This cheque has no stored image, so only the extracted figures can be compared.
+                {t('This cheque has no stored image, so only the extracted figures can be compared.')}
               </p>
             </GlassPanel>
           )}
@@ -174,7 +176,7 @@ export function SideBySideEvidence({ match, stacked }: { match: any; stacked?: b
 
           <div className={cn(FIELD_ROW, 'border-b border-glass-hairline')}>
             <span className="w-20 shrink-0" />
-            <span className="text-eyebrow text-ink-faint">Cheque</span>
+            <span className="text-eyebrow text-ink-faint">{t('Cheque')}</span>
             <span className="text-eyebrow text-ink-faint">QuickBooks</span>
           </div>
 
@@ -241,13 +243,14 @@ export interface SideBySideModalProps {
 }
 
 export default function SideBySideModal({ match, onClose }: SideBySideModalProps) {
+  const t = useSpelling();
   return (
     <Dialog
       open
       onClose={onClose}
       size="full"
-      title={`Cheque #${match?.check?.check_number || '-'}`}
-      description="The scanned cheque beside the QuickBooks record it was matched to."
+      title={t(`Cheque #${match?.check?.check_number || '-'}`)}
+      description={t('The scanned cheque beside the QuickBooks record it was matched to.')}
     >
       <SideBySideEvidence match={match} />
     </Dialog>

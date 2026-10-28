@@ -14,6 +14,7 @@ import {
   Th,
   Tr,
 } from '@/components/ui';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface QBConnectionModalProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export const QBConnectionModal: React.FC<QBConnectionModalProps> = ({
   onClose,
   onConnect,
 }) => {
+  const t = useSpelling();
   const [source, setSource] = useState<'file' | 'api' | 'direct'>('file');
   const [columnMapping, setColumnMapping] = useState({
     checkNumber: 'Check Number',
@@ -224,7 +226,7 @@ export const QBConnectionModal: React.FC<QBConnectionModalProps> = ({
             {file && isQBOFile(file.name) && (
               <GlassPanel tone="plain" radius="input" padding="sm" className="mt-3 text-xs text-ink-body">
                 <strong className="text-ink-strong">QBO/OFX file detected</strong>, it will be
-                parsed automatically for cheque transactions. No column mapping needed.
+                {t(' parsed automatically for cheque transactions. No column mapping needed.')}
               </GlassPanel>
             )}
 

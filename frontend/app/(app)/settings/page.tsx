@@ -24,6 +24,7 @@ import {
     TabPanel,
     type TabItem,
 } from '@/components/ui'
+import { useSpelling } from '@/hooks/useSpelling'
 
 const QBDataPreview = dynamic(() => import('@/components/QBDataPreview'), { ssr: false })
 
@@ -87,6 +88,7 @@ function CodeBlock({ children, className = '' }: { children: React.ReactNode; cl
 }
 
 function SettingsPageContent() {
+    const t = useSpelling()
     const [activeTab, setActiveTab] = useState('general')
     const [qboConnected, setQboConnected] = useState(false)
     const [qbConfigured, setQbConfigured] = useState(false)
@@ -212,7 +214,7 @@ function SettingsPageContent() {
             if (!res.ok) throw new Error(data.error || 'Upload failed')
             setQboUploadResult({
                 success: true,
-                message: `Imported ${data.imported} cheque entries from ${data.fileName}${data.totalTransactions ? ` (${data.totalTransactions} total transactions)` : ''}`,
+                message: `Imported ${data.imported} ${t('cheque')} entries from ${data.fileName}${data.totalTransactions ? ` (${data.totalTransactions} total transactions)` : ''}`,
             })
         } catch (err: any) {
             setQboUploadResult({ success: false, message: err.message })
@@ -367,7 +369,7 @@ function SettingsPageContent() {
                 
                 setPullResult({
                     success: true,
-                    message: `Successfully fetched ${data.count} cheque entries${data.total_before_filters !== data.count ? ` (${data.total_before_filters} total, ${data.count} after filters)` : ''}${filterSummary.length > 0 ? `\nFilters: ${filterSummary.join(', ')}` : ''}`,
+                    message: `Successfully fetched ${data.count} ${t('cheque')} entries${data.total_before_filters !== data.count ? ` (${data.total_before_filters} total, ${data.count} after filters)` : ''}${filterSummary.length > 0 ? `\nFilters: ${filterSummary.join(', ')}` : ''}`,
                     data
                 })
             } else {
@@ -685,7 +687,7 @@ function SettingsPageContent() {
                             id="auto-export"
                             className="mt-0.5 h-4 w-4 shrink-0 rounded-[5px] border border-glass-hairline bg-surface accent-primary"
                         />
-                        <span>Auto-export approved cheques (when confidence &gt; 95%)</span>
+                        <span>{t('Auto-export approved cheques (when confidence > 95%)')}</span>
                     </label>
 
                     <div className="flex justify-end">
@@ -829,9 +831,9 @@ function SettingsPageContent() {
                             {pullResult.success && pullResult.data && (
                                 <div className="mt-2 text-xs">
                                     <ul className="nums space-y-0.5">
-                                        <li>Cheques written: {pullResult.data.breakdown?.cheques_written || 0}</li>
-                                        <li>Bills paid by cheque: {pullResult.data.breakdown?.bills_paid_by_cheque || 0}</li>
-                                        <li>Cheques received: {pullResult.data.breakdown?.cheques_received || 0}</li>
+                                        <li>{t('Cheques written:')} {pullResult.data.breakdown?.cheques_written || 0}</li>
+                                        <li>{t('Bills paid by cheque:')} {pullResult.data.breakdown?.bills_paid_by_cheque || 0}</li>
+                                        <li>{t('Cheques received:')} {pullResult.data.breakdown?.cheques_received || 0}</li>
                                     </ul>
                                     {pullResult.data.count === 0 && (
                                         <div className="mt-3 border-t border-success-border pt-3">

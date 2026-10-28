@@ -15,6 +15,8 @@ export interface QBConnection {
   status: QbConnectionHealth;
   /** Cached bank + credit-card accounts for this company (migration 036). */
   accountCount: number;
+  /** CompanyInfo.Country (migration 051), e.g. 'US', 'CA'; null until fetched. */
+  country?: string | null;
 }
 
 export type QbConnectionHealth =
@@ -53,6 +55,11 @@ export function useQBConnections(): QBContextValue {
   const ctx = useContext(QBContext);
   if (!ctx) throw new Error('useQBConnections must be used inside <QBProvider>');
   return ctx;
+}
+
+/** Same context, but null outside <QBProvider> instead of throwing. */
+export function useOptionalQBConnections(): QBContextValue | null {
+  return useContext(QBContext);
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {

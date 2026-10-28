@@ -28,6 +28,7 @@ import {
 } from './utils/comparisonUtils';
 import { exportToCSV, exportToExcel } from './utils/exportUtils';
 import { createClient } from '@/lib/supabase/client';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /** The three outcomes of vouching a cheque that QuickBooks does not have. */
 const VOUCH_TARGETS = [
@@ -37,6 +38,7 @@ const VOUCH_TARGETS = [
 ];
 
 export default function QBComparisonsPage() {
+  const t = useSpelling();
   const { loading, extractions, qbEntries, qbSources, error, refreshData } = useComparisonData();
   
   // Silently extract incomplete jobs in the background
@@ -220,7 +222,7 @@ export default function QBComparisonsPage() {
       case 'queued_for_reconcile':
         showToast(
           'success',
-          'Approved, open QB Reconcile and click "Auto-Clear Kyriq Approved" (Chrome extension) to tick the C.'
+          'Approved. Only the Kyriq Chrome extension can tick the C: open QB Reconcile with it and click "Auto-Clear Kyriq Approved".'
         );
         // Auto-open Reconcile once per session on first queued approve.
         if (!reconcileTabOpenedRef.current && typeof window !== 'undefined') {
@@ -907,7 +909,7 @@ export default function QBComparisonsPage() {
         }
       >
         <p className="text-sm text-ink-body">
-          This will push the cheque extraction values (amount, date, check #) to QuickBooks for
+          {t('This will push the cheque extraction values (amount, date, cheque #) to QuickBooks for')}
           every mismatched row that has actual differences. Rows with no diffs will be skipped.
         </p>
         <p className="mt-2 text-xs text-ink-faint">
@@ -1076,8 +1078,8 @@ export default function QBComparisonsPage() {
                 {target.glyph}
               </span>
               <span>
-                <span className="block text-sm font-semibold text-ink-strong">{target.title}</span>
-                <span className="block text-xs text-ink-faint">{target.hint}</span>
+                <span className="block text-sm font-semibold text-ink-strong">{t(target.title)}</span>
+                <span className="block text-xs text-ink-faint">{t(target.hint)}</span>
               </span>
             </button>
           ))}

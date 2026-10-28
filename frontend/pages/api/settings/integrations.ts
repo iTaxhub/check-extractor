@@ -64,9 +64,18 @@ export default async function handler(
         lastSyncedAt = null;
       }
 
+      // qb_connections is the source of truth (same order as lib/qb-token.ts);
+      // the legacy integrations row is only a fallback.
+      const { data: activeConns } = await supabase
+        .from('qb_connections')
+        .select('realm_id, company_name, access_token')
+        .eq('is_active', true)
+        .limit(1);
+      const activeConn = activeConns?.[0] ?? null;
+
       return res.status(200).json({
         lastSyncedAt,
-        qboConnected: !!integration?.access_token,
+        qboConnected: activeConn ? !!activeConn.access_token : !!integration?.access_token,
         qbConfigured: !!(qbClientId && qbClientSecret),
         credentialsExist: credentialsExist,
         qbClientId: qbClientId ? '••••••••' + qbClientId.slice(-6) : '',
@@ -74,8 +83,8 @@ export default async function handler(
         qbRedirectUri: qbRedirectUri,
         geminiApiKey: integration?.gemini_api_key || '',
         companyId: integration?.company_id || null,
-        realmId: integration?.realm_id || null,
-        companyName: integration?.company_name || null,
+        realmId: activeConn?.realm_id || integration?.realm_id || null,
+        companyName: activeConn?.company_name || integration?.company_name || null,
       });
     }
 

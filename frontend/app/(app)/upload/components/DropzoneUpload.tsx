@@ -5,6 +5,7 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, FileCheck2, FileX2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface Props {
   onFilesSelected: (files: File[]) => void;
@@ -25,6 +26,7 @@ interface Props {
  * the reader needs to see.
  */
 export default function DropzoneUpload({ onFilesSelected }: Props) {
+  const t = useSpelling();
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       onFilesSelected(acceptedFiles);
@@ -47,7 +49,7 @@ export default function DropzoneUpload({ onFilesSelected }: Props) {
 
   return (
     <div
-      {...getRootProps({ 'aria-label': 'Drop cheque files here or press Enter to browse' })}
+      {...getRootProps({ 'aria-label': t('Drop cheque files here or press Enter to browse') })}
       data-drag-state={state}
       aria-invalid={state === 'reject' || undefined}
       className={cn(
@@ -74,12 +76,12 @@ export default function DropzoneUpload({ onFilesSelected }: Props) {
         <>
           <FileCheck2 className="mx-auto mb-3 text-brand" size={32} aria-hidden />
           <p className="text-sm font-medium text-brand-dark">Drop the files here</p>
-          <p className="mt-1 text-xs text-ink-body">Pages and cheques are detected next.</p>
+          <p className="mt-1 text-xs text-ink-body">{t('Pages and cheques are detected next.')}</p>
         </>
       ) : (
         <>
           <Upload className="mx-auto mb-3 text-ink-faint" size={32} aria-hidden />
-          <p className="text-sm font-medium text-ink-strong">Drag cheque files here</p>
+          <p className="text-sm font-medium text-ink-strong">{t('Drag cheque files here')}</p>
           <p className="mt-1 text-xs text-ink-soft">PNG, JPG or PDF, up to 10MB per file</p>
           <Button
             type="button"

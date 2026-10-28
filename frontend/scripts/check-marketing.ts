@@ -27,8 +27,8 @@ for (const p of PAGES) {
 }
 console.log(`ok  ${PAGES.length} content pages: unique URLs, public, titles, descriptions, links and hreflang resolve`);
 
-// check/cheque by location (legal pages, emails).
-import { spell, spellingFor } from '../lib/spelling';
+// check/cheque by location (legal pages, emails, the signed-in app).
+import { resolveSpelling, spell, spellingFor } from '../lib/spelling';
 assert.equal(spellingFor('CA'), 'cheque');
 assert.equal(spellingFor('gb'), 'cheque');
 assert.equal(spellingFor('Canada'), 'cheque');
@@ -39,4 +39,16 @@ assert.equal(spell('Cheques and cheque images', 'check'), 'Checks and check imag
 assert.equal(spell('Cheque Extractor grants you', 'check'), 'Cheque Extractor grants you');
 assert.equal(spell('Check the connection', 'cheque'), 'Check the connection');
 assert.equal(spell('checksum, checkout, checked', 'cheque'), 'checksum, checkout, checked');
+assert.equal(spell('3 cheques, check this one', 'cheque'), '3 cheques, check this one');
+assert.equal(spell('Cheques this period', 'check'), 'Checks this period');
+assert.equal(spell('Cheques the firm wrote', 'check'), 'Checks the firm wrote');
+// App rule: QuickBooks country first, then the browser locale's region, then "check".
+assert.equal(resolveSpelling('US', 'en-CA'), 'check');
+assert.equal(resolveSpelling('CA', 'en-US'), 'cheque');
+assert.equal(resolveSpelling(null, 'en-CA'), 'cheque');
+assert.equal(resolveSpelling('', 'fr_CA'), 'cheque');
+assert.equal(resolveSpelling(undefined, 'en-GB'), 'cheque');
+assert.equal(resolveSpelling(null, 'zh-Hant-TW'), 'check');
+assert.equal(resolveSpelling(null, 'en'), 'check');
+assert.equal(resolveSpelling(null, null), 'check');
 console.log('ok  check/cheque spelling by country');

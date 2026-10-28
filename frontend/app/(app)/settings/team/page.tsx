@@ -18,6 +18,7 @@ import {
   Skeleton,
   StatusPill,
 } from '@/components/ui';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface TeamMember {
   id: string;
@@ -39,6 +40,7 @@ const ROLE_TONE: Record<Role, 'brand' | 'neutral' | 'outline'> = {
 };
 
 export default function TeamPage() {
+  const t = useSpelling();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<Role>('member');
@@ -194,12 +196,12 @@ export default function TeamPage() {
               management and settings
             </li>
             <li>
-              <strong className="text-ink-strong">Member:</strong> can upload, review and export
-              cheques
+              <strong className="text-ink-strong">Member:</strong>{' '}
+              {t('can upload, review and export cheques')}
             </li>
             <li>
-              <strong className="text-ink-strong">Viewer:</strong> can only view cheques and
-              analytics (read-only)
+              <strong className="text-ink-strong">Viewer:</strong>{' '}
+              {t('can only view cheques and analytics (read-only)')}
             </li>
           </ul>
         </GlassPanel>

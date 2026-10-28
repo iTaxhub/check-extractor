@@ -19,6 +19,7 @@ import DocumentSidebar from './components/DocumentSidebar';
 import type { DocumentKind, PageKind } from '@/lib/document-kind';
 import ConfigureExtractionDialog from './components/ConfigureExtractionDialog';
 import { DashboardBodySkeleton } from './loading';
+import { useSpelling } from '@/hooks/useSpelling';
 
 // ── Types ──────────────────────────────────────────────────
 interface JobCheck {
@@ -102,6 +103,7 @@ function fmtDate(iso?: string): string {
 
 // ── Component ──────────────────────────────────────────────
 export default function DashboardPage() {
+  const t = useSpelling();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +172,7 @@ export default function DashboardPage() {
       const res = await fetch(`/api/jobs/${jobId}/retry-failed`, { method: 'POST' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || body.detail || 'Could not retry the failed cheques');
+        throw new Error(body.error || body.detail || t('Could not retry the failed cheques'));
       }
       window.location.href = `/process/${jobId}`;
     } catch (e: any) {
@@ -389,7 +391,7 @@ export default function DashboardPage() {
       {/* ── Stats ───────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiTile href="/history" label="Documents" value={totalJobs} caption={`${totalPages} pages scanned`} icon={<FileText size={16} />} loading={loading} />
-        <KpiTile href="/reconcile" label="Cheques found" value={totalChecks} caption="Ready to reconcile" icon={<ImageIcon size={16} />} loading={loading} />
+        <KpiTile href="/reconcile" label={t('Cheques found')} value={totalChecks} caption="Ready to reconcile" icon={<ImageIcon size={16} />} loading={loading} />
         <KpiTile href="/history" tone="success" label="Extracted" value={completedJobs} caption={`of ${totalJobs} documents`} icon={<CheckCircle size={16} />} loading={loading} />
         <KpiTile href="/history" tone={failedJobs ? 'error' : 'neutral'} label="Needs attention" value={failedJobs} caption={failedJobs ? 'Failed extractions' : 'Nothing failed'} icon={<AlertCircle size={16} />} loading={loading} />
       </div>
@@ -498,10 +500,10 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-glass-hairline px-4 py-2">
               <div className="min-w-0">
                 <h2 className="truncate font-heading text-sm font-semibold text-ink-strong">
-                  {selectedDocName ? `${selectedDocName}` : 'All Recent Cheques'}
+                  {selectedDocName ? `${selectedDocName}` : t('All Recent Cheques')}
                 </h2>
                 <p className="nums text-[11px] text-ink-faint">
-                  {filteredChecks.length} cheque{filteredChecks.length !== 1 ? 's' : ''}
+                  {filteredChecks.length} {t(filteredChecks.length !== 1 ? 'cheques' : 'cheque')}
                   {selectedDocFilter && (() => {
                     const job = jobs.find(j => j.job_id === selectedDocFilter);
                     if (!job) return '';
@@ -557,7 +559,7 @@ export default function DashboardPage() {
                             size="sm"
                             className="min-h-0 px-2.5 py-1 text-xs"
                             icon={<RefreshCw size={12} />}
-                            title={`Run extraction again for the ${failed} cheque${failed === 1 ? '' : 's'} that came back empty`}
+                            title={t(`Run extraction again for the ${failed} cheque${failed === 1 ? '' : 's'} that came back empty`)}
                             disabled={reExtracting}
                             onClick={() => handleRetryFailed(job.job_id)}
                           >
@@ -611,7 +613,7 @@ export default function DashboardPage() {
                     {filteredChecks.length === 0 ? (
                       <tr>
                         <td colSpan={colCount} className="px-4 py-16 text-center text-sm text-ink-faint">
-                          No extracted cheques to display
+                          {t('No extracted cheques to display')}
                         </td>
                       </tr>
                     ) : filteredChecks.map((c: any, idx: number) => {
@@ -674,7 +676,7 @@ export default function DashboardPage() {
           <ol className="mt-3 space-y-2.5 text-sm">
             {[
               { n: 1, label: 'Connect QuickBooks', href: '/settings?tab=integrations', cta: 'Connect' },
-              { n: 2, label: 'Upload a cheque PDF or bank statement', href: '/upload', cta: 'Upload' },
+              { n: 2, label: t('Upload a cheque PDF or bank statement'), href: '/upload', cta: 'Upload' },
               { n: 3, label: 'Review matches and approve', href: '/reconcile', cta: 'Reconcile' },
             ].map((s) => (
               <li key={s.n} className="flex items-center gap-3">

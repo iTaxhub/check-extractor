@@ -9,6 +9,7 @@ import {
   Badge, Button, ErrorState, friendlyError, GlassCard, GlassCardTitle, GlassPanel, KpiTile, Skeleton,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * Billing & usage.
@@ -215,6 +216,7 @@ const day = (iso: string | null | undefined) =>
 const whole = (n: number) => n.toLocaleString('en-US');
 
 export default function BillingPage() {
+  const t = useSpelling();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [apiUsage, setApiUsage] = useState<ApiUsage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -764,7 +766,7 @@ export default function BillingPage() {
                 </p>
               </GlassPanel>
               <GlassPanel tone="plain" radius="tile" padding="sm">
-                <p className="text-eyebrow text-ink-faint">Cheques used</p>
+                <p className="text-eyebrow text-ink-faint">{t('Cheques used')}</p>
                 <p className="nums mt-1 text-sm font-semibold text-ink-strong">
                   {whole(trial?.checksUsedThisPeriod ?? 0)}
                   {allowance ? <span className="text-ink-faint"> / {whole(allowance)}</span> : null}
@@ -790,7 +792,7 @@ export default function BillingPage() {
                 <div
                   className="h-2 overflow-hidden rounded-full bg-surface-sunken shadow-inner-track"
                   role="meter"
-                  aria-label="Cheques used this period"
+                  aria-label={t('Cheques used this period')}
                   aria-valuenow={trial!.checksUsedThisPeriod}
                   aria-valuemin={0}
                   aria-valuemax={allowance!}
@@ -1003,7 +1005,7 @@ export default function BillingPage() {
               </p>
               <dl className="mt-3 space-y-1 text-xs text-ink-body">
                 <div className="flex justify-between gap-2">
-                  <dt className="text-ink-faint">Included cheques</dt>
+                  <dt className="text-ink-faint">{t('Included cheques')}</dt>
                   <dd className="nums font-medium">{whole(plan.includedChecks)} / month</dd>
                 </div>
                 <div className="flex justify-between gap-2">

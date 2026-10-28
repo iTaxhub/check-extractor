@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Button, GlassCard, GlassPanel, buttonVariants } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { useSpelling } from '@/hooks/useSpelling';
 import type { BatchPayload } from '@/lib/batch-state';
 import { advanceStep, loadBatch } from '@/lib/reconcile-client';
 
@@ -45,6 +46,7 @@ export default function MatchProgress({
   onAdvanced,
   onBlocked,
 }: MatchProgressProps) {
+  const t = useSpelling();
   const [error, setError] = useState<string | null>(null);
   const [stalled, setStalled] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -125,7 +127,7 @@ export default function MatchProgress({
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="Cheques matched"
+        aria-label={t('Cheques matched')}
       >
         <div
           className="absolute inset-y-0 left-0 rounded-pill bg-brand-dark transition-[width] duration-700 ease-settle"
@@ -134,8 +136,7 @@ export default function MatchProgress({
       </div>
 
       <p className="text-xs text-ink-faint">
-        <span className="nums">{done}</span> of <span className="nums">{total}</span> cheques
-        matched
+        <span className="nums">{done}</span> of <span className="nums">{total}</span> {t('cheques matched')}
       </p>
 
       {stalled ? (
