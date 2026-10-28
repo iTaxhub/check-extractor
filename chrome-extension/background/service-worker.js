@@ -1168,6 +1168,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           log('LOGOUT');
           await resetAccountCaches();
           await clearSessionAndNotify();
+          // Tell open QB tabs to drop any Kyriq highlights/badges now, not on refresh.
+          chrome.tabs.query({ url: 'https://*.intuit.com/*' }).then(tabs => {
+            for (const tab of tabs) if (tab.id != null) chrome.tabs.sendMessage(tab.id, { type: 'KYRIQ_LOGGED_OUT' }).catch(() => {});
+          }).catch(() => {});
           return { success: true };
         }
         case 'GET_SESSION': {
@@ -2399,10 +2403,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           // (2) Approved cheques read live from the database, so approvals made in
           //     the web app reach QB Reconcile too. _swChecksCache only refreshed when
           //     the side panel reloaded, so app approvals were silently missed.
+          // Logged out: nothing to tick, and the page must show no Kyriq UI.
           const s = await getSession();
-          if (!s) return { approved: Object.values(localMap) };
+          if (!s) return { approved: [], loggedIn: false };
           const tenantId = await getTenantId(s.user.id).catch(() => null);
-          if (!tenantId) return { approved: Object.values(localMap) };
+          if (!tenantId) return { approved: Object.values(localMap), loggedIn: true };
 
           const [entries, approvedChecks] = await Promise.all([
             supabaseRequest(
@@ -2423,6 +2428,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const amt2 = v => (v == null || v === '' ? null : Math.abs(parseFloat(v)).toFixed(2));
 
           // Merge: any qb_entry that matches an approved check gets added to the map
+          const usedChecks = new Set();
           for (const e of (entries || [])) {
             if (!e.intuit_id) continue;
             const id = String(e.intuit_id);
@@ -2432,6 +2438,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             const amt = amt2(e.amount);
             const matched = (approvedByNum[num] || []).find(c => !amt || !amt2(c.amount) || amt2(c.amount) === amt);
             if (matched) {
+              usedChecks.add(matched);
               localMap[id] = {
                 intuit_id: id,
                 txn_type: e.qb_type || 'Purchase',
@@ -2445,7 +2452,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
           }
 
-          return { approved: Object.values(localMap) };
+          // Approvals made in the web app go through matches/qb_transactions,
+          // not qb_entries (comparison-page data, often never synced). Without
+          // this, an approved cheque with no qb_entries row never reached the
+          // page ("0 approved"). The content script matches these by
+          // ref no. + amount against the reconcile rows.
+          const localNums = new Set(Object.values(localMap).map(t => String(t.doc_number || '').replace(/^0+/, '')));
+          for (const c of (approvedChecks || [])) {
+            const num = String(c.check_number || '').replace(/^0+/, '');
+            if (!num || usedChecks.has(c) || localNums.has(num)) continue;
+            localMap['chk:' + num + ':' + amt2(c.amount)] = {
+              intuit_id: null,
+              txn_type: null,
+              doc_number: num,
+              amount: c.amount != null && c.amount !== '' ? parseFloat(c.amount) : null,
+              payee: null,
+              txn_date: c.check_date || null,
+              account: null,
+              approved_at: c.check_date || null,
+            };
+          }
+
+          return { approved: Object.values(localMap), loggedIn: true };
         }
 
         // ── Return the matched Kyriq check for a given QB txnId (used by Smart Fill) ──

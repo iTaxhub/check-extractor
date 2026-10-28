@@ -237,16 +237,16 @@
         Discrepancies <span class="chip-n" id="att-discrepancy">0</span>
       </button>
       <button class="attention-chip chip-nomatch" data-attention="unmatched">
-        No match <span class="chip-n" id="att-unmatched">0</span>
+        Missing in QB <span class="chip-n" id="att-unmatched">0</span>
       </button>
     </div>
     <div class="filter-row">
       <button class="pill active" data-status="all">All <span class="cnt" id="cnt-all">0</span></button>
-      <button class="pill" data-status="pending">Pending <span class="cnt" id="cnt-pending">0</span></button>
+      <button class="pill" data-status="discrepancy">Mismatch <span class="cnt" id="cnt-discrepancy">0</span></button>
+      <button class="pill" data-status="unmatched">Missing in QB <span class="cnt" id="cnt-unmatched">0</span></button>
+      <button class="pill" data-status="missing_checks">Missing in checks <span class="cnt" id="cnt-missing_checks">0</span></button>
       <button class="pill" data-status="matched">Matched <span class="cnt" id="cnt-matched">0</span></button>
-      <button class="pill" data-status="discrepancy">Differences <span class="cnt" id="cnt-discrepancy">0</span></button>
-      <button class="pill" data-status="unmatched">No match <span class="cnt" id="cnt-unmatched">0</span></button>
-      <button class="pill" data-status="approved">Done <span class="cnt" id="cnt-approved">0</span></button>
+      <button class="pill" data-status="approved">Cleared <span class="cnt" id="cnt-approved">0</span></button>
     </div>
     <div class="bulk-bar">
       <button id="btn-bulk-approve" class="btn-sm btn-primary" disabled>Approve all matched (0)</button>
