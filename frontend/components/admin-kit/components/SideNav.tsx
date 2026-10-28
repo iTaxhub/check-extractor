@@ -47,7 +47,7 @@ export function SideNav({ collapsed, onToggle }: SideNavProps) {
         {!collapsed && (
           <span className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/kyriq-logo-white.svg" alt="Kyriq" height={24} width={58} className="h-6 w-auto" />
+            <img src="/brand/kyriq-logo.svg" alt="Kyriq" height={24} width={58} className="h-7 w-auto rounded-md bg-white px-2 py-1" />
             <span className="text-xs font-semibold uppercase tracking-wide text-brand-light">Admin</span>
           </span>
         )}

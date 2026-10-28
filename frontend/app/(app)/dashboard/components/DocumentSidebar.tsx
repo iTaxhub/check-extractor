@@ -4,6 +4,7 @@ import { FileText, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react
 import { Badge, GlassCard, STATUS_TONES, type StatusKey } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { KIND_LABEL, summarizeKinds, type DocumentKind, type PageKind } from '@/lib/document-kind';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface Job {
   job_id: string;
@@ -62,6 +63,7 @@ export default function DocumentSidebar({
   statusFilters,
   onToggleStatusFilter,
 }: Props) {
+  const t = useSpelling();
   const statusCounts = jobs.reduce((acc, job) => {
     acc[job.status] = (acc[job.status] || 0) + 1;
     return acc;
@@ -128,7 +130,7 @@ export default function DocumentSidebar({
                       size="sm"
                       className="px-1.5 py-0 text-[9px]"
                     >
-                      {summarizeKinds(job.page_kinds, job.total_checks) ?? KIND_LABEL[job.doc_kind]}
+                      {t(summarizeKinds(job.page_kinds, job.total_checks) ?? KIND_LABEL[job.doc_kind])}
                     </Badge>
                   ) : null}
                   <StatusIcon status={job.status} />

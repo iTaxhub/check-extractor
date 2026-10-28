@@ -40,6 +40,7 @@ import {
   NO_TWEEN,
   TOOLTIP_PROPS,
 } from '@/lib/charts';
+import { useSpelling } from '@/hooks/useSpelling';
 
 // ── Types ──────────────────────────────────────────────────
 interface JobCheck {
@@ -118,6 +119,7 @@ const rateFill = (rate: number) =>
   rate > 80 ? 'bg-success' : rate > 50 ? 'bg-warning' : 'bg-error';
 
 export default function FirmDashboardPage() {
+  const t = useSpelling();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -482,7 +484,7 @@ export default function FirmDashboardPage() {
             <Badge tone={(syncResult?.error || uploadResult?.error) ? 'error' : 'success'} size="sm">
               {syncResult?.error || uploadResult?.error || (
                 syncResult ? `${syncResult.count} entries synced` :
-                uploadResult ? `${uploadResult.count} cheques imported${uploadResult.total ? ` (${uploadResult.total} total)` : ''}` : ''
+                uploadResult ? t(`${uploadResult.count} cheques imported${uploadResult.total ? ` (${uploadResult.total} total)` : ''}`) : ''
               )}
             </Badge>
           )}
@@ -510,7 +512,7 @@ export default function FirmDashboardPage() {
         />
         <KpiTile
           icon={<Layers size={16} />}
-          label="Total Cheques"
+          label={t('Total Cheques')}
           value={processing.declaredChecks}
           caption={`${processing.totalPages} pages scanned`}
         />
@@ -574,7 +576,7 @@ export default function FirmDashboardPage() {
                   {filteredClients.length === 0 ? (
                     <Tr>
                       <Td colSpan={7} className="py-8 text-center text-ink-faint">
-                        No completed documents yet. Upload and process cheques to see data here.
+                        {t('No completed documents yet. Upload and process cheques to see data here.')}
                       </Td>
                     </Tr>
                   ) : (
@@ -689,7 +691,7 @@ export default function FirmDashboardPage() {
                     <div key={method}>
                       <div className="mb-1 flex items-center justify-between">
                         <span className="text-sm font-medium capitalize text-ink-strong">{method}</span>
-                        <span className="nums text-xs text-ink-faint">{count} cheques &middot; {pct}%</span>
+                        <span className="nums text-xs text-ink-faint">{count} {t('cheques')} &middot; {pct}%</span>
                       </div>
                       <div className={`glass-track h-2 overflow-hidden rounded-full`}>
                         <div

@@ -38,6 +38,7 @@ import {
   friendlyError,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { useSpelling } from '@/hooks/useSpelling';
 
 // ── Types ──────────────────────────────────────────────────
 interface CheckInfo {
@@ -196,6 +197,7 @@ export default function UploadPage() {
 }
 
 function UploadPageInner() {
+  const t = useSpelling();
   const router = useRouter();
   /**
    * Step 1 of /reconcile sends the user here as `/upload?batch=<id>`, and
@@ -810,7 +812,7 @@ function UploadPageInner() {
           <AlertCircle size={16} className="mt-0.5 shrink-0 text-warning-text" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-warning-text">Processing is paused</p>
-            <p className="mt-0.5 text-sm text-ink-body">{blocked}</p>
+            <p className="mt-0.5 text-sm text-ink-body">{t(blocked)}</p>
           </div>
           <Button
             size="sm"
@@ -855,8 +857,8 @@ function UploadPageInner() {
               <p className="font-semibold text-ink-strong">Scan guidance</p>
               <ul className="list-disc space-y-1 pl-4 text-xs">
                 <li>Flat, upright scans read best</li>
-                <li>One PDF can hold many pages and cheques</li>
-                <li>Bank statements with cheque images work too</li>
+                <li>{t('One PDF can hold many pages and cheques')}</li>
+                <li>{t('Bank statements with cheque images work too')}</li>
               </ul>
             </GlassPanel>
           </div>
@@ -876,12 +878,12 @@ function UploadPageInner() {
                   if (entry.status === 'error') return { state: 'error', detail: entry.error || 'Failed' };
                   if (entry.status === 'uploading') {
                     const messages = progressMessages[entry.id] || [];
-                    return { state: 'working', detail: messages[messages.length - 1] || 'Analyzing…' };
+                    return { state: 'working', detail: t(messages[messages.length - 1] || 'Analyzing…') };
                   }
                   if (entry.result) {
                     return {
                       state: 'done',
-                      detail: `${entry.result.total_pages} pages, ${entry.result.total_checks} cheques found`,
+                      detail: t(`${entry.result.total_pages} pages, ${entry.result.total_checks} cheques found`),
                     };
                   }
                   return { state: 'done' };
@@ -1002,7 +1004,7 @@ function UploadPageInner() {
                 <p className="text-sm text-ink-body">
                   This file has already been uploaded. Using existing job{' '}
                   <span className="nums font-mono font-medium text-ink-strong">{analyzeResult.job_id}</span>.
-                  {' '}Auto-extracting cheques in the background…
+                  {' '}{t('Auto-extracting cheques in the background…')}
                 </p>
               </div>
             </GlassPanel>
@@ -1018,7 +1020,7 @@ function UploadPageInner() {
             />
             <KpiTile
               tone="success"
-              label="Cheques"
+              label={t('Cheques')}
               value={totalChecks}
               icon={<ImageIcon size={16} aria-hidden />}
             />
@@ -1098,7 +1100,7 @@ function UploadPageInner() {
                       <span className="text-xs font-medium text-ink-strong">Page {page.page_number}</span>
                       {page.checks_on_page > 0 && (
                         <Badge tone="success" size="sm" className="nums">
-                          {page.checks_on_page} cheque{page.checks_on_page > 1 ? 's' : ''}
+                          {page.checks_on_page} {t(page.checks_on_page > 1 ? 'cheques' : 'cheque')}
                         </Badge>
                       )}
                     </div>
@@ -1122,7 +1124,7 @@ function UploadPageInner() {
                     <Tr>
                       <Th>Preview</Th>
                       <Th>Page</Th>
-                      <Th numeric>Cheques</Th>
+                      <Th numeric>{t('Cheques')}</Th>
                       <Th numeric>Dimensions</Th>
                       <Th className="text-center">View</Th>
                     </Tr>
@@ -1172,7 +1174,7 @@ function UploadPageInner() {
           {analyzeResult.checks.length > 0 && (
             <div className="space-y-3">
               <h2 className="font-heading text-sm font-semibold text-ink-strong">
-                Detected Cheques ({analyzeResult.checks.length})
+                {t('Detected Cheques')} ({analyzeResult.checks.length})
               </h2>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 {analyzeResult.checks.map((check, idx) => (
@@ -1186,7 +1188,7 @@ function UploadPageInner() {
                     <div className="relative aspect-[2/1] overflow-hidden bg-surface-sunken">
                       <Thumb
                         src={`/api/check-image/${analyzeResult.job_id}/${check.check_id}?w=480`}
-                        alt={`Cheque ${check.check_id}`}
+                        alt={`${t('Cheque')} ${check.check_id}`}
                         className="absolute inset-0"
                       />
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-quick ease-settle group-hover:bg-ink-strong/5 group-hover:opacity-100">
@@ -1199,7 +1201,7 @@ function UploadPageInner() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between p-2.5">
-                      <span className="nums text-xs font-medium text-ink-strong">Cheque #{idx + 1}</span>
+                      <span className="nums text-xs font-medium text-ink-strong">{t('Cheque')} #{idx + 1}</span>
                       <span className="nums text-xs text-ink-faint">Page {check.page}</span>
                     </div>
                   </GlassCard>
@@ -1223,8 +1225,8 @@ function UploadPageInner() {
                     <div className="flex flex-1 items-center justify-between text-xs text-ink-body">
                       <span>
                         {pg.checks_on_page > 0
-                          ? `${pg.checks_on_page} cheque${pg.checks_on_page > 1 ? 's' : ''} detected`
-                          : 'No cheques detected'}
+                          ? t(`${pg.checks_on_page} cheque${pg.checks_on_page > 1 ? 's' : ''} detected`)
+                          : t('No cheques detected')}
                       </span>
                       {pg.width > 0 && (
                         <span className="nums font-mono text-ink-faint">
@@ -1267,7 +1269,7 @@ function UploadPageInner() {
               <Dialog
                 open
                 size="full"
-                title={`Cheque #${idx + 1} of ${chks.length}`}
+                title={t(`Cheque #${idx + 1} of ${chks.length}`)}
                 onClose={() => { setSelectedCheck(null); setZoom(1); }}
                 footer={
                   <div className="flex flex-1 items-center justify-between text-xs text-ink-body">
@@ -1289,7 +1291,7 @@ function UploadPageInner() {
                 <div className="scroll-region mt-3 flex max-h-[68vh] items-center justify-center rounded-card bg-surface-sunken p-4">
                   <img
                     src={`/api/check-image/${analyzeResult.job_id}/${check.check_id}`}
-                    alt={`Cheque ${check.check_id}`}
+                    alt={`${t('Cheque')} ${check.check_id}`}
                     className="rounded-input shadow-glass transition-transform duration-settle ease-settle"
                     style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', maxWidth: '100%', maxHeight: '58vh' }}
                   />
@@ -1309,7 +1311,7 @@ function UploadPageInner() {
             <div className="min-w-0">
               <h1 className="font-heading text-2xl font-semibold text-ink-strong">Configure extraction</h1>
               <p className="nums mt-0.5 truncate text-sm text-ink-body">
-                {analyzeResult.pdf_name}, {totalPages} pages, {totalChecks} cheques
+                {analyzeResult.pdf_name}, {totalPages} pages, {totalChecks} {t('cheques')}
               </p>
             </div>
             <Button
@@ -1373,8 +1375,8 @@ function UploadPageInner() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs font-medium text-ink-strong">{opt.title}</p>
-                        <p className="nums text-[10px] text-ink-faint">{opt.hint}</p>
+                        <p className="text-xs font-medium text-ink-strong">{t(opt.title)}</p>
+                        <p className="nums text-[10px] text-ink-faint">{t(opt.hint)}</p>
                       </div>
                       <span
                         aria-hidden
@@ -1510,9 +1512,9 @@ function UploadPageInner() {
                 : 'This document has already been uploaded.'}
             </p>
             <p className="text-sm text-ink-body">
-              Processing it again will re-read every cheque, and{' '}
+              {t('Processing it again will re-read every cheque, and')}{' '}
               <strong className="font-semibold text-ink-strong">
-                those cheques count against this month&apos;s total
+                {t("those cheques count against this month's total")}
               </strong>
               . Skip it to leave your existing results untouched.
             </p>

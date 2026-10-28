@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { summarizeKinds } from '@/lib/document-kind';
 import StatementPanel from './StatementPanel';
 import { hasExtractedValues } from '@/lib/cheque-values';
+import { useSpelling } from '@/hooks/useSpelling';
 
 type ViewMode = 'card' | 'table';
 
@@ -82,6 +83,7 @@ function confTone(conf: number): 'success' | 'warning' | 'error' {
 }
 
 export default function ProcessingPage() {
+  const t = useSpelling();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -209,7 +211,7 @@ export default function ProcessingPage() {
             {jobData?.doc_format && <Badge tone="brand" size="sm">{jobData.doc_format}</Badge>}
             {(() => {
               const summary = summarizeKinds(jobData?.page_kinds, jobData?.total_checks ?? 0);
-              return summary ? <Badge tone="outline" size="sm">{summary}</Badge> : null;
+              return summary ? <Badge tone="outline" size="sm">{t(summary)}</Badge> : null;
             })()}
           </p>
         </div>
@@ -221,7 +223,7 @@ export default function ProcessingPage() {
               icon={<RefreshCw size={16} />}
               loading={reExtracting}
               onClick={() => handleReExtract(missingCount === 0)}
-              title={missingCount > 0 ? `Re-run extraction for ${missingCount} missing cheques` : 'Re-run extraction for all cheques'}
+              title={t(missingCount > 0 ? `Re-run extraction for ${missingCount} missing cheques` : 'Re-run extraction for all cheques')}
             >
               {missingCount > 0 ? `Re-run (${missingCount} missing)` : 'Re-run extraction'}
             </Button>
@@ -287,12 +289,12 @@ export default function ProcessingPage() {
               <div className="flex min-w-0 items-center gap-2.5">
                 <Loader2 className="shrink-0 animate-spin text-brand-dark" size={16} aria-hidden />
                 <p className="text-sm font-semibold text-ink-strong">
-                  {STAGES[stageIndex]?.label ?? 'Processing'}
+                  {t(STAGES[stageIndex]?.label ?? 'Processing')}
                 </p>
               </div>
               <p className="nums text-sm text-ink-soft">
                 {measured
-                  ? `${processedCount} of ${processingCount} cheques processed`
+                  ? t(`${processedCount} of ${processingCount} cheques processed`)
                   : 'Preparing extraction'}
                 {jobData && jobData.total_pages > 0 ? ` · ${jobData.total_pages} pages` : ''}
               </p>
@@ -303,7 +305,7 @@ export default function ProcessingPage() {
               <div
                 className="relative h-1.5 w-full overflow-hidden rounded-pill bg-surface-sunken"
                 role="progressbar"
-                aria-label="Cheques processed"
+                aria-label={t('Cheques processed')}
                 aria-valuenow={pct}
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -330,7 +332,7 @@ export default function ProcessingPage() {
                     )}
                   >
                     {isDone ? <CheckCircle size={12} aria-hidden /> : <span className="nums">{index + 1}.</span>}
-                    {stage.label}
+                    {t(stage.label)}
                   </li>
                 );
               })}
@@ -347,7 +349,7 @@ export default function ProcessingPage() {
       {/* ── Cheque image previews (show during processing too) ── */}
       {!isComplete && checks.length > 0 && (
         <GlassCard padding="lg">
-          <GlassCardTitle className="mb-4">Detected cheques ({checks.length})</GlassCardTitle>
+          <GlassCardTitle className="mb-4">{t('Detected cheques')} ({checks.length})</GlassCardTitle>
           {/* One blurred container; the tiles inside are GlassPanels with no
               blur of their own, so the cost does not scale with cheque count. */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
@@ -368,7 +370,7 @@ export default function ProcessingPage() {
                 <div className="relative aspect-[16/9] overflow-hidden bg-surface-sunken">
                   <img
                     src={`/api/check-image/${jobId}/${check.check_id}?w=480`}
-                    alt={`Cheque ${idx + 1}`}
+                    alt={t(`Cheque ${idx + 1}`)}
                     loading="lazy"
                     decoding="async"
                     className="h-full w-full object-contain"
@@ -381,36 +383,36 @@ export default function ProcessingPage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between px-2 py-2">
-                  <span className="text-xs font-medium text-ink-body">Cheque {idx + 1}</span>
+                  <span className="text-xs font-medium text-ink-body">{t('Cheque')} {idx + 1}</span>
                   <span className="nums text-xs text-ink-faint">Page {check.page}</span>
                 </div>
               </GlassPanel>
             ))}
           </div>
           {shown && (
-            <GlassPanel radius="tile" padding="none" className="self-start overflow-hidden" aria-label="Cheque preview">
+            <GlassPanel radius="tile" padding="none" className="self-start overflow-hidden" aria-label={t('Cheque preview')}>
               <div className="aspect-[16/9] overflow-hidden bg-surface-sunken">
                 <img
                   key={shown.check_id}
                   src={`/api/check-image/${jobId}/${shown.check_id}`}
-                  alt={`Cheque ${shownIdx + 1}`}
+                  alt={t(`Cheque ${shownIdx + 1}`)}
                   className="h-full w-full object-contain"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               </div>
               <div className="p-4">
-                <p className="mb-3 text-sm font-medium text-ink-strong">Cheque {shownIdx + 1}</p>
+                <p className="mb-3 text-sm font-medium text-ink-strong">{t('Cheque')} {shownIdx + 1}</p>
                 {shownExt ? (
                   <dl className="space-y-2 text-sm">
                     {PREVIEW_FIELDS.map((f) => (
                       <div key={f} className="flex justify-between gap-3">
-                        <dt className="text-ink-faint">{PREVIEW_LABELS[f]}</dt>
+                        <dt className="text-ink-faint">{t(PREVIEW_LABELS[f])}</dt>
                         <dd className="nums truncate text-right text-ink-body">{extVal(shownExt, f) || '-'}</dd>
                       </div>
                     ))}
                   </dl>
                 ) : (
-                  <p className="text-sm text-ink-faint">Fields appear once extraction finishes for this cheque.</p>
+                  <p className="text-sm text-ink-faint">{t('Fields appear once extraction finishes for this cheque.')}</p>
                 )}
               </div>
             </GlassPanel>
@@ -427,7 +429,7 @@ export default function ProcessingPage() {
           {/* View mode toggle + header */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-heading text-lg font-semibold text-ink-strong">
-              Extracted cheques ({checks.length})
+              {t('Extracted cheques')} ({checks.length})
             </h2>
             <div className="flex items-center gap-3">
               <p className="hidden text-xs text-ink-faint md:block">Click to view details. Arrow keys to navigate.</p>
@@ -463,7 +465,7 @@ export default function ProcessingPage() {
                       <div className="relative aspect-[16/9] overflow-hidden bg-surface-sunken">
                         <img
                           src={`/api/check-image/${jobId}/${check.check_id}?w=480`}
-                          alt={`Cheque ${idx + 1}`}
+                          alt={t(`Cheque ${idx + 1}`)}
                           loading="lazy"
                           decoding="async"
                           className="h-full w-full object-contain"
@@ -531,7 +533,7 @@ export default function ProcessingPage() {
                             <div className="h-12 w-20 overflow-hidden rounded-md bg-surface-sunken">
                               <img
                                 src={`/api/check-image/${jobId}/${check.check_id}?w=240`}
-                                alt={`Cheque ${idx + 1}`}
+                                alt={t(`Cheque ${idx + 1}`)}
                                 loading="lazy"
                                 decoding="async"
                                 className="h-full w-full object-contain"
@@ -576,7 +578,7 @@ export default function ProcessingPage() {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="nums text-ink-body">
-                        {mp.checks_processed} / {mp.checks_total} cheques processed
+                        {mp.checks_processed} / {mp.checks_total} {t('cheques processed')}
                       </span>
                       <span
                         className={cn(
@@ -601,11 +603,11 @@ export default function ProcessingPage() {
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <GlassCardTitle>Export results</GlassCardTitle>
-                <p className="mt-0.5 text-sm text-ink-body">Download extracted cheque data in your preferred accounting format</p>
+                <p className="mt-0.5 text-sm text-ink-body">{t('Download extracted cheque data in your preferred accounting format')}</p>
               </div>
               <div className="flex items-center gap-2 text-sm text-ink-faint">
                 <CheckCircle size={16} className="text-success" />
-                <span className="nums">{checks.length} cheque{checks.length !== 1 ? 's' : ''} ready</span>
+                <span className="nums">{checks.length} {t(checks.length !== 1 ? 'cheques' : 'cheque')} ready</span>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -639,8 +641,8 @@ export default function ProcessingPage() {
       {isComplete && checks.length === 0 && !error && (
         <EmptyState
           icon={<ImageIcon />}
-          title="No cheques found"
-          description="Kyriq didn’t detect any cheques in this document. If it does contain cheques, try a clearer scan or run extraction again."
+          title={t('No cheques found')}
+          description={t('Kyriq didn’t detect any cheques in this document. If it does contain cheques, try a clearer scan or run extraction again.')}
           action={
             <>
               <Button size="sm" icon={<RefreshCw size={14} />} loading={reExtracting} onClick={() => handleReExtract(true)}>Run again</Button>
@@ -658,7 +660,7 @@ export default function ProcessingPage() {
           open
           onClose={() => { setSelectedIdx(null); resetView(); }}
           size="full"
-          title={`Cheque ${selectedIdx + 1} of ${checks.length}`}
+          title={t(`Cheque ${selectedIdx + 1} of ${checks.length}`)}
           description={`${selected.check_id} • Page ${selected.page}`}
           className="flex max-h-[92vh] flex-col"
         >
@@ -690,7 +692,7 @@ export default function ProcessingPage() {
               </div>
               <div className="flex items-center gap-1">
                 <IconButton
-                  aria-label="Previous cheque"
+                  aria-label={t('Previous cheque')}
                   size="icon-sm"
                   disabled={selectedIdx === 0}
                   onClick={() => { setSelectedIdx(Math.max(0, selectedIdx - 1)); resetView(); }}
@@ -699,7 +701,7 @@ export default function ProcessingPage() {
                 </IconButton>
                 <span className="nums text-sm text-ink-faint">{selectedIdx + 1}/{checks.length}</span>
                 <IconButton
-                  aria-label="Next cheque"
+                  aria-label={t('Next cheque')}
                   size="icon-sm"
                   disabled={selectedIdx === checks.length - 1}
                   onClick={() => { setSelectedIdx(Math.min(checks.length - 1, selectedIdx + 1)); resetView(); }}
@@ -804,7 +806,7 @@ export default function ProcessingPage() {
 
                 <div className="mt-6 border-t border-glass-hairline pt-4 text-xs text-ink-faint">
                   {selected.width > 0 && <p className="nums">Dimensions: {selected.width} x {selected.height}px</p>}
-                  <p className="mt-1">Use arrow keys to navigate between cheques</p>
+                  <p className="mt-1">{t('Use arrow keys to navigate between cheques')}</p>
                 </div>
               </div>
             </div>

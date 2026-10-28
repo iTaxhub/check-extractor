@@ -1235,7 +1235,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               `qb_connections?tenant_id=eq.${tenantId}&select=id,realm_id,company_name,is_active,connected_at&order=connected_at.asc`
             );
             log('GET_CONNECTIONS result', { count: conns?.length || 0, tenantId });
-            return { connections: conns || [] };
+            // country (migration 051) drives check/cheque; fetched apart so a
+            // database without the column still lists connections.
+            const countries = await supabaseRequest(
+              `qb_connections?tenant_id=eq.${tenantId}&select=realm_id,country`
+            ).catch(() => []);
+            const byRealm = Object.fromEntries((countries || []).map(c => [c.realm_id, c.country]));
+            return { connections: (conns || []).map(c => ({ ...c, country: byRealm[c.realm_id] || null })) };
           } catch (connErr) {
             logErr('GET_CONNECTIONS: Supabase qb_connections query failed', connErr);
             return { connections: [], error: connErr.message };
@@ -1338,12 +1344,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const s = await getSession();
           if (!s) return { error: 'Not logged in' };
           try {
-            const tid = await getTenantId(s.user.id);
-            await supabaseRequest(`qb_connections?tenant_id=eq.${tid}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ is_active: false }),
+            // The app route revokes the grant and keeps qb_connections and the
+            // legacy integrations row in step; a local is_active flip did neither,
+            // so the next login showed QuickBooks connected again.
+            const apiHost = (getBootstrapConfig().frontendUrl || '').replace(/\/$/, '');
+            const res = await fetch(`${apiHost}/api/qbo/disconnect`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+              body: JSON.stringify(msg.realmId ? { realmId: msg.realmId } : {}),
             });
-            log('DISCONNECT_QB: all connections marked inactive', { tenantId: tid });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) return { error: body.error || `Disconnect failed (${res.status})` };
+            log('DISCONNECT_QB: disconnected', { realmId: msg.realmId || 'all' });
             return { success: true };
           } catch (e) {
             logErr('DISCONNECT_QB failed', e);
@@ -2384,32 +2396,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             logErr('GET_KYRIQ_APPROVED: storage read failed, using empty map', storageErr);
           }
 
-          // (2) Pull qb_entries for the active tenant so we can cross-ref with cached checks
+          // (2) Approved cheques read live from the database, so approvals made in
+          //     the web app reach QB Reconcile too. _swChecksCache only refreshed when
+          //     the side panel reloaded, so app approvals were silently missed.
           const s = await getSession();
           if (!s) return { approved: Object.values(localMap) };
           const tenantId = await getTenantId(s.user.id).catch(() => null);
           if (!tenantId) return { approved: Object.values(localMap) };
 
-          const [entries, checksRes] = await Promise.all([
+          const [entries, approvedChecks] = await Promise.all([
             supabaseRequest(
               `qb_entries?tenant_id=eq.${tenantId}&select=id,intuit_id,check_number,date,amount,payee,qb_type&limit=5000`
             ).catch(() => []),
-            // Re-use cached checks if available
-            Promise.resolve(_swChecksCache || []),
+            supabaseRequest(
+              `checks?tenant_id=eq.${tenantId}&status=eq.approved&select=check_number,amount,check_date&limit=5000`
+            ).catch(() => []),
           ]);
 
-          const approvedChecks = checksRes.filter(c => c.status === 'approved');
-
-          // Build lookup by check_number and amount for fast matching
+          // Match on cheque number, and on amount too when both sides have one.
+          // No amount-only fallback: two cheques can share an amount.
           const approvedByNum = {};
-          const approvedByAmt = {};
-          for (const c of approvedChecks) {
-            if (c.check_number) approvedByNum[String(c.check_number).replace(/^0+/, '')] = c;
-            if (c.amount) {
-              const key = Math.abs(parseFloat(c.amount)).toFixed(2);
-              if (!approvedByAmt[key]) approvedByAmt[key] = c;
-            }
+          for (const c of (approvedChecks || [])) {
+            const num = String(c.check_number || '').replace(/^0+/, '');
+            if (num) (approvedByNum[num] ||= []).push(c);
           }
+          const amt2 = v => (v == null || v === '' ? null : Math.abs(parseFloat(v)).toFixed(2));
 
           // Merge: any qb_entry that matches an approved check gets added to the map
           for (const e of (entries || [])) {
@@ -2418,9 +2429,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             if (localMap[id]) continue; // already have it from local store
 
             const num = String(e.check_number || '').replace(/^0+/, '');
-            const amt = e.amount != null ? Math.abs(parseFloat(e.amount)).toFixed(2) : null;
-
-            const matched = approvedByNum[num] || (amt ? approvedByAmt[amt] : null);
+            const amt = amt2(e.amount);
+            const matched = (approvedByNum[num] || []).find(c => !amt || !amt2(c.amount) || amt2(c.amount) === amt);
             if (matched) {
               localMap[id] = {
                 intuit_id: id,
@@ -2429,7 +2439,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 amount: parseFloat(e.amount) || null,
                 payee: e.payee || null,
                 txn_date: e.date || null,
-                account: e.account || null,
+                account: null,
                 approved_at: matched.check_date || null,
               };
             }

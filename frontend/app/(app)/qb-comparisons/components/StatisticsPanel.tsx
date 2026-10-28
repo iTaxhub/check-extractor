@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface StatisticsPanelProps {
   total: number;
@@ -22,11 +23,12 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
   filterStatus,
   onSelectStatus,
 }) => {
+  const t = useSpelling();
   const tabs = [
     { status: 'all', label: 'All', value: total },
     { status: 'mismatch', label: 'Mismatch', value: mismatched },
     { status: 'missing-in-qb', label: 'Missing in QB', value: missingInQB },
-    { status: 'missing-in-extraction', label: 'Missing in cheques', value: missingInExtraction },
+    { status: 'missing-in-extraction', label: t('Missing in cheques'), value: missingInExtraction },
     { status: 'matched', label: 'Matched', value: matched },
   ];
 

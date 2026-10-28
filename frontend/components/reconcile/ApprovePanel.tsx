@@ -14,6 +14,7 @@ import {
 import { Badge, Button, GlassCard, GlassCardTitle, GlassPanel } from '@/components/ui';
 import type { BatchPayload } from '@/lib/batch-state';
 import { advanceStep } from '@/lib/reconcile-client';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * Step 4, Approve & Clear — the last step of the run.
@@ -47,6 +48,7 @@ export interface ApprovePanelProps {
 }
 
 export default function ApprovePanel({ batch, onBatch }: ApprovePanelProps) {
+  const t = useSpelling();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<string | null>(null);
@@ -126,7 +128,7 @@ export default function ApprovePanel({ batch, onBatch }: ApprovePanelProps) {
         <Fact icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden />} label="Period">
           {batch.summary.period}
         </Fact>
-        <Fact icon={<FileCheck2 className="h-3.5 w-3.5" aria-hidden />} label="Cheques">
+        <Fact icon={<FileCheck2 className="h-3.5 w-3.5" aria-hidden />} label={t('Cheques')}>
           <span className="nums">{c.checks_total}</span> from{' '}
           <span className="nums">{c.jobs_complete}</span> document
           {c.jobs_complete === 1 ? '' : 's'}

@@ -58,6 +58,18 @@ export default async function handler(
       }
     } catch { /* column absent, fall back to 'connected' below */ }
 
+    // Same tolerance for migration 051's country, which picks check/cheque in the UI.
+    const countryByRealm = new Map<string, string>();
+    try {
+      const { data: countries } = await supabase
+        .from('qb_connections')
+        .select('realm_id, country')
+        .eq('tenant_id', tenantId);
+      for (const row of countries || []) {
+        if (row?.realm_id && row.country) countryByRealm.set(row.realm_id, row.country);
+      }
+    } catch { /* column absent, the UI falls back to the browser locale */ }
+
     const accountsByRealm = new Map<string, number>();
     try {
       const { data: accts } = await supabase
@@ -91,6 +103,7 @@ export default async function handler(
           // no recorded health has not failed — it has not been checked.
           status: statusByRealm.get(conn.realm_id) || 'connected',
           accountCount: accountsByRealm.get(conn.realm_id) || 0,
+          country: countryByRealm.get(conn.realm_id) || null,
         };
       })
     );

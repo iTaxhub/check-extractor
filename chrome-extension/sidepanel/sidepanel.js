@@ -470,7 +470,52 @@ function openSidepanelPort() {
 }
 
 // ── Init ──────────────────────────────────────────────────────
+// ── check vs cheque ───────────────────────────────────────────
+// Same rule as the app (frontend/lib/spelling.ts): the active QuickBooks
+// company's country, else the browser's region, else "check".
+// ponytail: a word swap over every text node, safe because the panel uses
+// check/cheque as a noun; a verb "Check …" needs the lookahead exclusions.
+const CHEQUE_COUNTRIES = ['CA', 'GB', 'UK', 'AU', 'NZ', 'IE', 'IN', 'ZA', 'CANADA', 'UNITED KINGDOM', 'AUSTRALIA', 'NEW ZEALAND', 'IRELAND', 'INDIA', 'SOUTH AFRICA'];
+let _spelling = null;
+function resolveSpelling(qbCountry) {
+  const c = (qbCountry || '').trim()
+    || (/[-_]([a-z]{2})\b/i.exec(navigator.language || '')?.[1] || '');
+  return CHEQUE_COUNTRIES.includes(c.toUpperCase()) ? 'cheque' : 'check';
+}
+function spellText(text) {
+  // The verb exclusions apply to the singular only: "Cheques this period" is a noun.
+  return text.replace(/\b([Cc])he(?:ck|que)(?:(s)\b|\b(?! Extractor| the\b| this\b| your\b| again\b))/g,
+    (_m, c, s) => c + (_spelling === 'cheque' ? 'heque' : 'heck') + (s || ''));
+}
+function respellNode(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => n.parentElement?.closest('script,style,textarea,input,#debug-panel') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+  });
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (!/che(?:ck|que)/i.test(n.nodeValue)) continue;
+    const next = spellText(n.nodeValue);
+    if (next !== n.nodeValue) n.nodeValue = next;
+  }
+}
+let _spellObserver = null;
+function setSpelling(qbCountry) {
+  const next = resolveSpelling(qbCountry);
+  if (next === _spelling) return;
+  _spelling = next;
+  respellNode(document.body);
+  if (!_spellObserver) {
+    _spellObserver = new MutationObserver(muts => {
+      for (const m of muts) {
+        if (m.type === 'characterData') respellNode(m.target.parentNode || m.target);
+        else m.addedNodes.forEach(n => respellNode(n.nodeType === 1 ? n : n.parentNode || n));
+      }
+    });
+    _spellObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+}
+
 async function init() {
+  setSpelling(null);
   dbg('Kyriq side panel init');
   let res = null;
   // Retry session fetch — SW may still be warming up
@@ -604,12 +649,13 @@ async function postLoginFlow() {
       hideLoading();
       showView('qb-connect');
     } else {
-      // Check if any connection is active; if none, warn visibly
-      const hasActive = connections.some(c => c.is_active);
-      if (!hasActive) {
-        dbg('No active QB connection — activating first available', 'warn');
-        await sendMsg({ type: 'SWITCH_COMPANY', realmId: connections[0].realm_id });
-        connections[0].is_active = true;
+      // Rows left inactive by a disconnect stay disconnected; never re-activate
+      // them behind the user's back.
+      if (!connections.some(c => c.is_active)) {
+        dbg('No active QB connection: showing connect screen', 'warn');
+        hideLoading();
+        showView('qb-connect');
+        return;
       }
       renderCompanySelect();
       showView('main');
@@ -724,6 +770,7 @@ function updateMatchesBanner(state, count) {
 }
 
 function renderCompanySelect() {
+  setSpelling(connections.find(c => c.is_active)?.country);
   const sel = $('#company-select');
   sel.innerHTML = '';
   connections.forEach(c => {
@@ -733,6 +780,10 @@ function renderCompanySelect() {
     opt.selected = c.is_active;
     sel.appendChild(opt);
   });
+  const add = document.createElement('option');
+  add.value = '__connect__';
+  add.textContent = '+ Connect another company…';
+  sel.appendChild(add);
 }
 
 // ── Matches ───────────────────────────────────────────────────
@@ -919,7 +970,7 @@ function renderMatches() {
   const bulkBtn = $('#btn-bulk-approve');
   if (bulkBtn) {
     const n = matches.filter(isCleanMatch).length;
-    bulkBtn.textContent = `Approve clean matches (${n})`;
+    bulkBtn.textContent = `Approve all matched (${n})`;
     bulkBtn.disabled = n === 0;
   }
 
@@ -2374,18 +2425,23 @@ function bindEvents() {
   // ── Disconnect QB (profile panel) ──
   $('#btn-qb-disconnect')?.addEventListener('click', async () => {
     hide('#profile-panel');
+    const active = connections.find(c => c.is_active);
+    const name = active?.company_name || 'this company';
+    if (!confirm(`Disconnect ${name} from Kyriq? You can connect it, or another company, again at any time.`)) return;
     dbg('Disconnecting QB...');
     showLoading('Disconnecting QuickBooks...');
-    const res = await sendMsg({ type: 'DISCONNECT_QB' });
+    const res = await sendMsg({ type: 'DISCONNECT_QB', realmId: active?.realm_id });
     hideLoading();
     if (res?.error) {
       dbg(`Disconnect QB error: ${res.error}`, 'error');
+      alert(`Could not disconnect QuickBooks: ${res.error}`);
       return;
     }
     connections = [];
     matches = [];
-    dbg('QB disconnected — returning to connect screen', 'info');
-    showView('qb-connect');
+    dbg(`${name} disconnected`, 'info');
+    // Another company may still be connected; postLoginFlow shows whichever applies.
+    postLoginFlow();
   });
 
   // ── Reconnect QB (company bar) ──
@@ -2520,6 +2576,12 @@ function bindEvents() {
   // ── Company switch ──
   $('#company-select').addEventListener('change', async (e) => {
     const realmId = e.target.value;
+    if (realmId === '__connect__') {
+      renderCompanySelect(); // put the selection back on the active company
+      $('#btn-qb-connect').click();
+      showView('qb-connect');
+      return;
+    }
     dbg(`Switch company: ${realmId}`);
     showLoading('Switching company...');
     const switchRes = await sendMsg({ type: 'SWITCH_COMPANY', realmId });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, Dialog, GlassPanel } from '@/components/ui';
 import { VisibleColumns } from '../hooks/useComparisonState';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface ColumnSettingsProps {
   isOpen: boolean;
@@ -32,7 +33,9 @@ export const ColumnSettings: React.FC<ColumnSettingsProps> = ({
   onClose,
   visibleColumns,
   setVisibleColumns,
-}) => (
+}) => {
+  const t = useSpelling();
+  return (
   <Dialog
     open={isOpen}
     onClose={onClose}
@@ -74,9 +77,10 @@ export const ColumnSettings: React.FC<ColumnSettingsProps> = ({
             }
             className="h-4 w-4 rounded border-glass-hairline"
           />
-          <span className="text-sm font-medium text-ink-body">{col.label}</span>
+          <span className="text-sm font-medium text-ink-body">{t(col.label)}</span>
         </label>
       ))}
     </GlassPanel>
   </Dialog>
-);
+  );
+};

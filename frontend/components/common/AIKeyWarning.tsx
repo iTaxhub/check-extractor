@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, X, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { Button, GlassCard } from '@/components/ui';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * Floating warning that the Gemini key is missing, so extraction will fall back
@@ -16,6 +17,7 @@ import { Button, GlassCard } from '@/components/ui';
  * another surface, so it is the top blurred element in its own stack.
  */
 export default function AIKeyWarning() {
+  const t = useSpelling();
   const [hasAIKey, setHasAIKey] = useState(true);
   const [isDismissed, setIsDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,8 +51,7 @@ export default function AIKeyWarning() {
               AI key not connected
             </h3>
             <p className="mt-1 text-sm text-ink-body">
-              No Google Gemini API key is configured. Cheque processing will use OCR only, which
-              reads fewer fields correctly.
+              {t('No Google Gemini API key is configured. Cheque processing will use OCR only, which reads fewer fields correctly.')}
             </p>
             <Link href="/settings/integrations" className="mt-3 inline-flex">
               <Button size="sm" icon={<Settings size={14} />}>Configure AI key</Button>

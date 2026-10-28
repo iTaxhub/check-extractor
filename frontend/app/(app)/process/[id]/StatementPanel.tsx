@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Badge, GlassCard, GlassCardTitle, Table, TableScroll, TableShell, Tbody, Td, Th, Thead, Tr } from '@/components/ui';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface StatementRow {
   page: number;
@@ -36,6 +37,7 @@ const SHOW = 50;
  * images has no statement to reconcile.
  */
 export default function StatementPanel({ jobId, imageCount }: { jobId: string; imageCount: number }) {
+  const t = useSpelling();
   const [data, setData] = useState<Reconciliation | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -60,7 +62,7 @@ export default function StatementPanel({ jobId, imageCount }: { jobId: string; i
       <div className="flex flex-wrap items-center justify-between gap-2">
         <GlassCardTitle>Statement reconciliation</GlassCardTitle>
         <Badge tone={clean ? 'success' : 'warning'} size="sm">
-          {clean ? 'Every listed cheque has an image' : 'Needs a look'}
+          {clean ? t('Every listed cheque has an image') : 'Needs a look'}
         </Badge>
       </div>
 
@@ -77,13 +79,13 @@ export default function StatementPanel({ jobId, imageCount }: { jobId: string; i
 
       {data.unmatched_rows.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-ink-strong">The statement lists a cheque we have no image for</p>
+          <p className="text-sm font-medium text-ink-strong">{t('The statement lists a cheque we have no image for')}</p>
           <TableShell>
             <TableScroll className="max-h-72">
               <Table>
                 <Thead>
                   <tr>
-                    <Th numeric>Check #</Th>
+                    <Th numeric>{t('Check #')}</Th>
                     <Th>Date</Th>
                     <Th numeric>Amount</Th>
                     <Th numeric>Page</Th>
@@ -117,7 +119,7 @@ export default function StatementPanel({ jobId, imageCount }: { jobId: string; i
                 <div className="h-20 overflow-hidden rounded-md bg-surface-sunken">
                   <img
                     src={`/api/check-image/${jobId}/${im.check_id}?w=240`}
-                    alt={`Cheque ${im.number ?? im.check_id}`}
+                    alt={`${t('Cheque')} ${im.number ?? im.check_id}`}
                     loading="lazy"
                     decoding="async"
                     className="h-full w-full object-contain"

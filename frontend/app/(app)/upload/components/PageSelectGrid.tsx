@@ -12,6 +12,7 @@
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useSpelling } from '@/hooks/useSpelling';
 
 export type SelectablePage = { page_number: number; checks_on_page: number };
 
@@ -48,6 +49,7 @@ export default function PageSelectGrid({
   onChange,
   disabled,
 }: PageSelectGridProps) {
+  const t = useSpelling();
   const toggle = (pageNumber: number) => {
     const next = new Set(selected);
     if (next.has(pageNumber)) next.delete(pageNumber);
@@ -66,8 +68,8 @@ export default function PageSelectGrid({
         <p className="nums text-[11px] text-ink-body">
           <span className="font-medium text-ink-strong">{selected.size}</span> of {pages.length}{' '}
           page{pages.length === 1 ? '' : 's'} ·{' '}
-          <span className="font-medium text-ink-strong">{selectedCheques}</span> cheque
-          {selectedCheques === 1 ? '' : 's'} selected
+          <span className="font-medium text-ink-strong">{selectedCheques}</span>{' '}
+          {t(selectedCheques === 1 ? 'cheque' : 'cheques')} selected
         </p>
         <div className="flex items-center gap-1">
           <Button
@@ -111,9 +113,9 @@ export default function PageSelectGrid({
               type="button"
               role="checkbox"
               aria-checked={isSelected}
-              aria-label={`Page ${page.page_number}, ${page.checks_on_page} cheque${
+              aria-label={t(`Page ${page.page_number}, ${page.checks_on_page} cheque${
                 page.checks_on_page === 1 ? '' : 's'
-              } detected`}
+              } detected`)}
               disabled={disabled}
               onClick={() => toggle(page.page_number)}
               className={cn(

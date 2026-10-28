@@ -10,6 +10,7 @@ import {
   type StatusKey,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * MatchRow — one check against one QuickBooks transaction.
@@ -149,6 +150,7 @@ export default function MatchRow({
   onUpdateQBTransaction,
   onOpenSideBySide,
 }: MatchRowProps) {
+  const t = useSpelling();
   const [expanded, setExpanded] = useState(false);
   const [showFlagMenu, setShowFlagMenu] = useState(false);
   const [showNoteInput, setShowNoteInput] = useState(false);
@@ -185,10 +187,10 @@ export default function MatchRow({
         onCancel={() => setConfirmCreate(false)}
         onConfirm={handleCreateInQB}
         loading={isCreatingInQB}
-        title="Create this cheque in QuickBooks?"
-        description="Adds a new cheque transaction to the connected company."
+        title={t('Create this cheque in QuickBooks?')}
+        description={t('Adds a new cheque transaction to the connected company.')}
         details={[
-          ['Cheque #', check?.check_number || '-'],
+          [t('Cheque #'), check?.check_number || '-'],
           ['Payee', check?.payee || '-'],
           ['Amount', check?.amount != null ? `$${Number(check.amount).toFixed(2)}` : '-'],
         ]}

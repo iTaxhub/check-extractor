@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { Button, StatusPill } from '@/components/ui';
 import { ComparisonRow, DateFormat, formatCurrency, formatDate } from '../utils/comparisonUtils';
 import { MATCH_STATUS, pairedValues } from './ComparisonTable';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface EvidencePanelProps {
   row: ComparisonRow | null;
@@ -24,10 +25,11 @@ function imageSrc(ext: NonNullable<ComparisonRow['extractionData']>) {
  * (approve, reject, fix) happens in the review dialog, never from here.
  */
 export const EvidencePanel: React.FC<EvidencePanelProps> = ({ row, dateFormat, onReview, onClose }) => {
+  const t = useSpelling();
   if (!row) {
     return (
       <aside className="hidden w-80 shrink-0 rounded-card border border-glass-hairline bg-surface p-4 text-sm text-ink-soft xl:block">
-        Select a row to see the cheque and its QuickBooks values side by side.
+        {t('Select a row to see the cheque and its QuickBooks values side by side.')}
       </aside>
     );
   }
@@ -39,7 +41,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ row, dateFormat, o
   const fmtDate = (d?: string) => (d ? formatDate(d, dateFormat) : '-');
 
   const pairs: { label: string; cheque: string; qb: string; money?: boolean; bad?: boolean }[] = [
-    { label: 'Cheque no.', cheque: ext ? row.checkNumber || '-' : '-', qb: qb?.checkNumber || '-' },
+    { label: t('Cheque no.'), cheque: ext ? row.checkNumber || '-' : '-', qb: qb?.checkNumber || '-' },
     { label: 'Date', cheque: ext ? fmtDate(row.date) : '-', qb: fmtDate(qb?.date) },
     { label: 'Payee', cheque: ext ? row.payee || '-' : '-', qb: qb?.payee || '-' },
     {
@@ -59,10 +61,10 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ row, dateFormat, o
       <div className="flex items-start justify-between gap-2 border-b border-glass-hairline px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-ink-strong">
-            Cheque {row.checkNumber || qb?.checkNumber || '-'}
+            {t('Cheque')} {row.checkNumber || qb?.checkNumber || '-'}
           </p>
           <div className="mt-1">
-            <StatusPill size="sm" status={MATCH_STATUS[row.matchStatus].status} label={MATCH_STATUS[row.matchStatus].label} />
+            <StatusPill size="sm" status={MATCH_STATUS[row.matchStatus].status} label={t(MATCH_STATUS[row.matchStatus].label)} />
           </div>
         </div>
         <button
@@ -80,7 +82,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ row, dateFormat, o
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageSrc(ext)}
-            alt={`Cheque ${row.checkNumber || ''}`}
+            alt={t(`Cheque ${row.checkNumber || ''}`)}
             className="max-h-48 w-full rounded-input object-contain"
           />
         </div>
@@ -90,7 +92,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ row, dateFormat, o
         <thead>
           <tr className="text-ink-faint">
             <th className="px-4 py-2 text-left font-medium" />
-            <th className="px-2 py-2 text-left font-medium">Cheque</th>
+            <th className="px-2 py-2 text-left font-medium">{t('Cheque')}</th>
             <th className="px-4 py-2 text-left font-medium">QuickBooks</th>
           </tr>
         </thead>

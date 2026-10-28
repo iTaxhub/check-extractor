@@ -178,8 +178,9 @@ export default async function handler(
       return res.redirect(errRedirect('service_unavailable'));
     }
 
-    // Fetch company name from QB to store alongside tokens
+    // Fetch company name (and country, for check/cheque) from QB to store alongside tokens
     let companyName: string | null = null;
+    let companyCountry: string | null = null;
     try {
       const companyRes = await qbFetch(
         `https://quickbooks.api.intuit.com/v3/company/${realmId}/companyinfo/${realmId}?minorversion=73`,
@@ -193,6 +194,7 @@ export default async function handler(
       if (companyRes.ok) {
         const companyData = await companyRes.json();
         companyName = companyData?.CompanyInfo?.CompanyName || null;
+        companyCountry = companyData?.CompanyInfo?.Country || null;
         console.log('✅ Connected to company:', companyName, '(realmId:', realmId, ')');
       }
     } catch (compErr) {
@@ -275,6 +277,14 @@ export default async function handler(
         console.warn('⚠️ Failed to upsert qb_connections (non-critical):', connError.message);
       } else {
         console.log('✅ QB connection saved for multi-company switcher');
+        // Separate write, result ignored: until migration 051 adds the column
+        // this fails on its own and must not take the connection down with it
+        // (same as qbo/company-info.ts). The app reads it to say check or cheque.
+        if (companyCountry) await serviceClient
+          .from('qb_connections')
+          .update({ country: companyCountry })
+          .eq('tenant_id', tenantId)
+          .eq('realm_id', realmId);
       }
     } catch (connErr: any) {
       console.warn('⚠️ qb_connections upsert failed (non-critical):', connErr.message);

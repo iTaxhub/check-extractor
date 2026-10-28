@@ -42,6 +42,7 @@ import {
 } from '@/lib/history-client';
 import type { BatchPayload } from '@/lib/batch-state';
 import { KIND_LABEL, KIND_ORDER, type DocumentKind } from '@/lib/document-kind';
+import { useSpelling } from '@/hooks/useSpelling';
 import { cn } from '@/lib/utils';
 
 /**
@@ -119,6 +120,7 @@ function approverLabel(batch: BatchPayload, approvers: ApproverMap): string {
 }
 
 export default function HistoryPage() {
+  const t = useSpelling();
   const [status, setStatus] = useState<HistoryStatus>('all');
   const [offset, setOffset] = useState(0);
   const [batches, setBatches] = useState<BatchPayload[]>([]);
@@ -297,7 +299,7 @@ export default function HistoryPage() {
             <option value="">All kinds</option>
             {KIND_ORDER.map((k) => (
               <option key={k} value={k}>
-                {KIND_LABEL[k]}
+                {t(KIND_LABEL[k])}
               </option>
             ))}
           </select>
@@ -391,7 +393,7 @@ export default function HistoryPage() {
                   <Th>Period</Th>
                   <Th>Documents</Th>
                   <Th>Status</Th>
-                  <Th numeric>Cheques</Th>
+                  <Th numeric>{t('Cheques')}</Th>
                   <Th numeric>Needs attention</Th>
                   <Th>Approved by</Th>
                   <Th>Actions</Th>
@@ -462,7 +464,7 @@ export default function HistoryPage() {
                           <div className="flex flex-wrap gap-1">
                             {KIND_ORDER.filter((k) => (batch.doc_kinds?.[k] || 0) > 0).map((k) => (
                               <Badge key={k} tone={KIND_TONE[k]} size="sm">
-                                {KIND_LABEL[k]}
+                                {t(KIND_LABEL[k])}
                                 {(batch.doc_kinds?.[k] || 0) > 1 ? (
                                   <span className="nums">{batch.doc_kinds?.[k]}</span>
                                 ) : null}
@@ -561,9 +563,11 @@ export default function HistoryPage() {
         <p className="flex items-start gap-2 text-xs text-ink-faint">
           <HistoryIcon size={14} className="mt-px shrink-0" aria-hidden />
           <span>
-            Extracted cheque data and match results are kept for every run above, including
-            abandoned ones. Uploaded source PDFs are deleted 14 days after a reconciliation is
-            completed.
+            {t(
+              'Extracted cheque data and match results are kept for every run above, including ' +
+              'abandoned ones. Uploaded source PDFs are deleted 14 days after a reconciliation is ' +
+              'completed.'
+            )}
           </span>
         </p>
       </GlassPanel>

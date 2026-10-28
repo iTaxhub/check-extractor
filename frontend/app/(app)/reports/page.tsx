@@ -30,6 +30,7 @@ import {
   type DataFailure,
   type ReportSummary,
 } from '@/lib/history-client';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * Reports — date, company and account filters (CHECKLIST section 13).
@@ -74,6 +75,7 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 export default function ReportsPage() {
+  const t = useSpelling();
   const initial = useRef(monthWindow()).current;
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
@@ -154,7 +156,7 @@ export default function ReportsPage() {
   const missingSources = report
     ? Object.entries(report.sources)
         .filter(([, present]) => !present)
-        .map(([key]) => SOURCE_LABELS[key] || key)
+        .map(([key]) => t(SOURCE_LABELS[key] || key))
     : [];
 
   return (
@@ -295,7 +297,7 @@ export default function ReportsPage() {
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <KpiTile
-              label="Cheques processed"
+              label={t('Cheques processed')}
               value={report?.cheques_processed.count ?? 0}
               caption={
                 report && !report.cheques_processed.account_filter_applied
@@ -311,7 +313,7 @@ export default function ReportsPage() {
               loading={loading}
             />
             <KpiTile
-              label="Cheques reconciled"
+              label={t('Cheques reconciled')}
               value={report?.volume.checks_total ?? 0}
               caption={`${report?.volume.matched ?? 0} matched`}
               tone="brand"
@@ -332,12 +334,12 @@ export default function ReportsPage() {
             <details className="text-xs text-ink-faint">
               <summary className="cursor-pointer font-semibold text-ink-body">How these are counted</summary>
               <p className="mt-1">
-              Cheques processed is one row per successfully processed cheque in the usage ledger,
+              {t('Cheques processed is one row per successfully processed cheque in the usage ledger, ')}
               by the date it was processed
               {report && !report.cheques_processed.account_filter_applied
                 ? ', the ledger records the company but not the bank account, so the account filter does not narrow this figure'
                 : ''}
-              . Reconciliations, cheques reconciled, matched and needs-attention are counted over
+              {t('. Reconciliations, cheques reconciled, matched and needs-attention are counted over ')}
               the batches whose period overlaps the range, which is what &ldquo;August&rdquo; means
               on a reconciliation rather than &ldquo;touched in August&rdquo;. Exports are counted
               from export history by date only{' '}
@@ -389,7 +391,7 @@ export default function ReportsPage() {
                     <Th>Company &amp; account</Th>
                     <Th>Period</Th>
                     <Th>Status</Th>
-                    <Th numeric>Cheques</Th>
+                    <Th numeric>{t('Cheques')}</Th>
                     <Th numeric>Matches</Th>
                     <Th numeric>Needs attention</Th>
                     <Th>Approved</Th>

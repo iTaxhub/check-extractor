@@ -9,6 +9,7 @@ import {
 import { useMatches } from '@/hooks/useMatches';
 import { useRealtimeMatches } from '@/hooks/useRealtimeMatches';
 import { useQBConnections } from '@/hooks/useQBConnections';
+import { useSpelling } from '@/hooks/useSpelling';
 import MatchRow from '@/components/MatchRow';
 import SearchQBModal from '@/components/SearchQBModal';
 import SideBySideModal, {
@@ -174,6 +175,7 @@ export interface ReviewStepProps {
 
 export default function ReviewStep({ heading, className, batchId }: ReviewStepProps) {
   const { hasConnections, isLoading: qbLoading } = useQBConnections();
+  const t = useSpelling();
   const searchParams = useSearchParams();
   /** An explicit prop wins; otherwise the stepper's own `?batch=` id. */
   const effectiveBatchId =
@@ -305,7 +307,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
           <Building2 className="mb-4 h-12 w-12 text-ink-faint" aria-hidden />
           <h2 className="font-heading text-xl font-semibold text-ink-strong">No QuickBooks connection</h2>
           <p className="mt-2 max-w-md text-sm text-ink-body">
-            Connect a QuickBooks company to review your extracted cheques against QB transactions.
+            {t('Connect a QuickBooks company to review your extracted cheques against QB transactions.')}
           </p>
           <a href="/settings?tab=integrations" className="mt-5 inline-flex">
             <Button size="sm">Go to settings</Button>
@@ -324,7 +326,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
             {heading || 'Review'}
           </h2>
           <p className="mt-0.5 text-sm text-ink-faint">
-            Every cheque beside the QuickBooks transaction it matched.
+            {t('Every cheque beside the QuickBooks transaction it matched.')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -342,7 +344,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
               value={minConfidence}
               onChange={(e) => changeMinConfidence(Number(e.target.value))}
               aria-label="Minimum confidence used by Approve All"
-              title="Cheques at or above this match confidence are approved by Approve All"
+              title={t('Cheques at or above this match confidence are approved by Approve All')}
               className="w-[108px]"
             >
               {THRESHOLD_OPTIONS.map((n) => (
@@ -381,11 +383,11 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
       <div className="overflow-x-auto pb-1">
         <Tabs
           aria-label="Review"
-          items={REVIEW_TABS.map((t) => ({
-            value: t.value,
-            label: t.label,
-            icon: t.icon,
-            count: tabCounts[t.value] || undefined,
+          items={REVIEW_TABS.map((rt) => ({
+            value: rt.value,
+            label: t(rt.label),
+            icon: rt.icon,
+            count: tabCounts[rt.value] || undefined,
           }))}
           value={tab}
           onValueChange={changeTab}
@@ -427,8 +429,8 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
               type="search"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              placeholder="Search by check #, payee, amount…"
-              aria-label="Search cheques"
+              placeholder={t('Search by check #, payee, amount…')}
+              aria-label={t('Search cheques')}
               className="w-full rounded-input border border-glass-hairline bg-white/70 py-2.5 pl-9 pr-4 text-sm text-ink-strong shadow-inner-track placeholder:text-ink-faint focus:border-brand focus:bg-white/90 focus:outline-none focus:ring-[3px] focus:ring-ring/50"
             />
           </div>
@@ -438,7 +440,7 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
               inputSize="sm"
               value={sortBy}
               onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
-              aria-label="Sort cheques"
+              aria-label={t('Sort cheques')}
               className="w-[210px]"
             >
               {SORT_OPTIONS.map((opt) => (
@@ -454,13 +456,13 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
               type="checkbox"
               checked={selected.size === matches.length && matches.length > 0}
               onChange={selectAll}
-              aria-label="Select all cheques"
+              aria-label={t('Select all cheques')}
               className="h-4 w-4 rounded border-glass-hairline accent-primary"
             />
             <span className="nums text-xs font-medium text-ink-body">
               {selected.size > 0
                 ? `${selected.size} of ${matches.length} selected`
-                : `${matches.length} cheque${matches.length !== 1 ? 's' : ''}`}
+                : t(`${matches.length} cheque${matches.length !== 1 ? 's' : ''}`)}
             </span>
             <button
               type="button"
@@ -488,12 +490,12 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
             <Search className="mb-3 h-10 w-10 text-ink-faint" aria-hidden />
           )}
           <p className="font-heading text-base font-semibold text-ink-strong">
-            {searchQuery || chip ? 'No cheques match this filter' : 'Nothing to review here'}
+            {searchQuery || chip ? t('No cheques match this filter') : 'Nothing to review here'}
           </p>
           <p className="mt-1 text-sm text-ink-body">
             {searchQuery || chip
               ? 'Clear the search or pick a different status.'
-              : activeTab.empty}
+              : t(activeTab.empty)}
           </p>
         </GlassCard>
       ) : (
@@ -529,12 +531,12 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
                 <caption className="sr-only">Exception queue. Choose a row to see its evidence.</caption>
                 <thead>
                   <tr className="border-b border-glass-hairline text-left text-eyebrow text-ink-faint">
-                    <th scope="col" className="px-3 py-2 font-semibold">Cheque no.</th>
+                    <th scope="col" className="px-3 py-2 font-semibold">{t('Cheque no.')}</th>
                     <th scope="col" className="px-3 py-2 font-semibold">Date</th>
                     <th scope="col" className="px-3 py-2 font-semibold">Payee</th>
                     <th scope="col" className="px-3 py-2 font-semibold">QuickBooks match</th>
                     <th scope="col" className="px-3 py-2 font-semibold">Issue</th>
-                    <th scope="col" className="px-3 py-2 text-right font-semibold">Cheque amount</th>
+                    <th scope="col" className="px-3 py-2 text-right font-semibold">{t('Cheque amount')}</th>
                     <th scope="col" className="px-3 py-2 text-right font-semibold">QB amount</th>
                   </tr>
                 </thead>
@@ -579,12 +581,12 @@ export default function ReviewStep({ heading, className, batchId }: ReviewStepPr
 
             {focused && (
               <section
-                aria-label={`Evidence for cheque ${focused.check?.check_number || ''}`.trim()}
+                aria-label={t(`Evidence for cheque ${focused.check?.check_number || ''}`.trim())}
                 className="sticky top-4 min-w-0 space-y-3 self-start"
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className="font-heading text-base font-semibold text-ink-strong">
-                    {`Cheque #${focused.check?.check_number || '-'}`}
+                    {t(`Cheque #${focused.check?.check_number || '-'}`)}
                   </h3>
                   <span className="text-xs font-medium text-ink-faint">{issueLabel(focused)}</span>
                 </div>

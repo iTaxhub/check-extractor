@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, Upload, Download, ChevronDown, RefreshCw, X, SlidersHorizontal, AlertTriangle } from 'lucide-react';
 import { Badge, Button, Input, Select } from '@/components/ui';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * Filter + action chrome for the grid. ONE row.
@@ -87,6 +88,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
   issueCount,
   statusTabs,
 }) => {
+  const t = useSpelling();
   const [showFilters, setShowFilters] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
 
@@ -118,7 +120,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
           <Input
             inputSize="sm"
             aria-label="Search comparisons"
-            placeholder="Search cheque no., payee, amount…"
+            placeholder={t('Search cheque no., payee, amount…')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-8 pr-8"
@@ -147,7 +149,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
             <option value="matched">Matched</option>
             <option value="mismatch">Mismatched</option>
             <option value="missing-in-qb">Missing in QB</option>
-            <option value="missing-in-extraction">Missing in cheques</option>
+            <option value="missing-in-extraction">{t('Missing in cheques')}</option>
           </Select>
         )}
 
@@ -234,7 +236,7 @@ export const ComparisonControlsBar: React.FC<ComparisonControlsBarProps> = ({
                       source;
                     return (
                       <option key={source} value={source}>
-                        {label}
+                        {t(label)}
                       </option>
                     );
                   })}

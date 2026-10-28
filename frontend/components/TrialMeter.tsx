@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * The trial meter (CHECKLIST section 6).
@@ -44,6 +45,7 @@ function parseStatus(body: any): TrialStatus | null {
 }
 
 export default function TrialMeter() {
+  const t = useSpelling();
   const [status, setStatus] = useState<TrialStatus | null>(null);
 
   useEffect(() => {
@@ -97,7 +99,7 @@ export default function TrialMeter() {
     ? status.blockReason === 'realm_trial_already_used'
       ? 'This QuickBooks company has already had its free trial'
       : 'Free trial ended, history stays available'
-    : `Free trial: ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} and ${checksLeft} of ${limit} cheques remaining`;
+    : t(`Free trial: ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} and ${checksLeft} of ${limit} cheques remaining`);
 
   return (
     <Link

@@ -32,128 +32,98 @@ export default async function handler(
 
   try {
     const supabase = createAuthenticatedClient(req);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+    const tenantId = profile?.tenant_id;
+    if (!tenantId) return res.status(403).json({ error: 'No tenant' });
 
-    // Get current integration to revoke token with Intuit
+    // With a realmId only that company goes; without one, every company does.
+    const realmId: string | undefined = req.body?.realmId || undefined;
+
     const { data: integration } = await supabase
       .from('integrations')
-      .select('access_token, qb_client_id, qb_client_secret')
+      .select('access_token, realm_id, qb_client_id, qb_client_secret')
+      .eq('tenant_id', tenantId)
       .eq('provider', 'quickbooks')
-      .single();
+      .maybeSingle();
 
-    // Revoke token with Intuit (best effort)
-    if (integration?.access_token && integration?.qb_client_id && integration?.qb_client_secret) {
-      try {
-        const auth = Buffer.from(
-          `${integration.qb_client_id}:${integration.qb_client_secret}`
-        ).toString('base64');
+    let connQuery = supabase
+      .from('qb_connections')
+      .select('access_token')
+      .eq('tenant_id', tenantId);
+    if (realmId) connQuery = connQuery.eq('realm_id', realmId);
+    const { data: doomed } = await connQuery;
 
-        await qbFetch('https://developer.api.intuit.com/v2/oauth2/tokens/revoke', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${auth}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ token: integration.access_token }),
-        });
-      } catch (revokeError) {
-        console.warn('Token revocation failed (non-critical):', revokeError);
-      }
-    }
+    // The legacy row mirrors whichever company was connected last, so it is only
+    // revoked and rewritten when that company is the one being removed.
+    const legacyIsTarget = !realmId || integration?.realm_id === realmId;
 
-    // Clear stored QB entries for this tenant so stale data doesn't persist
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('tenant_id')
-          .eq('id', user.id)
-          .single();
-
-        if (profile?.tenant_id) {
-          const { error: deleteError } = await supabase
-            .from('qb_entries')
-            .delete()
-            .eq('tenant_id', profile.tenant_id);
-          
-          if (deleteError) {
-            console.warn('Failed to clear qb_entries (non-critical):', deleteError);
-          } else {
-            console.log('✅ Cleared qb_entries for tenant:', profile.tenant_id);
-          }
+    // Revoke with Intuit (best effort): the removed connections' grants.
+    const clientId = integration?.qb_client_id || process.env.QUICKBOOKS_CLIENT_ID;
+    const clientSecret = integration?.qb_client_secret || process.env.QUICKBOOKS_CLIENT_SECRET;
+    const tokens = new Set<string>((doomed || []).map((c: any) => c.access_token).filter(Boolean));
+    if (legacyIsTarget && integration?.access_token) tokens.add(integration.access_token);
+    if (clientId && clientSecret) {
+      const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      for (const token of tokens) {
+        try {
+          await qbFetch('https://developer.api.intuit.com/v2/oauth2/tokens/revoke', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+        } catch (revokeError) {
+          console.warn('Token revocation failed (non-critical):', revokeError);
         }
       }
-    } catch (clearError) {
-      console.warn('Failed to clear qb_entries (non-critical):', clearError);
     }
 
-    // Clear OAuth tokens — keep credentials intact
-    const { error } = await supabase
-      .from('integrations')
-      .update({
-        access_token: null,
-        refresh_token: null,
-        expires_at: null,
-        realm_id: null,
-        company_name: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('provider', 'quickbooks');
+    // Clear stored QB entries so stale data doesn't persist (re-pulled on next sync).
+    const { error: deleteError } = await supabase.from('qb_entries').delete().eq('tenant_id', tenantId);
+    if (deleteError) console.warn('Failed to clear qb_entries (non-critical):', deleteError);
 
-    if (error) {
-      console.error('Failed to disconnect QuickBooks:', error);
+    let delQuery = supabase.from('qb_connections').delete().eq('tenant_id', tenantId);
+    if (realmId) delQuery = delQuery.eq('realm_id', realmId);
+    const { error: connErr } = await delQuery;
+    if (connErr) {
+      console.error('Failed to remove qb_connections:', connErr);
       return res.status(500).json({ error: 'Failed to disconnect' });
     }
 
-    // ── Also clean qb_connections for multi-company switcher ──
-    try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        const { data: userProfile } = await supabase
-          .from('user_profiles')
-          .select('tenant_id')
-          .eq('id', currentUser.id)
-          .single();
+    // Keep one company selected, and keep the legacy row pointing at it, so the
+    // two token stores never disagree about whether QuickBooks is connected.
+    const { data: remaining } = await supabase
+      .from('qb_connections')
+      .select('id, realm_id, company_name, access_token, refresh_token, token_expires_at, is_active')
+      .eq('tenant_id', tenantId)
+      .order('connected_at', { ascending: false });
+    const next = remaining?.find((c: any) => c.is_active) || remaining?.[0] || null;
+    if (next && !next.is_active) {
+      await supabase.from('qb_connections').update({ is_active: true }).eq('id', next.id);
+    }
 
-        if (userProfile?.tenant_id) {
-          // Get the realm_id from the request body, or delete all connections
-          const realmId = req.body?.realmId;
-          
-          if (realmId) {
-            // Delete specific connection
-            await supabase
-              .from('qb_connections')
-              .delete()
-              .eq('tenant_id', userProfile.tenant_id)
-              .eq('realm_id', realmId);
-          } else {
-            // No specific realm — delete all connections for this tenant
-            await supabase
-              .from('qb_connections')
-              .delete()
-              .eq('tenant_id', userProfile.tenant_id);
-          }
-
-          // If we deleted the active one, activate the most recent remaining
-          const { data: remaining } = await supabase
-            .from('qb_connections')
-            .select('id')
-            .eq('tenant_id', userProfile.tenant_id)
-            .order('connected_at', { ascending: false })
-            .limit(1);
-
-          if (remaining?.length) {
-            await supabase
-              .from('qb_connections')
-              .update({ is_active: true })
-              .eq('id', remaining[0].id);
-          }
-
-          console.log('✅ Cleaned qb_connections for multi-company switcher');
-        }
+    if (legacyIsTarget) {
+      const { error } = await supabase
+        .from('integrations')
+        .update({
+          access_token: next?.access_token ?? null,
+          refresh_token: next?.refresh_token ?? null,
+          expires_at: next?.token_expires_at ?? null,
+          realm_id: next?.realm_id ?? null,
+          company_name: next?.company_name ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('tenant_id', tenantId)
+        .eq('provider', 'quickbooks');
+      if (error) {
+        console.error('Failed to disconnect QuickBooks:', error);
+        return res.status(500).json({ error: 'Failed to disconnect' });
       }
-    } catch (connErr: any) {
-      console.warn('⚠️ qb_connections cleanup failed (non-critical):', connErr.message);
     }
 
     return res.status(200).json({ success: true, message: 'Disconnected. QB data cleared. Credentials preserved.' });

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Badge, Button, Field, GlassPanel, Input, Select,
 } from '@/components/ui'
+import { useSpelling } from '@/hooks/useSpelling'
 
 /**
  * Cheque pull filters.
@@ -53,6 +54,7 @@ const DATE_PRESETS = [
 ] as const
 
 export default function QuickBooksFilters({ onApplyFilters, isLoading, qbConnected }: QuickBooksFiltersProps) {
+  const t = useSpelling()
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<FilterParams>({ type: 'all' })
   const [qbAccounts, setQbAccounts] = useState<QBAccount[]>([])
@@ -160,7 +162,7 @@ export default function QuickBooksFilters({ onApplyFilters, isLoading, qbConnect
           onClick={() => setShowFilters(!showFilters)}
           aria-expanded={showFilters}
         >
-          Filter cheques
+          {t('Filter cheques')}
           {hasActiveFilters() && (
             <Badge tone="brand" size="sm" className="nums ml-1">{activeChips.length}</Badge>
           )}
@@ -326,10 +328,10 @@ export default function QuickBooksFilters({ onApplyFilters, isLoading, qbConnect
                 value={filters.type || 'all'}
                 onChange={(e) => setFilters({ ...filters, type: e.target.value as FilterParams['type'] })}
               >
-                <option value="all">All cheque types</option>
-                <option value="cheque_written">Cheques written (to vendors)</option>
-                <option value="bill_paid_by_cheque">Bills paid by cheque</option>
-                <option value="cheque_received">Cheques received (from customers)</option>
+                <option value="all">{t('All cheque types')}</option>
+                <option value="cheque_written">{t('Cheques written (to vendors)')}</option>
+                <option value="bill_paid_by_cheque">{t('Bills paid by cheque')}</option>
+                <option value="cheque_received">{t('Cheques received (from customers)')}</option>
                 <option value="payroll_check">Payroll checks</option>
               </Select>
             </Field>

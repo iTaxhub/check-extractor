@@ -17,6 +17,7 @@ import {
   buttonVariants,
 } from '@/components/ui';
 import { useQBConnections } from '@/hooks/useQBConnections';
+import { useSpelling } from '@/hooks/useSpelling';
 import { cn } from '@/lib/utils';
 import ReviewStep from '@/components/review/ReviewStep';
 import StartBatchCard from '@/components/reconcile/StartBatchCard';
@@ -312,11 +313,12 @@ function RunHeader({
 
 /** Step 1 slot. The uploader itself is the existing /upload surface. */
 function UploadSlot({ batchId }: { batchId: string | null }) {
+  const t = useSpelling();
   return (
     <GlassCard className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-2">
         <UploadIcon className="h-4 w-4 text-brand-dark" aria-hidden />
-        <GlassCardTitle className="text-sm">Upload this period&apos;s cheques</GlassCardTitle>
+        <GlassCardTitle className="text-sm">{t("Upload this period's cheques")}</GlassCardTitle>
       </div>
       <Link
         href={batchId ? `/upload?batch=${batchId}` : '/upload'}

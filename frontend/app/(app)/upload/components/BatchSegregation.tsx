@@ -24,6 +24,7 @@ import {
   type DocumentKind,
   type DocumentSignals,
 } from '@/lib/document-kind';
+import { useSpelling } from '@/hooks/useSpelling';
 
 export interface BatchFile {
   id: string;
@@ -47,6 +48,7 @@ const TONE: Record<DocumentKind, { chip: string; icon: string }> = {
 };
 
 export default function BatchSegregation({ files }: { files: BatchFile[] }) {
+  const t = useSpelling();
   const groups = groupByKind(files, (f) => f.signals);
   const sorted = groups.reduce((n, g) => n + g.items.length, 0);
 
@@ -79,7 +81,7 @@ export default function BatchSegregation({ files }: { files: BatchFile[] }) {
               <div className="mb-1.5 flex items-center gap-2">
                 <Icon size={14} className={tone.icon} aria-hidden />
                 <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                  {KIND_LABEL[kind]}
+                  {t(KIND_LABEL[kind])}
                 </span>
                 <span className={cn('rounded-pill px-1.5 py-0.5 text-[11px] font-semibold nums', tone.chip)}>
                   {items.length}
@@ -98,7 +100,7 @@ export default function BatchSegregation({ files }: { files: BatchFile[] }) {
                     {/* The reason, not a score: it says what was seen, so a
                         wrong call is obvious rather than authoritative. */}
                     <span className="shrink-0 text-right text-ink-faint">
-                      {verdict.reason}
+                      {t(verdict.reason)}
                       {verdict.confidence === 'low' && (
                         <span className="ml-1.5 font-semibold text-warning">unsure</span>
                       )}

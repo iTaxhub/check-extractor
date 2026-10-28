@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, X } from 'lucide-react';
 import { Button, ConfirmDialog, StatusPill } from '@/components/ui';
+import { useSpelling } from '@/hooks/useSpelling';
 
 interface Props {
   checkId: string;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function ApprovalActions({ checkId, currentStatus }: Props) {
+  const t = useSpelling();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export default function ApprovalActions({ checkId, currentStatus }: Props) {
 
       router.push(action === 'approve' ? '/export' : '/dashboard');
     } catch (e: any) {
-      setError(e?.message || `Failed to ${action} cheque`);
+      setError(e?.message || t(`Failed to ${action} cheque`));
     } finally {
       setLoading(false);
       setAsking(null);
@@ -74,7 +76,7 @@ export default function ApprovalActions({ checkId, currentStatus }: Props) {
         onConfirm={() => { if (asking) void act(asking); }}
         loading={loading}
         tone={asking === 'reject' ? 'destructive' : 'success'}
-        title={asking === 'reject' ? 'Reject this cheque?' : 'Approve this cheque?'}
+        title={t(asking === 'reject' ? 'Reject this cheque?' : 'Approve this cheque?')}
         description={
           asking === 'reject'
             ? 'It stays in Kyriq, marked rejected, and is left out of exports.'

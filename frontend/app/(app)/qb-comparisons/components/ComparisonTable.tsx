@@ -17,6 +17,7 @@ import {
 } from '@/components/ui';
 import { ComparisonRow, SortField, SortDirection, formatCurrency, formatDate, parseAmount, DateFormat } from '../utils/comparisonUtils';
 import { VisibleColumns } from '../hooks/useComparisonState';
+import { useSpelling } from '@/hooks/useSpelling';
 
 /**
  * The comparison grid. Rules it is held to:
@@ -127,6 +128,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   footer,
   loading,
 }) => {
+  const t = useSpelling();
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return data.slice(startIndex, startIndex + itemsPerPage);
@@ -161,7 +163,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
               <Th numeric className="w-10">#</Th>
               {v.checkNumber && (
                 <Th sortable onClick={() => onSort('checkNumber')}>
-                  Cheque no.
+                  {t('Cheque no.')}
                   <SortIcon field="checkNumber" sortField={sortField} sortDirection={sortDirection} />
                 </Th>
               )}
@@ -290,7 +292,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                     {v.matchStatus && (
                       <Td>
                         <span className="inline-flex items-center gap-1">
-                          <StatusPill size="sm" status={match.status} label={match.label} />
+                          <StatusPill size="sm" status={match.status} label={t(match.label)} />
                           {row.isDuplicate && <Badge size="sm" tone="warning">Duplicate</Badge>}
                         </span>
                       </Td>
@@ -355,7 +357,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                     )}
                     {v.source && (
                       <Td muted>
-                        {row.source === 'matched' ? 'Both' : row.source === 'extraction' ? 'Cheques' : 'QuickBooks'}
+                        {row.source === 'matched' ? 'Both' : row.source === 'extraction' ? t('Cheques') : 'QuickBooks'}
                       </Td>
                     )}
                     {v.actions && (
