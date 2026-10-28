@@ -4,7 +4,7 @@
  * Three active integrations with QB Online pages:
  *
  * 1. RECONCILIATION PAGE  (/app/reconcile)
- *    Injects an "Auto-Clear Kyriq Approved" button.
+ *    No injected UI. Automatically ticks the cleared "C" on rows Kyriq approved.
  *    Finds every transaction row whose intuit_id or check_number matches a
  *    Kyriq-approved transaction, then clicks its cleared checkbox.
  *    Solves the Purchase ClearStatus API limitation entirely — the UI can
@@ -47,7 +47,7 @@
       if (e?.message?.includes('Extension context invalidated') ||
           e?.message?.includes('context invalidated')) {
         _contextInvalidated = true;
-        stopStatusBarRefresh();
+        stopApprovedRefresh();
         try { _navObserver?.disconnect(); } catch {}
         clearTimeout(_navDebounceTimer);
         log('Extension reloaded — reload this QB page to reconnect Kyriq.');
@@ -238,13 +238,6 @@
   function applyOverlayVisibility() {
     const show = shouldShowOverlay(_uiState);
     document.documentElement.classList.toggle('kyriq-overlay-hidden', !show);
-    // Also release the body padding we added for the status bar when hidden.
-    if (!show) {
-      document.body.style.paddingBottom = '';
-    } else if (_statusBarEl) {
-      const existing = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
-      if (existing < 28) document.body.style.paddingBottom = Math.max(existing, 28) + 'px';
-    }
   }
 
   async function fetchInitialUIState() {
@@ -271,6 +264,11 @@
       _approvedFetchedAt = 0;
       // Immediately click the C button for this row on any open reconcile/register page.
       handleNewApproval(msg.txn);
+    }
+    if (msg?.type === 'KYRIQ_LOGGED_OUT') {
+      _approvedCache = null;
+      _approvedFetchedAt = 0;
+      removeKyriqUI();
     }
     if (msg?.type === 'KYRIQ_APPROVAL_REMOVED' && msg.txn) {
       console.log('[Kyriq] received KYRIQ_APPROVAL_REMOVED', msg.txn);
@@ -366,6 +364,10 @@
     // Give the page a moment to render before querying rows.
     await new Promise(r => setTimeout(r, 500));
 
+    // Reconcile: one code path ticks everything approved (incl. this one),
+    // so two clickers can never race and toggle a row back off.
+    if (pt === 'reconcile') { await autoTickReconcile(true); return; }
+
     const lookup = buildLookup([newTxn]);
     let cleared  = 0;
     let didClear = false;
@@ -442,6 +444,12 @@
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const res = await safeSendMessage({ type: 'GET_KYRIQ_APPROVED' });
+        if (res?.loggedIn === false) {
+          _approvedCache = null;
+          _approvedFetchedAt = 0;
+          removeKyriqUI();
+          return empty;
+        }
         if (res?.approved) {
           _approvedCache = buildLookup(res.approved);
           _approvedFetchedAt = Date.now();
@@ -475,65 +483,10 @@
     return { byId, byNum, byAmt, list };
   }
 
-  // ─── Status bar (all pages) ───────────────────────────────────
-
-  let _statusBarEl = null;
-
-  function createStatusBar() {
-    if (_statusBarEl) return;
-    const bar = document.createElement('div');
-    bar.id = 'kyriq-status-bar';
-    bar.style.cssText = [
-      'position:fixed', 'bottom:0', 'left:0', 'right:0', 'z-index:2147483646',
-      'height:28px', 'background:linear-gradient(90deg,#1a1a2e 0%,#16213e 100%)',
-      'display:flex', 'align-items:center', 'padding:0 12px', 'gap:8px',
-      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
-      'font-size:11px', 'color:#e5e7eb',
-      'border-top:1px solid rgba(255,255,255,0.1)',
-      'box-shadow:0 -2px 8px rgba(0,0,0,0.3)', 'pointer-events:auto',
-    ].join(';');
-    bar.innerHTML = `
-      <span style="background:rgba(255,255,255,0.15);border-radius:4px;padding:1px 6px;font-weight:700;font-size:10px;letter-spacing:.5px;color:#fff;">K</span>
-      <span id="kyriq-sb-company" style="font-weight:600;color:#d1d5db;">Kyriq</span>
-      <span id="kyriq-sb-sep" style="color:rgba(255,255,255,0.3);display:none;">·</span>
-      <span id="kyriq-sb-account" style="color:#9ca3af;display:none;"></span>
-      <span id="kyriq-sb-status" style="margin-left:auto;font-size:10px;"></span>
-    `;
-    document.body.appendChild(bar);
-    _statusBarEl = bar;
-    const existing = parseInt(getComputedStyle(document.body).paddingBottom) || 0;
-    if (existing < 28) document.body.style.paddingBottom = Math.max(existing, 28) + 'px';
-  }
-
-  async function refreshStatusBar() {
-    if (!_statusBarEl) return;
-    const compEl   = document.getElementById('kyriq-sb-company');
-    const statusEl = document.getElementById('kyriq-sb-status');
-    try {
-      const sessRes = await safeSendMessage({ type: 'GET_SESSION' });
-      if (!sessRes?.session) {
-        if (compEl) { compEl.textContent = 'Sign in to Kyriq'; compEl.style.color = '#9ca3af'; }
-        return;
-      }
-      const connRes = await safeSendMessage({ type: 'GET_CONNECTIONS' });
-      const active  = (connRes?.connections || []).find(c => c.is_active);
-      if (!active) {
-        if (compEl) { compEl.textContent = 'No QB company connected'; compEl.style.color = '#f59e0b'; }
-        return;
-      }
-      const realmMatch = location.href.match(/company\/(\d+)/);
-      const realm = realmMatch ? realmMatch[1] : null;
-      const isCurrent = realm && String(active.realm_id) === realm;
-      if (compEl) {
-        compEl.textContent = active.company_name || `Company ${active.realm_id}`;
-        compEl.style.color = isCurrent ? '#d1fae5' : '#fde68a';
-      }
-      if (statusEl) {
-        if (isCurrent) statusEl.innerHTML = '<span style="color:#34d399;">✓ Synced</span>';
-        else if (realm) statusEl.innerHTML = '<span style="color:#fbbf24;">⚠ Different company</span>';
-        else statusEl.innerHTML = '';
-      }
-    } catch (e) { warn('refreshStatusBar failed', e?.message); }
+  /** Remove every piece of Kyriq UI from the page (logout). */
+  function removeKyriqUI() {
+    unhighlightAll();
+    document.querySelectorAll('.kyriq-badge, #kyriq-txn-banner').forEach(el => el.remove());
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -569,7 +522,9 @@
 
     const refNo  = normNum(cells[3]?.textContent.trim());
     const payee  = normPayee(cells[5]?.textContent.trim());
-    const payAmt = normAmt((cells[8]?.textContent || '').replace(/[$,()]/g, '').trim());
+    // Payment column, or deposit column for received cheques.
+    const payAmt = normAmt((cells[8]?.textContent || '').replace(/[$,()]/g, '').trim())
+                || normAmt((cells[9]?.textContent || '').replace(/[$,()]/g, '').trim());
 
     // B. refNo + (payee AND amount), then refNo + amount, then refNo + payee
     if (refNo) {
@@ -740,57 +695,6 @@
     }, delay);
   }
 
-  /** Inject the Kyriq auto-clear button into the reconciliation page header. */
-  function injectReconButton(matchCount, totalApproved, onAutoClick, onPreviewClick) {
-    const existing = document.getElementById('kyriq-recon-btn-wrap');
-    if (existing) existing.remove();
-
-    const wrap = document.createElement('div');
-    wrap.id = 'kyriq-recon-btn-wrap';
-
-    const pill = document.createElement('div');
-    pill.id = 'kyriq-recon-pill';
-
-    const logo = document.createElement('div');
-    logo.className = 'kyriq-k-logo';
-    logo.textContent = 'K';
-
-    const count = document.createElement('span');
-    count.className = 'kyriq-recon-count';
-    count.textContent = matchCount;
-
-    const sub = document.createElement('span');
-    sub.className = 'kyriq-recon-sub';
-    sub.textContent = `matched · ${totalApproved} approved`;
-
-    const balanceInput = document.createElement('input');
-    balanceInput.type = 'number';
-    balanceInput.placeholder = 'Ending Bal';
-    balanceInput.className = 'kyriq-recon-balance-input';
-    balanceInput.title = 'Enter statement ending balance to see difference after clearing';
-
-    const diffSpan = document.createElement('span');
-    diffSpan.className = 'kyriq-recon-diff';
-    diffSpan.style.display = 'none';
-
-    const previewBtn = document.createElement('button');
-    previewBtn.className = 'kyriq-recon-action-btn preview';
-    previewBtn.textContent = 'Preview';
-    previewBtn.addEventListener('click', onPreviewClick);
-
-    const autoBtn = document.createElement('button');
-    autoBtn.className = 'kyriq-recon-action-btn go';
-    autoBtn.textContent = matchCount > 0 ? `Auto-Clear ${matchCount}` : 'No matches';
-    autoBtn.disabled = matchCount === 0;
-    autoBtn.addEventListener('click', () => onAutoClick(balanceInput, diffSpan));
-
-    pill.append(logo, count, sub, balanceInput, diffSpan, previewBtn, autoBtn);
-    wrap.appendChild(pill);
-    document.body.appendChild(wrap);
-
-    return { wrap, autoBtn };
-  }
-
   function highlightRow(row, color) {
     row.style.outline = `2px solid ${color}`;
     row.style.outlineOffset = '-1px';
@@ -944,7 +848,22 @@
       }
     }
 
-    const lookup = await getApproved();
+    await autoTickReconcile();
+  }
+
+  // Tick the cleared "C" on every reconcile row Kyriq approved. No UI: the
+  // human approval already happened in Kyriq. Never unticks, never touches a
+  // row that is already cleared. Safe to call repeatedly (60 s refresh +
+  // KYRIQ_APPROVAL_ADDED) because cleared rows are skipped.
+  let _autoTickInFlight = false;
+  async function autoTickReconcile(forceRefresh = false) {
+    if (getPageType() !== 'reconcile' || _autoTickInFlight) return;
+    _autoTickInFlight = true;
+    try { await _autoTickReconcileImpl(forceRefresh); } finally { _autoTickInFlight = false; }
+  }
+  async function _autoTickReconcileImpl(forceRefresh) {
+    const lookup = await getApproved(forceRefresh);
+    if (!lookup.list.length) return; // logged out or nothing approved
     const allRows = findReconcilePageRows();
     const matched = []; // { row, txn }
     const seenTxnIds = new Set();
@@ -970,61 +889,16 @@
     const matchedFinal = pageAccount ? accountScoped : matched;
     log(`Reconcile: ${allRows.length} rows found, ${lookup.list.length} approved, ${matchedFinal.length} to clear`);
 
-    // Shared click handler — used by both the button and auto-clear below.
-    function runReconcileClear(balanceInput, diffSpan) {
-      let cleared = 0;
-      let clearedTotal = 0;
-      unhighlightAll();
-      for (const { row, txn } of matchedFinal) {
-        const target = findClearedCheckbox(row);
-        console.log(`[Kyriq] reconcile row ${txn.intuit_id} (${txn.doc_number}) — target:`, target,
-          'aria-pressed:', target?.getAttribute?.('aria-pressed'));
-        if (target) {
-          target.click();
-          if (target.tagName === 'INPUT') target.dispatchEvent(new Event('change', { bubbles: true }));
-          highlightRow(row, '#059669');
-          cleared++;
-          clearedTotal += Math.abs(parseFloat(txn.amount || 0));
-          console.log(`[Kyriq] ✓ clicked C on reconcile row ${txn.intuit_id}`);
-        } else {
-          // Row was matched but React re-rendered it between match and click — skip quietly.
-          // findReconRows now filters for clear-button rows, so this should be rare.
-          log(`Reconcile: skip row ${txn.intuit_id} — clear button no longer in DOM (React re-render?)`);
-        }
-      }
-      if (reconAutoBtn) {
-        reconAutoBtn.textContent = `Cleared ${cleared}`;
-        reconAutoBtn.className = 'kyriq-recon-action-btn done';
-        reconAutoBtn.disabled = true;
-      }
-      const endingBal = parseFloat(balanceInput?.value);
-      if (!isNaN(endingBal) && diffSpan) {
-        const diff = endingBal - clearedTotal;
-        const diffAbs = Math.abs(diff);
-        diffSpan.textContent = `Diff: ${diff >= 0 ? '+' : '-'}$${diffAbs.toFixed(2)}`;
-        diffSpan.className = 'kyriq-recon-diff' + (diffAbs < 0.01 ? ' kyriq-recon-balanced' : '');
-        diffSpan.style.display = '';
-      }
-      dismissEl(reconWrap, 5000);
-      log(`Reconcile: clicked cleared on ${cleared} rows, total=$${clearedTotal.toFixed(2)}`);
+    let cleared = 0;
+    for (const { row } of matchedFinal) {
+      if (isAlreadyCleared(row)) continue; // re-check: React may have re-rendered
+      const target = findClearedCheckbox(row);
+      if (!target) continue;
+      target.click();
+      if (target.tagName === 'INPUT') target.dispatchEvent(new Event('change', { bubbles: true }));
+      cleared++;
     }
-
-    const { wrap: reconWrap, autoBtn: reconAutoBtn } = injectReconButton(
-      matchedFinal.length,
-      lookup.list.length,
-      runReconcileClear,
-      () => {
-        const highlighted = document.querySelectorAll('[data-kyriq-highlighted]');
-        if (highlighted.length) { unhighlightAll(); return; }
-        for (const { row } of matchedFinal) highlightRow(row, '#f59e0b');
-      }
-    );
-
-    // Auto-click after 1.5 s so simply navigating to the page is enough.
-    if (matchedFinal.length > 0) {
-      console.log(`[Kyriq] Reconcile: auto-clicking ${matchedFinal.length} matched rows in 1.5 s`);
-      setTimeout(() => runReconcileClear(null, null), 1500);
-    }
+    if (cleared) pipeToSidepanel(`Reconcile: ticked C on ${cleared} Kyriq-approved row(s)`, 'success');
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1233,56 +1107,13 @@
     log(`Register: ${allRows.length} rows, ${lookup.list.length} approved, ${regMatchedFinal.length} to mark cleared`);
     if (!regMatchedFinal.length) return;
 
-    // Shared click handler for button and auto-click.
-    function runRegisterClear(balanceInput, diffSpan) {
-      let cleared = 0;
-      let clearedTotal = 0;
-      unhighlightAll();
-      for (const { row, txn } of regMatchedFinal) {
-        const cell = findRegisterClearedCell(row);
-        console.log(`[Kyriq] register row ${txn.intuit_id} (${txn.doc_number}) — button:`, cell,
-          'aria-pressed:', cell?.getAttribute?.('aria-pressed'));
-        if (cell) {
-          cell.click();
-          highlightRow(row, '#059669');
-          cleared++;
-          clearedTotal += Math.abs(parseFloat(txn.amount || 0));
-          console.log(`[Kyriq] ✓ clicked C on register row ${txn.intuit_id}`);
-        } else {
-          log(`Register: skip row ${txn.intuit_id} — clear button no longer in DOM (React re-render?)`);
-        }
-      }
-      if (regAutoBtn) {
-        regAutoBtn.textContent = `Marked ${cleared}`;
-        regAutoBtn.className = 'kyriq-recon-action-btn done';
-        regAutoBtn.disabled = true;
-      }
-      const endingBal = parseFloat(balanceInput?.value);
-      if (!isNaN(endingBal) && diffSpan) {
-        const diff = endingBal - clearedTotal;
-        const diffAbs = Math.abs(diff);
-        diffSpan.textContent = `Diff: ${diff >= 0 ? '+' : '-'}$${diffAbs.toFixed(2)}`;
-        diffSpan.className = 'kyriq-recon-diff' + (diffAbs < 0.01 ? ' kyriq-recon-balanced' : '');
-        diffSpan.style.display = '';
-      }
-      dismissEl(regWrap, 5000);
-      log(`Register: marked cleared on ${cleared} rows, total=$${clearedTotal.toFixed(2)}`);
+    let cleared = 0;
+    for (const { row } of regMatchedFinal) {
+      if (isRegisterRowCleared(row)) continue;
+      const cell = findRegisterClearedCell(row);
+      if (cell) { cell.click(); cleared++; }
     }
-
-    const { wrap: regWrap, autoBtn: regAutoBtn } = injectReconButton(
-      regMatchedFinal.length,
-      lookup.list.length,
-      runRegisterClear,
-      () => {
-        const highlighted = document.querySelectorAll('[data-kyriq-highlighted]');
-        if (highlighted.length) { unhighlightAll(); return; }
-        for (const { row } of regMatchedFinal) highlightRow(row, '#f59e0b');
-      }
-    );
-
-    // Auto-click after 1.5 s — navigating to the register page is enough.
-    console.log(`[Kyriq] Register: auto-clicking ${regMatchedFinal.length} matched rows in 1.5 s`);
-    setTimeout(() => runRegisterClear(null, null), 1500);
+    log(`Register: marked cleared on ${cleared} rows`);
   }
 
   async function initDgridRegisterPage() {
@@ -1324,41 +1155,12 @@
     if (!matched.length) return;
 
     // Dgrid requires sequential overlay interaction — cannot parallelize.
-    async function runDgridClear() {
-      let cleared = 0;
-      let clearedTotal = 0;
-      unhighlightAll();
-      for (const { row, txn } of matched) {
-        const result = await setDgridClearState(row, 'C');
-        console.log(`[Kyriq] dgrid row ${txn.intuit_id} (${txn.doc_number}) — result: ${result}`);
-        if (result === 'cleared' || result === 'noop') {
-          highlightRow(row, '#059669');
-          cleared++;
-          clearedTotal += Math.abs(parseFloat(txn.amount || 0));
-        }
-      }
-      if (dgridAutoBtn) {
-        dgridAutoBtn.textContent = `Marked ${cleared}`;
-        dgridAutoBtn.className = 'kyriq-recon-action-btn done';
-        dgridAutoBtn.disabled = true;
-      }
-      dismissEl(dgridWrap, 5000);
-      log(`DgridRegister: marked cleared on ${cleared} rows, total=$${clearedTotal.toFixed(2)}`);
+    let cleared = 0;
+    for (const { row } of matched) {
+      const result = await setDgridClearState(row, 'C');
+      if (result === 'cleared' || result === 'noop') cleared++;
     }
-
-    const { wrap: dgridWrap, autoBtn: dgridAutoBtn } = injectReconButton(
-      matched.length,
-      lookup.list.length,
-      (_b, _d) => { runDgridClear(); },
-      () => {
-        const highlighted = document.querySelectorAll('[data-kyriq-highlighted]');
-        if (highlighted.length) { unhighlightAll(); return; }
-        for (const { row } of matched) highlightRow(row, '#f59e0b');
-      }
-    );
-
-    console.log(`[Kyriq] DgridRegister: auto-clearing ${matched.length} matched rows in 1.5 s`);
-    setTimeout(() => runDgridClear(), 1500);
+    log(`DgridRegister: marked cleared on ${cleared} rows`);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1528,7 +1330,6 @@
       clearTimeout(_navDebounceTimer); // cancel any in-flight nav timer
       _navDebounceTimer = setTimeout(() => {
         _navDebounceTimer = null;
-        refreshStatusBar();
         runPageAutomation();
       }, 1500); // wait for React to render new page content
     }
@@ -1536,22 +1337,20 @@
 
   // ─── Initialise ───────────────────────────────────────────────
 
-  // Visibility-gated status-bar refresh: skips refresh work when the tab is hidden.
+  // Visibility-gated 60 s re-check: ticks newly approved reconcile rows, and
+  // learns about logout (GET_KYRIQ_APPROVED → loggedIn:false clears our UI).
   let _refreshTimer = null;
-  function startStatusBarRefresh() {
+  function startApprovedRefresh() {
     if (_refreshTimer) return;
     _refreshTimer = setInterval(() => {
-      if (document.visibilityState === 'visible') refreshStatusBar();
+      if (document.visibilityState === 'visible') autoTickReconcile(true);
     }, 60_000);
   }
-  function stopStatusBarRefresh() {
+  function stopApprovedRefresh() {
     if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
   }
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshStatusBar();
-  });
   window.addEventListener('beforeunload', () => {
-    stopStatusBarRefresh();
+    stopApprovedRefresh();
     clearTimeout(_navDebounceTimer);
     try { _navObserver.disconnect(); } catch {}
   });
@@ -1563,8 +1362,6 @@
     const s = document.createElement('style');
     s.id = 'kyriq-overlay-style';
     s.textContent = `
-      html.kyriq-overlay-hidden #kyriq-status-bar,
-      html.kyriq-overlay-hidden #kyriq-recon-btn-wrap,
       html.kyriq-overlay-hidden #kyriq-txn-banner,
       html.kyriq-overlay-hidden .kyriq-badge { display: none !important; }
     `;
@@ -1643,9 +1440,7 @@
 
   function init() {
     injectOverlayHideStyles();
-    createStatusBar();
-    refreshStatusBar();
-    startStatusBarRefresh();
+    startApprovedRefresh();
     fetchInitialUIState(); // hide immediately if sidepanel is closed + mode is whenOpen
     _navObserver.observe(document.body, { childList: true, subtree: true });
     runPageAutomation();
