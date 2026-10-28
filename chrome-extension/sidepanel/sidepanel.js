@@ -961,9 +961,10 @@ function renderMatches() {
     return _sortDir === 'asc' ? av - bv : bv - av;
   });
 
-  const counts = { all: matches.length };
+  const missingInChecks = qbMissingInChecks();
+  const counts = { all: matches.length, missing_checks: missingInChecks.length };
   matches.forEach(m => { counts[m.status] = (counts[m.status] || 0) + 1; });
-  ['all', 'pending', 'matched', 'discrepancy', 'unmatched', 'approved'].forEach(k => {
+  ['all', 'matched', 'discrepancy', 'unmatched', 'missing_checks', 'approved'].forEach(k => {
     const el = $(`#cnt-${k}`);
     if (el) el.textContent = counts[k] || 0;
   });
@@ -972,6 +973,26 @@ function renderMatches() {
     const n = matches.filter(isCleanMatch).length;
     bulkBtn.textContent = `Approve all matched (${n})`;
     bulkBtn.disabled = n === 0;
+  }
+
+  // Missing in checks: QB cheque transactions no extracted cheque matched.
+  // They are not match objects, so they render read-only.
+  if (currentFilter === 'missing_checks') {
+    list.innerHTML = missingInChecks.length ? missingInChecks.map(t => `
+      <div class="match-row status-unmatched">
+        <div class="match-main">
+          <div class="match-check"><div class="no-match">No extracted cheque</div></div>
+          <div class="match-qb">
+            <div class="num">#${escHtml(String(t.doc_number || t.check_number || '—'))} · ${fmt(t.amount)}</div>
+            <div class="detail">${fmtDate(t.txn_date || t.date)} · ${escHtml(t.payee || '—')}</div>
+          </div>
+        </div>
+      </div>`).join('') : `
+      <div class="empty-state">
+        <div class="empty-icon"></div>
+        <p>${_cachedQB === null ? 'QuickBooks transactions not loaded yet' : 'Every QuickBooks cheque has an extracted cheque'}</p>
+      </div>`;
+    return;
   }
 
   if (filtered.length === 0) {
@@ -994,6 +1015,14 @@ function renderMatches() {
     return renderMatchRow(m, origIdx);
   }).join('');
   bindMatchEvents();
+}
+
+// QB transactions (already loaded into _cachedQB) that no match references.
+function qbMissingInChecks() {
+  if (!Array.isArray(_cachedQB)) return [];
+  const key = t => String(t.intuit_id || t.id || '');
+  const used = new Set(matches.filter(m => m.qbTxn).map(m => key(m.qbTxn)));
+  return _cachedQB.filter(t => key(t) && !used.has(key(t)));
 }
 
 // A match that may be approved: linked QB transaction, no amount difference.
@@ -2570,6 +2599,9 @@ function bindEvents() {
       _attentionFilter = '';
       $$('.pill').forEach(p => p.classList.toggle('active', p.dataset.status === currentFilter));
       renderMatches();
+      if (currentFilter === 'missing_checks' && _cachedQB === null) {
+        Promise.resolve(loadQBTransactions()).then(() => renderMatches()).catch(() => {});
+      }
     });
   });
 

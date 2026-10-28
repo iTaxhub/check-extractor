@@ -59,7 +59,11 @@ assert pdf_pages.parse_caption("Post date: 04/30/2026 Amount: $ 4500.00 Account:
 bare = {"width": 612, "height": 792, "words": [], "image_rects": [(38, 343, 574, 525), (38, 128, 574, 310)]}
 boxes, caps = pdf_pages.cheque_boxes({**bare, "text": "Paid check images"}, 612, 792)
 assert boxes == [(38, 128, 574, 310), (38, 343, 574, 525)] and caps == [None, None], (boxes, caps)
-assert pdf_pages.cheque_boxes({**bare, "text": "Spring offers"}, 612, 792) == ([], [])
+# Same-size cheque-shaped images count even without the word (Michael's test pack:
+# "SYNTHETIC TEST DATA"); mismatched adverts on a page that never says check do not.
+assert len(pdf_pages.cheque_boxes({**bare, "text": "SYNTHETIC TEST DATA"}, 612, 792)[0]) == 2
+adverts = {**bare, "text": "Spring offers", "image_rects": [(38, 343, 574, 525), (38, 128, 300, 250)]}
+assert pdf_pages.cheque_boxes(adverts, 612, 792) == ([], [])
 banner = {**bare, "text": "15 checks paid", "image_rects": bare["image_rects"][:1]}
 assert pdf_pages.cheque_boxes(banner, 612, 792) == ([], [])   # statement page-1 banner
 for f, want in (("3117 June.pdf", 339), ("9440 June.pdf", 227)):
