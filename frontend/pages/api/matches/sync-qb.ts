@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAuthContext, getActiveRealm, getValidToken } from '@/lib/match-helpers';
+import { getAuthContext, getActiveRealm, getValidToken, requireCapability, READ_METHODS } from '@/lib/match-helpers';
 import { runMatching } from '@/lib/matching-algorithm';
 import { createServiceClient } from '@/lib/supabase/api';
 import { qbFetch } from '@/lib/qb-http';
@@ -9,6 +9,8 @@ import { qbFetch } from '@/lib/qb-http';
  * Pull latest transactions from QB and re-run matching
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Server-side role gate (lib/roles.ts): the UI hiding the action is not enough.
+  if (!READ_METHODS.has(req.method ?? '') && !(await requireCapability(req, res, 'checks.edit'))) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {

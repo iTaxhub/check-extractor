@@ -1,9 +1,12 @@
+import { requireCapability, READ_METHODS } from '@/lib/match-helpers';
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { jobAccessHeaders } from '@/lib/backend-auth'
 
 const PYTHON_API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3090'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Server-side role gate (lib/roles.ts): the UI hiding the action is not enough.
+  if (!READ_METHODS.has(req.method ?? '') && !(await requireCapability(req, res, 'checks.upload'))) return;
     const auth = await jobAccessHeaders(req, res, String(req.query.id ?? ''))
     if (!auth) return
 

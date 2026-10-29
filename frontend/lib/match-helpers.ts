@@ -70,6 +70,9 @@ export async function getAuthContext(req: NextApiRequest): Promise<AuthContext> 
  * directly as a User gets 403 regardless of what the UI shows. RLS in
  * migration 030 is the second, independent gate.
  */
+/** Methods that never mutate; write gates skip them (and CORS preflight). */
+export const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
 export async function requireCapability(
   req: NextApiRequest,
   res: NextApiResponse,

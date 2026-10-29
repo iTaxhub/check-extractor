@@ -75,21 +75,6 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 );
 Textarea.displayName = 'Textarea';
 
-export interface SelectProps
-  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'size'>,
-    VariantProps<typeof inputVariants> {}
-
-export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, state, inputSize, ...props }, ref) => (
-    <select
-      ref={ref}
-      className={cn(inputVariants({ state, inputSize }), 'appearance-none pr-9', className)}
-      {...props}
-    />
-  )
-);
-Select.displayName = 'Select';
-
 /**
  * Field — the label / control / message wrapper. Wire `htmlFor` through `id`
  * and the error message is announced, not just coloured.

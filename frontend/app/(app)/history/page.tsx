@@ -18,6 +18,7 @@ import {
   GlassCardTitle,
   GlassPanel,
   Input,
+  Select,
   Skeleton,
   StatusPill,
   Table,
@@ -273,13 +274,14 @@ export default function HistoryPage() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
           Account
-          <select
+          <Select
+            inputSize="sm"
+            className="w-auto min-w-[10rem]"
             value={accountId}
             onChange={(e) => {
               setAccountId(e.target.value);
               setOffset(0);
             }}
-            className="h-9 rounded-md border border-glass-hairline bg-surface px-2 text-sm text-ink-strong"
           >
             <option value="">All accounts</option>
             {Object.entries(accounts).map(([id, name]) => (
@@ -287,14 +289,15 @@ export default function HistoryPage() {
                 {name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
           Document kind
-          <select
+          <Select
+            inputSize="sm"
+            className="w-auto min-w-[9rem]"
             value={kind}
             onChange={(e) => setKind(e.target.value as DocumentKind | '')}
-            className="h-9 rounded-md border border-glass-hairline bg-surface px-2 text-sm text-ink-strong"
           >
             <option value="">All kinds</option>
             {KIND_ORDER.map((k) => (
@@ -302,7 +305,7 @@ export default function HistoryPage() {
                 {t(KIND_LABEL[k])}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink-body">
           Period from

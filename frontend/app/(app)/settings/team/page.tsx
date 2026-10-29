@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, Mail, Trash2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Copy, Mail, RotateCw, Trash2, UserCheck, UserPlus, UserX, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import {
   Badge,
   Button,
+  ConfirmDialog,
   Field,
   GlassCard,
   GlassCardTitle,
@@ -16,55 +16,135 @@ import {
   Input,
   Select,
   Skeleton,
-  StatusPill,
 } from '@/components/ui';
+import type { SelectOption } from '@/components/ui';
 import { useSpelling } from '@/hooks/useSpelling';
+import { adminOnly, usePermissions } from '@/hooks/usePermissions';
 
 interface TeamMember {
   id: string;
   email: string;
   name: string;
   role: 'admin' | 'member' | 'viewer';
-  status: 'active' | 'pending';
+  status: 'active' | 'pending' | 'expired' | 'deactivated';
   invited_at: string;
   last_active?: string;
+  expires_at?: string;
+  invite_url?: string;
 }
 
 type Role = TeamMember['role'];
 
-/** Roles are a closed set, so the badge tone is a map, not a switch. */
-const ROLE_TONE: Record<Role, 'brand' | 'neutral' | 'outline'> = {
-  admin: 'brand',
-  member: 'neutral',
-  viewer: 'outline',
-};
+const ROLE_OPTIONS: SelectOption[] = [
+  { value: 'admin', label: 'Administrator', description: 'Everything, including team, billing and settings' },
+  { value: 'member', label: 'User', description: 'Upload, review, approve and export' },
+  { value: 'viewer', label: 'Viewer', description: 'Read-only' },
+];
+const ROLE_LABEL: Record<Role, string> = { admin: 'Administrator', member: 'User', viewer: 'Viewer' };
+
+const LAST_ADMIN = 'A firm must keep at least one Administrator.';
+const SELF = 'You cannot change your own access.';
+
+const fmtDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : '');
+
+function StatusBadge({ member }: { member: TeamMember }) {
+  switch (member.status) {
+    case 'active':
+      return <Badge tone="success" size="sm">Active</Badge>;
+    case 'deactivated':
+      return <Badge tone="neutral" size="sm">Deactivated</Badge>;
+    case 'expired':
+      return <Badge tone="error" size="sm">Expired{member.expires_at ? ` · ${fmtDate(member.expires_at)}` : ''}</Badge>;
+    default:
+      return (
+        <Badge tone="warning" size="sm">
+          Invited{member.expires_at ? ` · expires ${fmtDate(member.expires_at)}` : ''}
+        </Badge>
+      );
+  }
+}
+
+type Confirm =
+  | { kind: 'remove' | 'deactivate' | 'revoke'; member: TeamMember }
+  | null;
+
+/** Reads a JSON error body into a sentence, whatever the route returned. */
+async function failure(res: Response, fallback: string) {
+  const body = await res.json().catch(() => null);
+  return body?.message || fallback;
+}
 
 export default function TeamPage() {
   const t = useSpelling();
+  const perms = usePermissions();
+  const canManage = perms.can('team.manage');
+
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<Role>('member');
   const [inviting, setInviting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [removing, setRemoving] = useState<TeamMember | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<Confirm>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchTeamMembers();
-  }, []);
-
-  const fetchTeamMembers = async () => {
+  const fetchTeamMembers = useCallback(async () => {
     try {
       const response = await fetch('/api/team/members');
-      if (response.ok) {
-        const data = await response.json();
-        setTeamMembers(data.members || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch team members:', error);
+      if (!response.ok) throw new Error(await failure(response, 'Could not load the team.'));
+      const data = await response.json();
+      setTeamMembers(data.members || []);
+      setLoadError(null);
+    } catch (error: any) {
+      setLoadError(error?.message || 'Could not load the team.');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchTeamMembers();
+  }, [fetchTeamMembers]);
+
+  /**
+   * Optimistic write: apply `patch` locally, call the API, roll back to the
+   * snapshot on failure. `patch === null` removes the row.
+   */
+  const mutate = async (
+    member: TeamMember,
+    patch: Partial<TeamMember> | null,
+    request: () => Promise<Response>,
+    success: string
+  ) => {
+    const snapshot = teamMembers;
+    setTeamMembers((list) =>
+      patch === null ? list.filter((m) => m.id !== member.id) : list.map((m) => (m.id === member.id ? { ...m, ...patch } : m))
+    );
+    setBusy(member.id);
+    try {
+      const res = await request();
+      if (!res.ok) throw new Error(await failure(res, 'That did not work.'));
+      const body = await res.json().catch(() => null);
+      if (body?.member) {
+        setTeamMembers((list) => list.map((m) => (m.id === member.id ? { ...m, ...body.member } : m)));
+      }
+      toast.success(success);
+      return body;
+    } catch (err: any) {
+      setTeamMembers(snapshot);
+      toast.error(err?.message || 'That did not work.');
+      return null;
+    } finally {
+      setBusy(null);
+    }
   };
+
+  const json = (method: string, body?: unknown) => ({
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const memberUrl = (id: string) => `/api/team/members/${encodeURIComponent(id)}`;
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,69 +152,71 @@ export default function TeamPage() {
 
     setInviting(true);
     try {
-      const response = await fetch('/api/team/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
-      });
-
-      if (response.ok) {
-        setInviteEmail('');
-        setInviteRole('member');
-        fetchTeamMembers();
-        toast.success('Invitation sent');
-      } else {
-        const error = await response.json();
-        toast.error(error.message || 'Failed to send invitation');
-      }
-    } catch (error) {
-      console.error('Failed to invite member:', error);
-      toast.error('Failed to send invitation');
+      const response = await fetch('/api/team/invite', json('POST', { email: inviteEmail, role: inviteRole }));
+      if (!response.ok) throw new Error(await failure(response, 'Failed to send invitation'));
+      const body = await response.json();
+      setInviteEmail('');
+      setInviteRole('member');
+      fetchTeamMembers();
+      toast.success(body?.email_sent === false ? 'Invitation created. Copy the link to share it.' : 'Invitation sent');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to send invitation');
     } finally {
       setInviting(false);
     }
   };
 
-  /** The confirm step is a Sheet, not window.confirm. */
-  const handleRemoveMember = async (memberId: string) => {
-    try {
-      const response = await fetch(`/api/team/members/${memberId}`, {
-        method: 'DELETE',
-      });
+  const changeRole = (member: TeamMember, role: Role) =>
+    mutate(member, { role }, () => fetch(memberUrl(member.id), json('PATCH', { role })), `Role changed to ${ROLE_LABEL[role]}`);
 
-      if (response.ok) {
-        fetchTeamMembers();
-        toast.success('Team member removed');
-      } else {
-        toast.error('Failed to remove member');
-      }
-    } catch (error) {
-      console.error('Failed to remove member:', error);
-      toast.error('Failed to remove member');
+  const setActive = (member: TeamMember, active: boolean) =>
+    mutate(
+      member,
+      { status: active ? 'active' : 'deactivated' },
+      () => fetch(memberUrl(member.id), json('PATCH', { active })),
+      active ? `${member.email} reactivated` : `${member.email} deactivated`
+    );
+
+  const remove = (member: TeamMember) =>
+    mutate(
+      member,
+      null,
+      () => fetch(memberUrl(member.id), { method: 'DELETE' }),
+      member.status === 'active' || member.status === 'deactivated' ? 'Team member removed' : 'Invitation revoked'
+    );
+
+  const resend = (member: TeamMember) =>
+    mutate(member, { status: 'pending' }, () => fetch(`${memberUrl(member.id)}/resend`, json('POST')), `Invitation resent to ${member.email}`);
+
+  const copyLink = async (member: TeamMember) => {
+    if (!member.invite_url) return toast.error('No invite link available.');
+    try {
+      await navigator.clipboard.writeText(member.invite_url);
+      toast.success('Invite link copied');
+    } catch {
+      toast.error('Could not copy. Your browser blocked clipboard access.');
     }
   };
 
-  const handleUpdateRole = async (memberId: string, newRole: Role) => {
-    try {
-      const response = await fetch(`/api/team/members/${memberId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (response.ok) {
-        fetchTeamMembers();
-        toast.success('Role updated');
-      } else {
-        toast.error('Failed to update role');
-      }
-    } catch (error) {
-      console.error('Failed to update role:', error);
-      toast.error('Failed to update role');
-    }
+  const runConfirm = async () => {
+    if (!confirm) return;
+    const { kind, member } = confirm;
+    setConfirm(null);
+    if (kind === 'deactivate') await setActive(member, false);
+    else await remove(member);
   };
 
-  const pending = teamMembers.filter((m) => m.status === 'pending');
+  const members = teamMembers.filter((m) => m.status === 'active' || m.status === 'deactivated');
+  const invitations = teamMembers.filter((m) => m.status === 'pending' || m.status === 'expired');
+  const activeAdmins = members.filter((m) => m.role === 'admin' && m.status === 'active').length;
+
+  /** Why this member's access cannot be changed right now, or null if it can. */
+  const lockReason = (m: TeamMember): string | null => {
+    if (!canManage) return adminOnly('manage the team');
+    if (m.id === perms.userId) return SELF;
+    if (m.role === 'admin' && m.status === 'active' && activeAdmins <= 1) return LAST_ADMIN;
+    return null;
+  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-5" data-tone="brand">
@@ -146,72 +228,66 @@ export default function TeamPage() {
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Settings
         </Link>
-        <h1 className="mt-3 font-heading text-2xl font-semibold text-ink-strong">
-          Users
-        </h1>
+        <h1 className="mt-3 font-heading text-2xl font-semibold text-ink-strong">Users</h1>
+        {!perms.loading && !canManage && (
+          <p className="mt-1 text-sm text-ink-body">{adminOnly('invite people or change access')}</p>
+        )}
       </div>
 
-      {/* ── Invite ──────────────────────────────────── */}
-      <GlassCard padding="lg" className="space-y-4">
-        <GlassCardTitle>Invite Team Member</GlassCardTitle>
+      {/* ── Invite (Administrators only) ── */}
+      {canManage && (
+        <GlassCard padding="lg" className="space-y-4">
+          <GlassCardTitle>Invite Team Member</GlassCardTitle>
 
-        <form onSubmit={handleInvite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Field label="Email" htmlFor="inviteEmail" required className="flex-1">
-            <Input
-              id="inviteEmail"
-              type="email"
-              autoComplete="off"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="name@theirfirm.com"
-              required
-            />
-          </Field>
-          <Field label="Role" htmlFor="inviteRole" className="sm:w-40">
-            <Select
-              id="inviteRole"
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value as Role)}
-            >
-              <option value="viewer">Viewer</option>
-              <option value="member">Member</option>
-              <option value="admin">Admin</option>
-            </Select>
-          </Field>
-          <Button
-            type="submit"
-            loading={inviting}
-            icon={<UserPlus size={16} />}
-            className="sm:mb-[1.625rem]"
-          >
-            {inviting ? 'Inviting…' : 'Invite'}
-          </Button>
-        </form>
+          <form onSubmit={handleInvite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field label="Email" htmlFor="inviteEmail" required className="flex-1">
+              <Input
+                id="inviteEmail"
+                type="email"
+                autoComplete="off"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="name@theirfirm.com"
+                required
+              />
+            </Field>
+            <Field label="Role" htmlFor="inviteRole" className="sm:w-48">
+              <Select
+                id="inviteRole"
+                value={inviteRole}
+                options={ROLE_OPTIONS}
+                onValueChange={(v) => setInviteRole(v as Role)}
+              />
+            </Field>
+            <Button type="submit" loading={inviting} icon={<UserPlus size={16} />}>
+              {inviting ? 'Inviting…' : 'Invite'}
+            </Button>
+          </form>
 
-        <GlassPanel tone="sunken" radius="input" padding="sm">
-          <p className="mb-1.5 text-xs font-semibold text-ink-strong">Role permissions</p>
-          <ul className="space-y-1 text-xs text-ink-body">
-            <li>
-              <strong className="text-ink-strong">Admin:</strong> full access including team
-              management and settings
-            </li>
-            <li>
-              <strong className="text-ink-strong">Member:</strong>{' '}
-              {t('can upload, review and export cheques')}
-            </li>
-            <li>
-              <strong className="text-ink-strong">Viewer:</strong>{' '}
-              {t('can only view cheques and analytics (read-only)')}
-            </li>
-          </ul>
-        </GlassPanel>
-      </GlassCard>
+          <GlassPanel tone="sunken" radius="input" padding="sm">
+            <p className="mb-1.5 text-xs font-semibold text-ink-strong">Role permissions</p>
+            <ul className="space-y-1 text-xs text-ink-body">
+              <li>
+                <strong className="text-ink-strong">Administrator:</strong> full access including team
+                management, billing, reports and settings
+              </li>
+              <li>
+                <strong className="text-ink-strong">User:</strong> {t('can upload, review and export cheques')}
+              </li>
+              <li>
+                <strong className="text-ink-strong">Viewer:</strong>{' '}
+                {t('can only view cheques and analytics (read-only)')}
+              </li>
+            </ul>
+          </GlassPanel>
+        </GlassCard>
+      )}
 
-      {/* ── Members ─────────────────────────────────── */}
+      {/* ── Members ── */}
       <GlassCard padding="none" className="overflow-hidden">
         <div className="border-b border-glass-hairline px-5 py-3.5">
           <GlassCardTitle className="text-base">
-            Team Members <span className="nums text-ink-faint">({teamMembers.length})</span>
+            Team Members <span className="nums text-ink-faint">({members.length})</span>
           </GlassCardTitle>
         </div>
 
@@ -220,138 +296,199 @@ export default function TeamPage() {
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
           </div>
-        ) : teamMembers.length === 0 ? (
+        ) : loadError ? (
+          <p className="px-5 py-10 text-center text-sm text-error-text" role="alert">{loadError}</p>
+        ) : members.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-ink-faint">
             No team members yet. Invite someone to get started.
           </p>
         ) : (
-          <div>
-            {teamMembers.map((member) => (
-              <div
-                key={member.id}
-                className="glass-divider flex flex-wrap items-center justify-between gap-3 px-5 py-3 transition-colors duration-quick ease-settle hover:bg-brand/[0.045]"
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark text-sm font-semibold text-white"
-                    aria-hidden
-                  >
-                    {(member.name || member.email).charAt(0).toUpperCase()}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-sm font-medium text-ink-strong">
-                        {member.name || member.email}
-                      </p>
-                      {member.status === 'active' ? (
-                        <Badge tone="success" size="sm">
-                          <CheckCircle size={11} aria-hidden /> Active
-                        </Badge>
-                      ) : (
-                        <StatusPill
-                          status="pending"
-                          size="sm"
-                          icon={<Mail size={11} aria-hidden />}
-                        />
+          <ul>
+            {members.map((member) => {
+              const lock = lockReason(member);
+              const deactivated = member.status === 'deactivated';
+              return (
+                <li
+                  key={member.id}
+                  className="glass-divider flex flex-wrap items-center justify-between gap-3 px-5 py-3 transition-colors duration-quick ease-settle hover:bg-brand/[0.045]"
+                >
+                  <div className={`flex min-w-0 flex-1 items-center gap-3 ${deactivated ? 'opacity-60' : ''}`}>
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark text-sm font-semibold text-white"
+                      aria-hidden
+                    >
+                      {(member.name || member.email).charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-medium text-ink-strong">
+                          {member.name || member.email}
+                          {member.id === perms.userId && <span className="ml-1 text-ink-faint">(you)</span>}
+                        </p>
+                        <StatusBadge member={member} />
+                      </div>
+                      <p className="truncate text-xs text-ink-body">{member.email}</p>
+                      {member.last_active && (
+                        <p className="nums mt-0.5 text-xs text-ink-faint">Last active: {fmtDate(member.last_active)}</p>
                       )}
                     </div>
-                    <p className="truncate text-xs text-ink-body">{member.email}</p>
-                    {member.last_active && (
-                      <p className="nums mt-0.5 text-xs text-ink-faint">
-                        Last active: {new Date(member.last_active).toLocaleDateString()}
-                      </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {canManage ? (
+                      <span title={lock ?? undefined}>
+                        <Select
+                          inputSize="sm"
+                          aria-label={`Role for ${member.email}`}
+                          value={member.role}
+                          options={ROLE_OPTIONS}
+                          disabled={!!lock || busy === member.id}
+                          onValueChange={(v) => v !== member.role && changeRole(member, v as Role)}
+                          className="w-40"
+                        />
+                      </span>
+                    ) : (
+                      <Badge tone={member.role === 'admin' ? 'brand' : 'outline'} size="sm">
+                        {ROLE_LABEL[member.role]}
+                      </Badge>
+                    )}
+
+                    {canManage && (
+                      <>
+                        <IconButton
+                          aria-label={deactivated ? `Reactivate ${member.email}` : `Deactivate ${member.email}`}
+                          title={lock ?? (deactivated ? 'Reactivate' : 'Deactivate')}
+                          size="icon-sm"
+                          disabled={!!lock || busy === member.id}
+                          onClick={() => (deactivated ? setActive(member, true) : setConfirm({ kind: 'deactivate', member }))}
+                          className="text-ink-faint hover:text-ink-strong"
+                        >
+                          {deactivated ? <UserCheck size={16} /> : <UserX size={16} />}
+                        </IconButton>
+                        <IconButton
+                          aria-label={`Remove ${member.email}`}
+                          title={lock ?? 'Remove member'}
+                          size="icon-sm"
+                          disabled={!!lock || busy === member.id}
+                          onClick={() => setConfirm({ kind: 'remove', member })}
+                          className="text-ink-faint hover:text-error-text"
+                        >
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </>
                     )}
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <label className="sr-only" htmlFor={`role-${member.id}`}>
-                    Role for {member.email}
-                  </label>
-                  <Select
-                    id={`role-${member.id}`}
-                    inputSize="sm"
-                    value={member.role}
-                    onChange={(e) => handleUpdateRole(member.id, e.target.value as Role)}
-                    className="w-32 rounded-pill pr-7 text-center"
-                  >
-                    <option value="viewer">Viewer</option>
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                  </Select>
-
-                  <IconButton
-                    aria-label={`Remove ${member.email}`}
-                    size="icon-sm"
-                    title="Remove member"
-                    onClick={() => setRemoving(member)}
-                    className="text-ink-faint hover:text-error-text"
-                  >
-                    <Trash2 size={16} />
-                  </IconButton>
-                </div>
-              </div>
-            ))}
-          </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </GlassCard>
 
-      {/* ── Pending invitations ─────────────────────── */}
-      {pending.length > 0 && (
+      {/* ── Invitations ── */}
+      {invitations.length > 0 && (
         <GlassCard padding="none" className="overflow-hidden">
           <div className="border-b border-glass-hairline px-5 py-3.5">
             <GlassCardTitle className="text-base">
-              Pending Invitations <span className="nums text-ink-faint">({pending.length})</span>
+              Invitations <span className="nums text-ink-faint">({invitations.length})</span>
             </GlassCardTitle>
           </div>
-          <div>
-            {pending.map((member) => (
-              <div
+          <ul>
+            {invitations.map((member) => (
+              <li
                 key={member.id}
                 className="glass-divider flex flex-wrap items-center justify-between gap-3 px-5 py-3"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning-bg"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-bg"
                     aria-hidden
                   >
                     <Mail className="h-4 w-4 text-warning-text" />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-ink-strong">{member.email}</p>
-                    <p className="nums text-xs text-ink-body">
-                      Invited {new Date(member.invited_at).toLocaleDateString()}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-medium text-ink-strong">{member.email}</p>
+                      <StatusBadge member={member} />
+                    </div>
+                    <p className="nums text-xs text-ink-body">Invited {fmtDate(member.invited_at)}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <Badge tone={ROLE_TONE[member.role]} size="sm" className="capitalize">
-                    {member.role}
-                  </Badge>
-                  <Button variant="ghost" size="sm" onClick={() => setRemoving(member)}>
-                    Cancel
-                  </Button>
+
+                <div className="flex items-center gap-1.5">
+                  {canManage ? (
+                    <>
+                      <Select
+                        inputSize="sm"
+                        aria-label={`Role for invitation to ${member.email}`}
+                        value={member.role}
+                        options={ROLE_OPTIONS}
+                        disabled={busy === member.id}
+                        onValueChange={(v) => v !== member.role && changeRole(member, v as Role)}
+                        className="w-40"
+                      />
+                      <IconButton
+                        aria-label={`Resend invitation to ${member.email}`}
+                        title="Resend invite"
+                        size="icon-sm"
+                        disabled={busy === member.id}
+                        onClick={() => resend(member)}
+                        className="text-ink-faint hover:text-ink-strong"
+                      >
+                        <RotateCw size={16} />
+                      </IconButton>
+                      <IconButton
+                        aria-label={`Copy invite link for ${member.email}`}
+                        title={member.status === 'expired' ? 'Expired: resend to renew the link' : 'Copy invite link'}
+                        size="icon-sm"
+                        disabled={!member.invite_url || member.status === 'expired'}
+                        onClick={() => copyLink(member)}
+                        className="text-ink-faint hover:text-ink-strong"
+                      >
+                        <Copy size={16} />
+                      </IconButton>
+                      <IconButton
+                        aria-label={`Revoke invitation to ${member.email}`}
+                        title="Revoke invite"
+                        size="icon-sm"
+                        disabled={busy === member.id}
+                        onClick={() => setConfirm({ kind: 'revoke', member })}
+                        className="text-ink-faint hover:text-error-text"
+                      >
+                        <XCircle size={16} />
+                      </IconButton>
+                    </>
+                  ) : (
+                    <Badge tone="outline" size="sm">{ROLE_LABEL[member.role]}</Badge>
+                  )}
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </GlassCard>
       )}
 
-      <DeleteConfirmModal
-        isOpen={removing !== null}
-        onClose={() => setRemoving(null)}
-        onConfirm={() => {
-          if (removing) handleRemoveMember(removing.id);
-          setRemoving(null);
-        }}
-        title="Remove team member?"
-        message={
-          removing
-            ? `${removing.email} will lose access to this firm immediately. Any pending invitation is cancelled.`
-            : ''
+      <ConfirmDialog
+        open={confirm !== null}
+        onCancel={() => setConfirm(null)}
+        onConfirm={runConfirm}
+        tone="destructive"
+        title={
+          confirm?.kind === 'revoke'
+            ? 'Revoke this invitation?'
+            : confirm?.kind === 'deactivate'
+              ? 'Deactivate this member?'
+              : 'Remove team member?'
         }
-        confirmText="Remove"
+        description={
+          confirm?.kind === 'revoke'
+            ? 'The invite link stops working immediately. You can invite them again later.'
+            : confirm?.kind === 'deactivate'
+              ? 'They can no longer sign in. Their history stays, and you can reactivate them at any time.'
+              : 'They lose access to this firm immediately and their login is deleted. This cannot be undone.'
+        }
+        details={confirm ? [['Email', confirm.member.email], ['Role', ROLE_LABEL[confirm.member.role]]] : undefined}
+        confirmLabel={confirm?.kind === 'revoke' ? 'Revoke' : confirm?.kind === 'deactivate' ? 'Deactivate' : 'Remove'}
       />
     </div>
   );

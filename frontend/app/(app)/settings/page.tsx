@@ -25,6 +25,7 @@ import {
     type TabItem,
 } from '@/components/ui'
 import { useSpelling } from '@/hooks/useSpelling'
+import { adminOnly, usePermissions } from '@/hooks/usePermissions'
 import { useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/lib/queries'
 
@@ -94,6 +95,7 @@ function SettingsPageContent() {
     const queryClient = useQueryClient()
     const [activeTab, setActiveTab] = useState('general')
     const [qboConnected, setQboConnected] = useState(false)
+    const canEditAccount = usePermissions().can('account.edit')
     const [qbConfigured, setQbConfigured] = useState(false)
     const [companyId, setCompanyId] = useState<string | null>(null)
     const [companyName, setCompanyName] = useState<string | null>(null)
@@ -790,7 +792,9 @@ function SettingsPageContent() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setShowDisconnectConfirm(true)}
-                                                    className="flex w-full items-center gap-2 border-t border-glass-hairline px-3 py-2 text-left text-sm text-error-text hover:bg-error-bg"
+                                                    disabled={!canEditAccount}
+                                                    title={canEditAccount ? undefined : adminOnly('disconnect QuickBooks')}
+                                                    className="flex w-full items-center gap-2 border-t border-glass-hairline px-3 py-2 text-left text-sm text-error-text hover:bg-error-bg disabled:cursor-not-allowed disabled:opacity-disabled disabled:hover:bg-transparent"
                                                 >
                                                     <XCircle size={14} aria-hidden /> Disconnect
                                                 </button>
@@ -818,7 +822,13 @@ function SettingsPageContent() {
                                         >
                                             Configure credentials
                                         </Button>
-                                        <Button size="sm" onClick={handleQBOConnect} icon={<ExternalLink size={14} />}>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleQBOConnect}
+                                            icon={<ExternalLink size={14} />}
+                                            disabled={!canEditAccount}
+                                            title={canEditAccount ? undefined : adminOnly('connect QuickBooks')}
+                                        >
                                             Connect to QuickBooks
                                         </Button>
                                     </>

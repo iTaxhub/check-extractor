@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import { useQBConnections, needsReconnect, type QBConnection } from '@/hooks/useQBConnections';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { adminOnly, usePermissions } from '@/hooks/usePermissions';
 import { ChevronDown, Plus, Search, Check, Loader2, X, Unplug } from 'lucide-react';
 
 /**
@@ -78,6 +79,9 @@ function StatusLine({ conn }: { conn: QBConnection }) {
 export default function CompanySwitcher() {
   const { connections, active, isLoading, isSwitching, switchCompany, disconnect, hasConnections } =
     useQBConnections();
+  // Connecting and disconnecting companies is account editing (lib/roles.ts);
+  // switching between connected companies stays open to every User.
+  const canEditAccount = usePermissions().can('account.edit');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   // A proper modal, not confirm(): a native dialog blocks the event loop,
@@ -91,6 +95,10 @@ export default function CompanySwitcher() {
   const [connecting, setConnecting] = useState(false);
   const startConnect = useCallback(async () => {
     if (connecting) return;
+    if (!canEditAccount) {
+      toast.error(adminOnly('connect QuickBooks'));
+      return;
+    }
     setConnecting(true);
     try {
       const { data: { session } } = await createClient().auth.getSession();
@@ -112,7 +120,7 @@ export default function CompanySwitcher() {
     } finally {
       setConnecting(false);
     }
-  }, [connecting]);
+  }, [connecting, canEditAccount]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -151,7 +159,8 @@ export default function CompanySwitcher() {
       <button
         type="button"
         onClick={startConnect}
-        disabled={connecting}
+        disabled={connecting || !canEditAccount}
+        title={canEditAccount ? undefined : adminOnly('connect QuickBooks')}
         className={`${TRIGGER} text-xs font-semibold text-primary-text disabled:opacity-disabled`}
       >
         {connecting ? (
@@ -255,7 +264,7 @@ export default function CompanySwitcher() {
                     </span>
                   )}
                 </button>
-                <button
+                {canEditAccount && <button
                   type="button"
                   onClick={() => {
                     setPendingDisconnect(conn);
@@ -267,7 +276,7 @@ export default function CompanySwitcher() {
                              text-ink-faint hover:bg-error-bg hover:text-error-text"
                 >
                   <Unplug aria-hidden className="h-3.5 w-3.5" />
-                </button>
+                </button>}
               </div>
             ))}
 

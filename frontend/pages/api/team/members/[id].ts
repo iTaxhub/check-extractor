@@ -118,7 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message:
           req.method === 'DELETE'
             ? 'You cannot remove yourself.'
-            : 'You cannot change your own role.',
+            : 'You cannot change your own role or deactivate yourself.',
       });
     }
 
@@ -187,6 +187,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res
         .status(200)
         .json({ ok: true, removed: 'member', email_sent: removalMail.sent, email_status: removalMail.status });
+    }
+
+    // Deactivate / reactivate: a Supabase auth ban, so the profile, its history
+    // and its role survive and reactivating is one click. ponytail: an already
+    // issued access token stays valid until it expires (about an hour); upgrade
+    // path is a status check in getAuthContext if that window matters.
+    if (typeof req.body?.active === 'boolean') {
+      const active: boolean = req.body.active;
+      const { error: banErr } = await service.auth.admin.updateUserById(target.id, {
+        ban_duration: active ? 'none' : '876000h',
+      } as any);
+      if (banErr) throw banErr;
+      await auditLog({
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        action: active ? 'team.member_reactivated' : 'team.member_deactivated',
+        entityType: 'user_profile',
+        entityId: member.id,
+        metadata: { email: member.email },
+      });
+      return res.status(200).json({
+        member: { ...profileRowToMember(member), status: active ? 'active' : 'deactivated' },
+      });
     }
 
     const nextRole = req.body?.role;
