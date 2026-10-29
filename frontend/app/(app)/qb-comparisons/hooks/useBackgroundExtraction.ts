@@ -1,29 +1,26 @@
 import { useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/lib/queries';
 
 /**
  * Background extraction hook
  * Silently extracts jobs that are stuck at 'analyzed' status
  */
-export function useBackgroundExtraction() {
+// Reads the jobs the page already loaded instead of fetching /api/jobs again.
+export function useBackgroundExtraction(extractions: Array<{ job_id?: string }>) {
   const processingRef = useRef(new Set<string>());
   const hasRunRef = useRef(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Only run once per session
-    if (hasRunRef.current) return;
+    // Only run once per session, once the page's jobs have arrived
+    if (hasRunRef.current || extractions.length === 0) return;
     hasRunRef.current = true;
 
     const extractIncompleteJobs = async () => {
       try {
-        console.log('🔍 Checking for incomplete jobs...');
-        
-        // Fetch all jobs
-        const response = await fetch('/api/jobs?source=auto');
-        if (!response.ok) return;
-        
-        const data = await response.json();
-        const jobs = data.jobs || [];
-        
+        const jobs = (queryClient.getQueryData(qk.jobsFull) as any[]) || [];
+
         // Find jobs that are analyzed but not complete
         const incompleteJobs = jobs.filter((job: any) => 
           job.status === 'analyzed' && 
@@ -78,5 +75,5 @@ export function useBackgroundExtraction() {
     const timer = setTimeout(extractIncompleteJobs, 2000);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [extractions.length, queryClient]);
 }

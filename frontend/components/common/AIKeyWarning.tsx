@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, X, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { Button, GlassCard } from '@/components/ui';
+import { useIntegrations } from '@/lib/queries';
 import { useSpelling } from '@/hooks/useSpelling';
 
 /**
@@ -18,26 +19,10 @@ import { useSpelling } from '@/hooks/useSpelling';
  */
 export default function AIKeyWarning() {
   const t = useSpelling();
-  const [hasAIKey, setHasAIKey] = useState(true);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkAIKeyStatus = async () => {
-      try {
-        const response = await fetch('/api/settings/integrations');
-        if (response.ok) {
-          const data = await response.json();
-          setHasAIKey(!!data.geminiApiKey);
-        }
-      } catch (error) {
-        console.error('Failed to check AI key status:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkAIKeyStatus();
-  }, []);
+  const integrations = useIntegrations();
+  const loading = integrations.isPending;
+  const hasAIKey = integrations.isError || !!integrations.data?.geminiApiKey;
 
   if (loading || hasAIKey || isDismissed) return null;
 

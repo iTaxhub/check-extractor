@@ -1,5 +1,6 @@
 'use client';
 
+import { authHeaders } from '@/lib/queries';
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, XCircle, AlertCircle, RefreshCw, Clock } from 'lucide-react';
 import { Badge, Button, GlassPanel, StatusPill } from '@/components/ui';
@@ -39,7 +40,7 @@ export default function QBConnectionStatus() {
   const checkStatus = useCallback(async () => {
     setChecking(true);
     try {
-      const integrationRes = await fetch('/api/settings/integrations');
+      const integrationRes = await fetch('/api/settings/integrations', { headers: await authHeaders() });
 
       if (integrationRes.ok) {
         const data = await integrationRes.json();
