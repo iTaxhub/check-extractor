@@ -22,6 +22,7 @@
  * scripts/check-landing.ts fails if any of that regresses.
  */
 
+import { createClient } from '@/lib/supabase/client';
 import { useState, useEffect, ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -96,7 +97,19 @@ const NAV_LINKS = [
   { label: 'FAQs', href: '/#faq' },
 ];
 
+/** Signed in already? Read from the local session: no network call. */
+function useSignedIn() {
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    createClient().auth.getSession().then(({ data }) => { if (alive) setSignedIn(!!data.session); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  return signedIn;
+}
+
 export function Nav() {
+  const signedIn = useSignedIn();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const reduced = useReducedMotion();
@@ -128,10 +141,18 @@ export function Nav() {
         </div>
 
         <div className="hidden lg:flex items-center gap-3">
-          <Link href="/login" className="text-[13px] font-medium text-brand-deep hover:text-brand-dark transition-colors duration-quick">
-            Sign in
-          </Link>
-          <CtaLink size="md" className="px-5 min-h-tap text-[13px]" />
+          {signedIn ? (
+            <Link href="/dashboard" className={cn(buttonVariants({ size: 'md' }), 'px-5 min-h-tap text-[13px]')}>
+              Go to app
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="text-[13px] font-medium text-brand-deep hover:text-brand-dark transition-colors duration-quick">
+                Sign in
+              </Link>
+              <CtaLink size="md" className="px-5 min-h-tap text-[13px]" />
+            </>
+          )}
         </div>
 
         <button
@@ -167,14 +188,22 @@ export function Nav() {
                 </a>
               ))}
               <div className="pt-4 mt-2 border-t hairline grid gap-3">
-                <CtaLink className="w-full" />
-                <Link
-                  href="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(buttonVariants({ variant: 'ghost', size: 'md', block: true }))}
-                >
-                  Sign in
-                </Link>
+                {signedIn ? (
+                  <Link href="/dashboard" onClick={() => setMobileOpen(false)} className={cn(buttonVariants({ size: 'md', block: true }))}>
+                    Go to app
+                  </Link>
+                ) : (
+                  <>
+                    <CtaLink className="w-full" />
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(buttonVariants({ variant: 'ghost', size: 'md', block: true }))}
+                    >
+                      Sign in
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
