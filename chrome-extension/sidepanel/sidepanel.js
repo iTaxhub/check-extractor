@@ -641,6 +641,19 @@ function setUserChip(email, user) {
 }
 
 // ── Post-login: check QB connections ─────────────────────────
+// Never show "Connected" without an active company: that left the panel with a
+// blank company, no accounts and no data. One company, or a connect the user
+// just finished (preferNewest), is activated; otherwise the connect screen.
+async function ensureActiveCompany({ preferNewest = false } = {}) {
+  if (connections.some(c => c.is_active)) return true;
+  if (!connections.length || (!preferNewest && connections.length > 1)) return false;
+  const pick = [...connections].sort((a, b) => String(b.connected_at || '').localeCompare(String(a.connected_at || '')))[0];
+  const r = await sendMsg({ type: 'SWITCH_COMPANY', realmId: pick.realm_id });
+  if (r?.error) return false;
+  connections = connections.map(c => ({ ...c, is_active: c.realm_id === pick.realm_id }));
+  return true;
+}
+
 async function postLoginFlow() {
   if (_loginInProgress) { dbg('postLoginFlow: already in progress — skipping'); return; }
   _loginInProgress = true;
@@ -659,7 +672,7 @@ async function postLoginFlow() {
     } else {
       // Rows left inactive by a disconnect stay disconnected; never re-activate
       // them behind the user's back.
-      if (!connections.some(c => c.is_active)) {
+      if (!(await ensureActiveCompany())) {
         dbg('No active QB connection: showing connect screen', 'warn');
         showView('qb-connect');
         return;
@@ -2551,7 +2564,7 @@ function bindEvents() {
     connections = res?.connections || [];
     hideLoading();
     dbg(`Connections after refresh: ${connections.length}`);
-    if (connections.length > 0) {
+    if (connections.length > 0 && (await ensureActiveCompany({ preferNewest: true }))) {
       renderCompanySelect();
       const sync = loadChecksIntoMatches({ pull: true, force: true });
       showView('main');
@@ -2565,6 +2578,7 @@ function bindEvents() {
 
   $('#btn-qb-skip').addEventListener('click', () => {
     dbg('Skipped QB connect');
+    setQbStatus('off');
     showView('main');
     renderMatches();
   });

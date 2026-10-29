@@ -1363,11 +1363,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             // legacy integrations row in step; a local is_active flip did neither,
             // so the next login showed QuickBooks connected again.
             const apiHost = (getBootstrapConfig().frontendUrl || '').replace(/\/$/, '');
-            const res = await fetch(`${apiHost}/api/qbo/disconnect`, {
+            const post = (token) => fetch(`${apiHost}/api/qbo/disconnect`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify(msg.realmId ? { realmId: msg.realmId } : {}),
             });
+            let res = await post(s.access_token);
+            if (res.status === 401 && s.refresh_token) {
+              // Stale access token: refresh once and retry.
+              const refreshed = await supabaseAuth('token?grant_type=refresh_token', { refresh_token: s.refresh_token }).catch(() => null);
+              if (refreshed?.access_token) { await saveSession(refreshed); res = await post(refreshed.access_token); }
+            }
             const body = await res.json().catch(() => ({}));
             if (!res.ok) return { error: body.error || `Disconnect failed (${res.status})` };
             log('DISCONNECT_QB: disconnected', { realmId: msg.realmId || 'all' });
