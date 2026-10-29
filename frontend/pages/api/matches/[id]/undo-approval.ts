@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAuthContext, audit } from '@/lib/match-helpers';
+import { getAuthContext, audit, requireCapability, READ_METHODS } from '@/lib/match-helpers';
 import { createServiceClient } from '@/lib/supabase/api';
 import { patchJobCheck } from '@/lib/check-sync';
 
@@ -8,6 +8,8 @@ import { patchJobCheck } from '@/lib/check-sync';
  * Reverse an approval (put back to previous state)
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Server-side role gate (lib/roles.ts): the UI hiding the action is not enough.
+  if (!READ_METHODS.has(req.method ?? '') && !(await requireCapability(req, res, 'checks.edit'))) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {

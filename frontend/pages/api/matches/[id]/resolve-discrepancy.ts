@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAuthContext, audit } from '@/lib/match-helpers';
+import { getAuthContext, audit, requireCapability, READ_METHODS } from '@/lib/match-helpers';
 
 /**
  * POST /api/matches/[id]/resolve-discrepancy
@@ -7,6 +7,8 @@ import { getAuthContext, audit } from '@/lib/match-helpers';
  * Body: { resolution: 'use_check_amount' | 'use_qb_amount' | 'manual_override', amount?: number, notes?: string }
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Server-side role gate (lib/roles.ts): the UI hiding the action is not enough.
+  if (!READ_METHODS.has(req.method ?? '') && !(await requireCapability(req, res, 'checks.edit'))) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {

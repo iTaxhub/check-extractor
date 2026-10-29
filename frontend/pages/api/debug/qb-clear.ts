@@ -1,3 +1,4 @@
+import { requireCapability } from '@/lib/match-helpers';
 /**
  * GET /api/debug/qb-clear?qbEntryId=<uuid>
  *
@@ -29,6 +30,8 @@ async function getActiveTokens(supabase: any) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Server-side role gate (lib/roles.ts): the UI hiding the action is not enough.
+  if (!(await requireCapability(req, res, 'account.edit'))) return;
   if (process.env.KYRIQ_DEBUG !== '1') {
     return res.status(404).json({ error: 'Not found' });
   }

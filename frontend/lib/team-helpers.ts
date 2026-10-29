@@ -11,9 +11,12 @@ export interface TeamMemberDTO {
   email: string;
   name: string;
   role: DbRole;
-  status: 'active' | 'pending';
+  status: 'active' | 'pending' | 'expired' | 'deactivated';
   invited_at: string;
   last_active?: string;
+  /** Invitations only. */
+  expires_at?: string;
+  invite_url?: string;
 }
 
 /**
@@ -65,8 +68,11 @@ export function invitationRowToMember(row: any): TeamMemberDTO {
     email: row.email || '',
     name: '',
     role: toDbRole(row.role),
-    status: 'pending',
+    status:
+      row.expires_at && new Date(row.expires_at).getTime() <= Date.now() ? 'expired' : 'pending',
     invited_at: row.created_at || new Date().toISOString(),
+    ...(row.expires_at ? { expires_at: row.expires_at } : {}),
+    ...(row.token ? { invite_url: inviteUrl(row.token) } : {}),
   };
 }
 

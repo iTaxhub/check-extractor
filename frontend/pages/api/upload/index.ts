@@ -1,3 +1,4 @@
+import { requireCapability, READ_METHODS } from '@/lib/match-helpers';
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { backendAuthHeaders } from '@/lib/backend-auth'
 
@@ -10,6 +11,8 @@ export const config = {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Server-side role gate (lib/roles.ts): the UI hiding the action is not enough.
+  if (!READ_METHODS.has(req.method ?? '') && !(await requireCapability(req, res, 'checks.upload'))) return;
     const auth = await backendAuthHeaders(req, res)
     if (!auth) return
 

@@ -1,3 +1,4 @@
+import { requireCapability, READ_METHODS } from '@/lib/match-helpers';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient, createServiceClient, getRequestUser } from '@/lib/supabase/api';
 import { qbFetch } from '@/lib/qb-http';
@@ -11,6 +12,8 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Server-side role gate (lib/roles.ts): the UI hiding the action is not enough.
+  if (!READ_METHODS.has(req.method ?? '') && !(await requireCapability(req, res, 'account.edit'))) return;
   // Intuit's "Disconnect URL" is where QuickBooks sends the USER when they
   // disconnect the app from inside QuickBooks — a browser navigation, GET, and
   // with no guarantee of a Kyriq session cookie. Answering 405 there fails

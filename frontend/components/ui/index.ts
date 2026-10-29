@@ -24,11 +24,13 @@ export type { GlassCardProps, GlassPanelProps } from './glass-card';
 export { Button, IconButton, buttonVariants } from './button';
 export type { ButtonProps, IconButtonProps } from './button';
 
-export { Input, Textarea, Select, Field, inputVariants } from './input';
+export { Input, Textarea, Field, inputVariants } from './input';
+export { Select } from './select';
+export type { SelectProps, SelectOption } from './select';
 
 export { OtpInput } from './otp-input';
 export type { OtpInputProps, OtpInputHandle } from './otp-input';
-export type { InputProps, TextareaProps, SelectProps, FieldProps } from './input';
+export type { InputProps, TextareaProps, FieldProps } from './input';
 
 export { Dialog, Sheet, dialogPanelVariants, sheetPanelVariants } from './dialog';
 export type { DialogProps, SheetProps } from './dialog';

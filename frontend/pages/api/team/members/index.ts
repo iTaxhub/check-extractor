@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCapability } from '@/lib/match-helpers';
+import { can } from '@/lib/roles';
 import { createServiceClient } from '@/lib/supabase/api';
 import {
   invitationRowToMember,
@@ -24,7 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'method_not_allowed', message: 'Method not allowed' });
   }
 
-  const ctx = await requireCapability(req, res, 'team.view');
+  // Everyone in the firm may SEE the team (read-only for Users); managing it
+  // is `team.manage`, enforced on every write route. Invite links are bearer
+  // secrets, so they are only returned to Administrators.
+  const ctx = await requireCapability(req, res, 'checks.view');
   if (!ctx) return;
 
   try {
@@ -45,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .order('created_at', { ascending: true }),
       ctx.supabase
         .from('team_invitations')
-        .select('id, email, role, status, created_at, expires_at')
+        .select('id, email, role, status, token, created_at, expires_at')
         .eq('tenant_id', ctx.tenantId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false }),
@@ -54,14 +58,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (profilesRes.error) throw profilesRes.error;
     if (invitesRes.error) throw invitesRes.error;
 
-    const now = Date.now();
+    // Deactivation is an auth ban (see members/[id].ts), and last sign-in lives
+    // on the auth user too. ponytail: one admin lookup per member; fine for
+    // firm-sized teams, switch to a paged listUsers if teams grow to hundreds.
+    const profiles = await Promise.all(
+      (profilesRes.data || []).map(async (row: any) => {
+        const { data } = await service.auth.admin.getUserById(row.id);
+        const u: any = data?.user;
+        const m = profileRowToMember({ ...row, last_sign_in_at: u?.last_sign_in_at });
+        const banned = u?.banned_until && new Date(u.banned_until).getTime() > Date.now();
+        return banned ? { ...m, status: 'deactivated' as const } : m;
+      })
+    );
+
     const members: TeamMemberDTO[] = [
-      ...(profilesRes.data || []).map(profileRowToMember),
-      // A pending invitation past its 7-day window is not offered as pending.
-      ...(invitesRes.data || [])
-        .filter((row: any) => !row.expires_at || new Date(row.expires_at).getTime() > now)
-        .map(invitationRowToMember),
-    ];
+      ...profiles,
+      // Expired invitations are listed as 'expired' so they can be resent.
+      ...(invitesRes.data || []).map(invitationRowToMember),
+    ].map((m) => (can(ctx.role, 'team.manage') ? m : { ...m, invite_url: undefined }));
 
     return res.status(200).json({ members });
   } catch (err: any) {

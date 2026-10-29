@@ -1,3 +1,4 @@
+import { requireCapability, READ_METHODS } from '@/lib/match-helpers';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
 import { getQbToken } from '@/lib/qb-token';
@@ -12,6 +13,8 @@ const QBO_SANDBOX = 'https://sandbox-quickbooks.api.intuit.com';
  * Body: { txnType: 'Purchase'|'Deposit', checkNumber, amount, date, payee, memo }
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Server-side role gate (lib/roles.ts): the UI hiding the action is not enough.
+  if (!READ_METHODS.has(req.method ?? '') && !(await requireCapability(req, res, 'checks.edit'))) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const supabase = createAuthenticatedClient(req);

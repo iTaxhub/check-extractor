@@ -1,3 +1,4 @@
+import { can } from '@/lib/roles';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { signState } from '@/lib/qbo-state';
 import { createAuthenticatedClient } from '@/lib/supabase/api';
@@ -27,9 +28,15 @@ export default async function handler(
 
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('tenant_id, email, full_name')
+      .select('tenant_id, email, full_name, role')
       .eq('id', user.id)
       .single();
+
+    // Connecting a QuickBooks company is account editing: Administrators only.
+    // A user with no tenant yet is creating their own firm below, so is its admin.
+    if (profile?.tenant_id && !can(profile.role, 'account.edit')) {
+      return res.status(403).json({ error: 'forbidden', message: 'Only an Administrator can connect QuickBooks.' });
+    }
 
     let tenantId = profile?.tenant_id;
 
