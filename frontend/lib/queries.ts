@@ -53,7 +53,10 @@ export const qk = {
   qbConnections: ['qb-connections'] as const,
   qboAccounts: (realmId: string | null | undefined) => ['qbo-accounts', realmId ?? null] as const,
   trialStatus: ['trial-status'] as const,
-  quickbooksEntries: (realmId: string | null | undefined) => ['quickbooks-entries', realmId ?? null] as const,
+  // Not keyed by realm: the realm arrives after first render and a realm key
+  // fetched the entries twice. A company switch invalidates this key instead.
+  quickbooksEntries: (_realmId?: string | null) => ['quickbooks-entries'] as const,
+  integrations: ['integrations'] as const,
   matches: ['matches'] as const,
 };
 
@@ -104,6 +107,11 @@ export function useQuickbooksEntries(realmId: string | null | undefined) {
     queryKey: qk.quickbooksEntries(realmId),
     queryFn: () => apiFetch<{ entries?: any[] }>('/api/quickbooks/entries').then((d) => d.entries || []),
   });
+}
+
+/** /api/settings/integrations, shared: QB connected?, AI key present?, company. */
+export function useIntegrations() {
+  return useQuery({ queryKey: qk.integrations, queryFn: () => apiFetch<any>('/api/settings/integrations') });
 }
 
 export function useQboAccounts(realmId: string | null | undefined) {

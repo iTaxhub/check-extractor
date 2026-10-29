@@ -31,6 +31,7 @@ import {
 import { exportToCSV, exportToExcel } from './utils/exportUtils';
 import { createClient } from '@/lib/supabase/client';
 import { useSpelling } from '@/hooks/useSpelling';
+import { useIntegrations } from '@/lib/queries';
 
 // Only opened on a row click: keep it out of the first-load bundle.
 const DetailModal = dynamic(() => import('./components/DetailModal').then((m) => m.DetailModal), { ssr: false });
@@ -47,11 +48,10 @@ export default function QBComparisonsPage() {
   const { loading, extractions, qbEntries, qbSources, error, refreshData } = useComparisonData();
   
   // Silently extract incomplete jobs in the background
-  useBackgroundExtraction();
+  useBackgroundExtraction(extractions);
   const [qbConfigured, setQbConfigured] = useState(false);
   const [qbConnected, setQbConnected] = useState(false);
   const [checkingConfig, setCheckingConfig] = useState(true);
-  const [autoSyncAttempted, setAutoSyncAttempted] = useState(false);
   const [syncing, setSyncing] = useState(false);
   // Auto-open QB Reconcile tab once per session after the first successful
   // queued_for_reconcile approval. Users still get a toast CTA after that.
@@ -118,40 +118,14 @@ export default function QBComparisonsPage() {
   }, []);
 
   // Check if QuickBooks is configured and connected
+  const integrations = useIntegrations();
   useEffect(() => {
-    const checkQBConfig = async () => {
-      try {
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers: Record<string, string> = {};
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`;
-        }
-        const response = await fetch('/api/settings/integrations', { headers });
-        if (response.ok) {
-          const data = await response.json();
-          const configured = !!(data.qbClientId || data.qboConnected);
-          const connected = !!data.qboConnected;
-          setQbConfigured(configured);
-          setQbConnected(connected);
-          
-          console.log('🔐 QB Status:', { configured, connected });
-          
-          // Auto-refresh from database if connected but no local QB entries
-          if (connected && qbEntries.length === 0 && !autoSyncAttempted) {
-            console.log('🔄 Refreshing QB data from database...');
-            setAutoSyncAttempted(true);
-            refreshData();
-          }
-        }
-      } catch (error) {
-        console.error('Failed to check QB config:', error);
-      } finally {
-        setCheckingConfig(false);
-      }
-    };
-    checkQBConfig();
-  }, [qbEntries.length, autoSyncAttempted]);
+    if (integrations.isError) setCheckingConfig(false);
+    if (!integrations.data) return;
+    setCheckingConfig(false);
+    setQbConfigured(!!(integrations.data.qbClientId || integrations.data.qboConnected));
+    setQbConnected(!!integrations.data.qboConnected);
+  }, [integrations.data, integrations.isError]);
 
   const handleSaveCheck = async (checkId: string, updates: any, jobId?: string) => {
     try {

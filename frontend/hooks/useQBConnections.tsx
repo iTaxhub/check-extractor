@@ -150,6 +150,9 @@ function useQBConnectionsInternal(): QBContextValue {
           active: next ? { ...next, isActive: true } : null,
           connections: d.connections.map((c) => ({ ...c, isActive: c.realmId === realmId })),
         }));
+        // Company-scoped data must not show the previous company's rows.
+        qc.removeQueries({ queryKey: qk.quickbooksEntries() });
+        for (const queryKey of [['qbo-accounts'], qk.matches, qk.jobs]) qc.invalidateQueries({ queryKey });
         return next ?? undefined;
       } catch (err: any) {
         setError(err.message);
