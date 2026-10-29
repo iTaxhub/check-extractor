@@ -87,8 +87,9 @@ export const TEMPLATES = {
       paragraphs: [
         `${v.inviterName || 'An administrator'} has invited you to join ${firmOf(v)} on Kyriq as ${v.roleLabel || 'a team member'}.`,
         'Kyriq extracts data from scanned cheques and reconciles it against QuickBooks Online.',
+        'Open the link, set your password and two-step verification, and you go straight into the firm. No separate sign-up needed.',
       ],
-      cta: { label: 'Accept the invitation', url: v.inviteUrl },
+      cta: { label: 'Join the firm', url: v.inviteUrl },
       footnote: v.expiresAt
         ? `This link works once and expires on ${formatDate(v.expiresAt)}.`
         : 'This link works once.',

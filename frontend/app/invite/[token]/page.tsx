@@ -50,6 +50,10 @@ export default function AcceptInvitePage() {
   const [signedInAs, setSignedInAs] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  // Signed-out invitee: the invited email is fixed; they only choose a password.
+  const [mode, setMode] = useState<'create' | 'signin'>('create');
+  const [fullName, setFullName] = useState('');
+  const [password, setPassword] = useState('');
 
   const load = useCallback(async () => {
     if (!token) {
@@ -59,10 +63,10 @@ export default function AcceptInvitePage() {
     try {
       const [res, session] = await Promise.all([
         fetch(`/api/team/invitations/${encodeURIComponent(token)}`),
-        createClient().auth.getUser(),
+        createClient().auth.getSession(),
       ]);
       const data = await res.json().catch(() => ({}));
-      const email = session.data.user?.email ?? null;
+      const email = session.data.session?.user?.email ?? null;
       setSignedInAs(email);
 
       if (!res.ok && res.status !== 404) {
@@ -118,7 +122,7 @@ export default function AcceptInvitePage() {
 
       if (res.ok && body?.ok === true) {
         setState('joined');
-        setTimeout(() => router.push('/dashboard'), 1500);
+        setTimeout(() => router.push('/mfa?next=/dashboard'), 1200);
         return;
       }
 
@@ -148,6 +152,38 @@ export default function AcceptInvitePage() {
     } catch (err: any) {
       setState('error');
       setMessage(err?.message || 'Could not accept this invitation.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Create the account from the invitation (or sign in to an existing one),
+  // then join the firm in the same click.
+  const joinWithPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invitation) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      if (mode === 'create') {
+        const r = await fetch(`/api/team/invitations/${encodeURIComponent(token)}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, fullName }),
+        });
+        const body = await r.json().catch(() => ({}));
+        if (r.status === 409) {
+          setMode('signin');
+          setMessage('You already have a Kyriq account. Enter its password to join.');
+          return;
+        }
+        if (!r.ok) throw new Error(body?.message || 'Could not create your account.');
+      }
+      const { error } = await createClient().auth.signInWithPassword({ email: invitation.email, password });
+      if (error) throw new Error(mode === 'signin' ? 'That password is not right. Try again or reset it.' : error.message);
+      await accept();
+    } catch (err: any) {
+      setMessage(err?.message || 'Something went wrong.');
     } finally {
       setBusy(false);
     }
@@ -205,24 +241,35 @@ export default function AcceptInvitePage() {
           )}
 
           {state === 'signin_required' && invitation && (
-            <>
-              <GlassCardTitle>Sign in to join {invitation.firm}</GlassCardTitle>
+            <form onSubmit={joinWithPassword} className="space-y-4">
+              <GlassCardTitle>Join {invitation.firm}</GlassCardTitle>
               <GlassCardBody>
-                This invitation is for <strong>{invitation.email}</strong>. Sign in or create that
-                account, and you will come straight back here.
+                {mode === 'create'
+                  ? <>You have been invited as <strong>{productRoleLabel(invitation.role)}</strong>. Set a password to finish. You will set up two-step verification next.</>
+                  : <>Sign in with your Kyriq password to join {invitation.firm}.</>}
               </GlassCardBody>
-              <div className="flex flex-col gap-2">
-                <Button block onClick={() => router.push(`/login?redirectTo=${encodeURIComponent(`/invite/${token}`)}`)}>
-                  Sign in
-                </Button>
-                <Link
-                  href={`/signup?redirectTo=${encodeURIComponent(`/invite/${token}`)}`}
-                  className="text-center text-sm text-brand-deep underline-offset-2 hover:underline"
-                >
-                  Create an account
-                </Link>
-              </div>
-            </>
+              <label className="block space-y-1.5 text-sm">
+                <span className="text-ink-faint">Email</span>
+                <input value={invitation.email} readOnly aria-readonly className="w-full rounded-input border border-glass-hairline bg-surface/60 px-3 py-2 text-ink-body" />
+              </label>
+              {mode === 'create' && (
+                <label className="block space-y-1.5 text-sm">
+                  <span className="text-ink-faint">Your name</span>
+                  <input value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" className="w-full rounded-input border border-glass-hairline bg-surface px-3 py-2" />
+                </label>
+              )}
+              <label className="block space-y-1.5 text-sm">
+                <span className="text-ink-faint">{mode === 'create' ? 'Choose a password (8+ characters)' : 'Password'}</span>
+                <input type="password" required minLength={mode === 'create' ? 8 : 1} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'create' ? 'new-password' : 'current-password'} autoFocus className="w-full rounded-input border border-glass-hairline bg-surface px-3 py-2" />
+              </label>
+              {message && <p className="text-sm text-error-text">{message}</p>}
+              <Button block type="submit" disabled={busy}>
+                {busy ? 'Joining…' : `Join ${invitation.firm}`}
+              </Button>
+              <button type="button" className="block w-full text-center text-sm text-brand-deep underline-offset-2 hover:underline" onClick={() => { setMode(mode === 'create' ? 'signin' : 'create'); setMessage(''); }}>
+                {mode === 'create' ? 'I already have a Kyriq account' : 'I need to create my account'}
+              </button>
+            </form>
           )}
 
           {state === 'wrong_email' && invitation && (
@@ -284,7 +331,7 @@ export default function AcceptInvitePage() {
             <>
               <GlassCardTitle>You are in</GlassCardTitle>
               <GlassCardBody>
-                Welcome to {invitation.firm}. Taking you to your dashboard…
+                Welcome to {invitation.firm}. Next, secure your account with two-step verification…
               </GlassCardBody>
             </>
           )}
