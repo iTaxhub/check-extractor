@@ -34,7 +34,7 @@ const NEARLY = 0.8;
 /** "Ends soon" window, in days. */
 const ENDING_SOON_DAYS = 3;
 
-interface Outcome {
+export interface Outcome {
   sent: number;
   alreadySent: number;
   suppressed: number;
@@ -42,7 +42,7 @@ interface Outcome {
   failures: string[];
 }
 
-const outcome = (): Outcome => ({ sent: 0, alreadySent: 0, suppressed: 0, skipped: 0, failures: [] });
+export const outcome = (): Outcome => ({ sent: 0, alreadySent: 0, suppressed: 0, skipped: 0, failures: [] });
 
 function record(o: Outcome, label: string, r: { sent: boolean; status: string; reason: string | null }) {
   if (r.sent) o.sent += 1;
@@ -205,27 +205,40 @@ async function usageNotices(svc: any): Promise<Outcome> {
     }
     if (!state || typeof state !== 'object') continue;
 
-    const due = decideNotices(state as Record<string, any>);
-    if (due.length === 0) continue;
-
-    const recipients = await adminRecipients(tenant.id);
-    for (const notice of due) {
-      for (const to of recipients) {
-        const result = await sendOnce({
-          tenantId: tenant.id,
-          kind: notice.kind,
-          periodKey: `${notice.periodKey}:${to}`,
-          to,
-          template: notice.template,
-          vars: { ...notice.vars, firmName: tenant.name ?? null },
-          metadata: { block_reason: (state as any).block_reason ?? null },
-        });
-        record(o, `${tenant.id}/${notice.kind}/${to}`, result);
-      }
-    }
+    await sendDueNotices(o, tenant, state as Record<string, any>);
   }
 
   return o;
+}
+
+/**
+ * Send one firm's due trial/usage notices (optionally only some kinds).
+ * sendOnce keys every send, so the daily cron and the welcome route
+ * (pages/api/email/welcome.ts) can both call this without double-sending.
+ */
+export async function sendDueNotices(
+  o: Outcome,
+  tenant: { id: string; name?: string | null },
+  state: Record<string, any>,
+  onlyKinds?: string[]
+) {
+  const due = decideNotices(state).filter((n) => !onlyKinds || onlyKinds.includes(n.kind));
+  if (due.length === 0) return;
+  const recipients = await adminRecipients(tenant.id);
+  for (const notice of due) {
+    for (const to of recipients) {
+      const result = await sendOnce({
+        tenantId: tenant.id,
+        kind: notice.kind,
+        periodKey: `${notice.periodKey}:${to}`,
+        to,
+        template: notice.template,
+        vars: { ...notice.vars, firmName: tenant.name ?? null },
+        metadata: { block_reason: state.block_reason ?? null },
+      });
+      record(o, `${tenant.id}/${notice.kind}/${to}`, result);
+    }
+  }
 }
 
 interface DueNotice {

@@ -10,15 +10,23 @@ import SuperAdminLink from '@/components/SuperAdminLink';
 import { NAV_GROUPS, activeNavHref } from '@/lib/shell-nav';
 import { SUPPORT_MAILTO } from '@/lib/support';
 import { LifeBuoy } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { makeAppQueryClient, qk } from '@/lib/queries';
+import { apiFetch, makeAppQueryClient, qk } from '@/lib/queries';
 import { useRealtimeInvalidate } from '@/hooks/useRealtimeTable';
 
 /** App-wide live refresh: job rows and QB connections, one socket topic each. */
 function LiveSync() {
   useRealtimeInvalidate('check_jobs', undefined, [qk.jobs]);
   useRealtimeInvalidate('qb_connections', undefined, [qk.qbConnections]);
+  // Welcome email on first sign-in instead of the next daily cron. Server-side
+  // sends are keyed once per firm, so the flag only saves a request.
+  useEffect(() => {
+    try { if (localStorage.getItem('kyriq-welcome-sent')) return; } catch {}
+    apiFetch('/api/email/welcome', { method: 'POST' })
+      .then(() => { try { localStorage.setItem('kyriq-welcome-sent', '1'); } catch {} })
+      .catch(() => {});
+  }, []);
   return null;
 }
 

@@ -34,6 +34,23 @@ export function createAuthenticatedClient(req: NextApiRequest) {
 }
 
 /**
+ * The signed-in user for a Bearer request. Passes the token explicitly and
+ * retries once: /auth/v1/user has been slow (5s) and occasionally empty, and
+ * a single miss used to surface as "Not authenticated".
+ */
+export async function getRequestUser(req: NextApiRequest) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!token) return null;
+  const supabase = createAuthenticatedClient(req);
+  for (let i = 0; i < 2; i++) {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (data?.user) return data.user;
+    if (error && /invalid|expired|malformed/i.test(error.message)) return null;
+  }
+  return null;
+}
+
+/**
  * Create an authenticated Supabase client from cookies.
  * Used for OAuth callbacks where Authorization header is not available.
  * Handles @supabase/ssr chunked cookie format (sb-xxx-auth-token.0, .1, etc.)

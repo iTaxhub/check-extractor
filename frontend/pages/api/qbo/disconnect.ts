@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createAuthenticatedClient, createServiceClient } from '@/lib/supabase/api';
+import { createAuthenticatedClient, createServiceClient, getRequestUser } from '@/lib/supabase/api';
 import { qbFetch } from '@/lib/qb-http';
 
 /**
@@ -32,7 +32,7 @@ export default async function handler(
 
   try {
     const supabase = createAuthenticatedClient(req);
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getRequestUser(req);
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
     const { data: profile } = await supabase
       .from('user_profiles')

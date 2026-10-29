@@ -203,9 +203,9 @@ export default async function handler(
 
     // Intuit keeps ONE app grant per QuickBooks company: a new consent revokes
     // the previous tokens ("Assign new admin ... will replace ..."). So every
-    // Kyriq firm that holds this company gets the fresh tokens, and a firm
-    // connecting a company another firm already holds is refused (ask for an
-    // invite) instead of silently knocking that firm offline.
+    // Kyriq firm that holds this company gets the fresh tokens and stays
+    // connected. The connecting firm is never refused: only a QuickBooks admin
+    // can consent, so whoever got this far is entitled to the company.
     const { data: holders } = await serviceClient
       .from('qb_connections')
       .select('tenant_id')
@@ -224,11 +224,7 @@ export default async function handler(
         .in('tenant_id', others)
         .eq('provider', 'quickbooks')
         .eq('realm_id', realmId);
-      const reconnecting = (holders || []).some((h: any) => h.tenant_id === tenantId);
-      if (!reconnecting) {
-        console.warn('QuickBooks company already held by another firm; tokens handed over', { realmId });
-        return res.redirect(errRedirect('company_owned_by_other_firm', companyName || String(realmId)));
-      }
+      console.log('QuickBooks company shared with other firms; tokens refreshed for all', { realmId, firms: others.length });
     }
 
     // Update existing integration row (preserves credentials) or insert new one
