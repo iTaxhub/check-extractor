@@ -56,10 +56,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
   if (error) {
     if (/already|registered|exists/i.test(error.message)) {
-      return res.status(409).json({ error: 'account_exists', message: 'You already have a Kyriq account. Sign in to join.' });
+      if (!req.body?.resetPassword) {
+        return res.status(409).json({ error: 'account_exists', message: 'You already have a Kyriq account. Sign in to join.' });
+      }
+      // Forgot password: the invitation was emailed to this address, so the
+      // link proves ownership exactly as a reset email would. Set the new one.
+      const existing = await findUserByEmail(service, email);
+      if (!existing) return res.status(500).json({ error: 'server_error', message: 'Could not find your account.' });
+      const { error: updErr } = await service.auth.admin.updateUserById(existing.id, { password, email_confirm: true });
+      if (updErr) return res.status(500).json({ error: 'server_error', message: 'Could not set your password. Try again.' });
+      return res.status(200).json({ ok: true, email, reset: true });
     }
     console.error('[team/invitations register]', error.message);
     return res.status(500).json({ error: 'server_error', message: 'Could not create your account. Try again.' });
   }
   return res.status(201).json({ ok: true, email });
+}
+
+async function findUserByEmail(service: any, email: string) {
+  // ponytail: pages through auth users (1000 per page); fine at this scale,
+  // swap for an RPC over auth.users if the user count grows large.
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await service.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error || !data?.users?.length) return null;
+    const hit = data.users.find((u: any) => String(u.email || '').toLowerCase() === email);
+    if (hit) return hit;
+    if (data.users.length < 1000) return null;
+  }
+  return null;
 }
