@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, CheckCircle, Lock } from 'lucide-react';
@@ -27,6 +27,16 @@ export default function ResetPasswordPage() {
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Accounts with two-step verification need the code before Supabase will
+  // change the password ("AAL2 session is required ...").
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState('');
+
+  useEffect(() => {
+    createClient().auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
+      if (data && data.nextLevel === 'aal2' && data.currentLevel !== 'aal2') setNeedsCode(true);
+    }).catch(() => {});
+  }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,13 +49,28 @@ export default function ResetPasswordPage() {
     if (password !== confirmPassword) next.confirmPassword = 'Passwords do not match';
     setErrors(next);
     if (Object.keys(next).length > 0) return;
+    if (needsCode && !/^\d{6}$/.test(code.trim())) {
+      setFormError('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
 
     setLoading(true);
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.updateUser({ password });
-
+      if (needsCode) {
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        const totp = factors?.totp?.find((f) => f.status === 'verified');
+        if (!totp) throw new Error('No authenticator is set up for this account.');
+        const { error: mfaErr } = await supabase.auth.mfa.challengeAndVerify({ factorId: totp.id, code: code.trim() });
+        if (mfaErr) throw new Error('That code is not right. Check your authenticator app and try again.');
+      }
+      let { error } = await supabase.auth.updateUser({ password });
+      if (error && /aal2/i.test(error.message) && !needsCode) {
+        setNeedsCode(true);
+        setFormError('Your account uses two-step verification. Enter the 6-digit code to continue.');
+        return;
+      }
       if (error) throw error;
 
       setSuccess(true);
@@ -148,6 +173,20 @@ export default function ResetPasswordPage() {
             aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
           />
         </Field>
+
+        {needsCode ? (
+          <Field label="Authenticator code" htmlFor="mfaCode" required hint="6 digits from your authenticator app">
+            <Input
+              id="mfaCode"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="123456"
+            />
+          </Field>
+        ) : null}
 
         <Button type="submit" block loading={loading}>
           {loading ? 'Resetting password…' : 'Reset Password'}
