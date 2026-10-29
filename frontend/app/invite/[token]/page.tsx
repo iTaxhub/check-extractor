@@ -51,7 +51,7 @@ export default function AcceptInvitePage() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   // Signed-out invitee: the invited email is fixed; they only choose a password.
-  const [mode, setMode] = useState<'create' | 'signin'>('create');
+  const [mode, setMode] = useState<'create' | 'signin' | 'reset'>('create');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
 
@@ -165,22 +165,23 @@ export default function AcceptInvitePage() {
     setBusy(true);
     setMessage('');
     try {
-      if (mode === 'create') {
+      if (mode === 'create' || mode === 'reset') {
         const r = await fetch(`/api/team/invitations/${encodeURIComponent(token)}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password, fullName }),
+          body: JSON.stringify({ password, fullName, resetPassword: mode === 'reset' }),
         });
         const body = await r.json().catch(() => ({}));
         if (r.status === 409) {
           setMode('signin');
-          setMessage('You already have a Kyriq account. Enter its password to join.');
+          setPassword('');
+          setMessage('This email already has a Kyriq account. Enter its password, or set a new one below.');
           return;
         }
         if (!r.ok) throw new Error(body?.message || 'Could not create your account.');
       }
       const { error } = await createClient().auth.signInWithPassword({ email: invitation.email, password });
-      if (error) throw new Error(mode === 'signin' ? 'That password is not right. Try again or reset it.' : error.message);
+      if (error) throw new Error(mode === 'signin' ? 'That password is not right. Try again, or use "Set a new one" below.' : error.message);
       await accept();
     } catch (err: any) {
       setMessage(err?.message || 'Something went wrong.');
@@ -246,7 +247,9 @@ export default function AcceptInvitePage() {
               <GlassCardBody>
                 {mode === 'create'
                   ? <>You have been invited as <strong>{productRoleLabel(invitation.role)}</strong>. Set a password to finish. You will set up two-step verification next.</>
-                  : <>Sign in with your Kyriq password to join {invitation.firm}.</>}
+                  : mode === 'reset'
+                    ? <>Choose a new password for your Kyriq account. This invitation was sent to your email, so no reset email is needed.</>
+                    : <>Sign in with your Kyriq password to join {invitation.firm}.</>}
               </GlassCardBody>
               <label className="block space-y-1.5 text-sm">
                 <span className="text-ink-faint">Email</span>
@@ -259,16 +262,25 @@ export default function AcceptInvitePage() {
                 </label>
               )}
               <label className="block space-y-1.5 text-sm">
-                <span className="text-ink-faint">{mode === 'create' ? 'Choose a password (8+ characters)' : 'Password'}</span>
-                <input type="password" required minLength={mode === 'create' ? 8 : 1} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'create' ? 'new-password' : 'current-password'} autoFocus className="w-full rounded-input border border-glass-hairline bg-surface px-3 py-2" />
+                <span className="text-ink-faint">{mode === 'signin' ? 'Password' : mode === 'reset' ? 'New password (8+ characters)' : 'Choose a password (8+ characters)'}</span>
+                <input type="password" required minLength={mode === 'signin' ? 1 : 8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} autoFocus className="w-full rounded-input border border-glass-hairline bg-surface px-3 py-2" />
               </label>
               {message && <p className="text-sm text-error-text">{message}</p>}
               <Button block type="submit" disabled={busy}>
                 {busy ? 'Joining…' : `Join ${invitation.firm}`}
               </Button>
-              <button type="button" className="block w-full text-center text-sm text-brand-deep underline-offset-2 hover:underline" onClick={() => { setMode(mode === 'create' ? 'signin' : 'create'); setMessage(''); }}>
-                {mode === 'create' ? 'I already have a Kyriq account' : 'I need to create my account'}
-              </button>
+              <div className="flex flex-col items-center gap-1.5 text-sm">
+                {mode === 'signin' && (
+                  <button type="button" className="text-brand-deep underline-offset-2 hover:underline" onClick={() => { setMode('reset'); setPassword(''); setMessage(''); }}>
+                    Forgot your password? Set a new one
+                  </button>
+                )}
+                {mode !== 'signin' && (
+                  <button type="button" className="text-brand-deep underline-offset-2 hover:underline" onClick={() => { setMode('signin'); setMessage(''); }}>
+                    I know my Kyriq password
+                  </button>
+                )}
+              </div>
             </form>
           )}
 
